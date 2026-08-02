@@ -1,0 +1,199 @@
+modulo seven.runtime.platform.intrinsic
+
+usa seven.runtime.platform.svbc.bytes
+usa seven.runtime.platform.svbc.hosted
+usa seven.runtime.platform.svbc.io
+usa seven.runtime.platform.svbc.pure
+usa seven.runtime.svbc.value
+
+molde Intrinseco ::
+  nome: Texto
+  efeito: Texto
+  executa: Campo<Lista<ValorVm>, Resultado<ValorVm, Falha>>
+fecha
+
+campo intrinsecos_padrao() -> Lista<Intrinseco> ::
+  solta itens := lista<Intrinseco>()
+
+  registra_puros(itens)
+  registra_bytes(itens)
+  registra_io(itens)
+  registra_web(itens)
+  registra_rede(itens)
+  registra_dados(itens)
+  registra_crypto(itens)
+  registra_ai(itens)
+
+  devolve itens
+fecha
+
+campo intrinseco(nome: Texto, efeito: Texto, executa: Campo<Lista<ValorVm>, Resultado<ValorVm, Falha>>) -> Intrinseco ::
+  devolve Intrinseco {
+    nome: nome,
+    efeito: efeito,
+    executa: executa
+  }
+fecha
+
+campo registra(itens: Lista<Intrinseco>, nome: Texto, efeito: Texto, executa: Campo<Lista<ValorVm>, Resultado<ValorVm, Falha>>) -> Nada ::
+  lista_coloca(itens, intrinseco(nome, efeito, executa))
+fecha
+
+campo registra_puros(itens: Lista<Intrinseco>) -> Nada ::
+  registra(itens, "sys_lista_coloca", "puro", intr_lista_coloca)
+  registra(itens, "sys_lista_pega", "puro", intr_lista_pega)
+  registra(itens, "sys_lista_pop", "puro", intr_lista_pop)
+  registra(itens, "sys_lista_reverso", "puro", intr_host_puro)
+  registra(itens, "sys_mapa_coloca", "puro", intr_mapa_coloca)
+  registra(itens, "sys_mapa_pega", "puro", intr_mapa_pega)
+  registra(itens, "sys_mapa_tem", "puro", intr_host_puro)
+  registra(itens, "sys_texto_tamanho", "puro", intr_texto_tamanho)
+  registra(itens, "sys_texto_comeca", "puro", intr_texto_comeca)
+  registra(itens, "sys_texto_num", "puro", intr_texto_num)
+  registra(itens, "sys_texto_u64", "puro", intr_texto_num)
+  registra(itens, "sys_numero", "puro", intr_numero)
+  registra(itens, "sys_vm_binaria", "puro", intr_vm_binaria)
+  registra(itens, "sys_vm_coleta_args", "puro", intr_host_puro)
+  registra(itens, "sys_raiz", "puro", intr_host_puro)
+  registra(itens, "sys_potencia", "puro", intr_host_puro)
+  registra(itens, "sys_regex_compila", "puro", intr_host_puro)
+  registra(itens, "sys_regex_testa", "puro", intr_host_puro)
+  registra(itens, "sys_regex_busca", "puro", intr_host_puro)
+fecha
+
+campo registra_bytes(itens: Lista<Intrinseco>) -> Nada ::
+  registra(itens, "sys_bytes_novo", "puro", intr_bytes_novo)
+  registra(itens, "sys_texto_bytes", "puro", intr_texto_bytes)
+  registra(itens, "sys_bytes_texto", "puro", intr_bytes_texto)
+  registra(itens, "sys_bytes_hex", "puro", intr_bytes_hex)
+  registra(itens, "sys_bytes_pega", "puro", intr_bytes_pega)
+  registra(itens, "sys_bytes_texto_intervalo", "puro", intr_host_puro)
+  registra(itens, "sys_bytes_u32_be", "puro", intr_host_puro)
+fecha
+
+campo registra_io(itens: Lista<Intrinseco>) -> Nada ::
+  registra(itens, "terminal_escreve", "terminal", intr_terminal_escreve)
+  registra(itens, "sys_terminal_escreve", "terminal", intr_terminal_escreve)
+  registra(itens, "arquivo_ler", "disco", intr_arquivo_ler_texto)
+  registra(itens, "arquivo_grava", "disco", intr_arquivo_grava_texto)
+  registra(itens, "sys_arquivo_ler_texto", "disco", intr_arquivo_ler_texto)
+  registra(itens, "sys_arquivo_ler_bytes", "disco", intr_arquivo_ler_bytes)
+  registra(itens, "sys_arquivo_grava_texto", "disco", intr_arquivo_grava_texto)
+  registra(itens, "sys_arquivo_existe", "disco", intr_arquivo_existe)
+  registra(itens, "sys_env", "ambiente", intr_env)
+  registra(itens, "sys_args", "ambiente", intr_args)
+  registra(itens, "sys_tempo_agora", "tempo", intr_tempo_agora)
+  registra(itens, "sys_tempo_iso", "tempo", intr_tempo_iso)
+  registra(itens, "sys_dorme", "tempo", intr_dorme)
+  registra(itens, "sys_grupo_novo", "tempo", intr_host_puro)
+  registra(itens, "sys_tarefa_inicia", "tempo", intr_host_puro)
+  registra(itens, "sys_tarefa_aguarda", "tempo", intr_host_puro)
+  registra(itens, "sys_grupo_aguarda", "tempo", intr_host_puro)
+  registra(itens, "sys_processo_roda", "ambiente", intr_host_disco)
+fecha
+
+campo registra_web(itens: Lista<Intrinseco>) -> Nada ::
+  registra(itens, "frontend_monta", "frontend", intr_host_frontend)
+  registra(itens, "frontend_escuta", "frontend", intr_host_frontend)
+  registra(itens, "frontend_navega", "frontend", intr_host_frontend)
+  registra(itens, "frontend_fetch_texto", "frontend", intr_host_frontend)
+  registra(itens, "frontend_injeta_css", "frontend", intr_host_frontend)
+  registra(itens, "sys_html_renderiza", "puro", intr_host_puro)
+  registra(itens, "sys_css_renderiza", "puro", intr_host_puro)
+  registra(itens, "sys_css_media_declaracoes", "puro", intr_host_puro)
+  registra(itens, "sys_css_animacao_declaracoes", "puro", intr_host_puro)
+  registra(itens, "sys_frontend_empacota", "puro", intr_host_puro)
+  registra(itens, "sys_json_codifica", "puro", intr_host_puro)
+  registra(itens, "sys_json_parse", "puro", intr_host_puro)
+  registra(itens, "sys_url_encode", "puro", intr_host_puro)
+  registra(itens, "sys_html_escape", "puro", intr_host_puro)
+  registra(itens, "sys_json_escape", "puro", intr_host_puro)
+  registra(itens, "sys_texto_junta", "puro", intr_host_puro)
+  registra(itens, "sys_rota_combina", "puro", intr_host_puro)
+  registra(itens, "sys_rota_parametros", "puro", intr_host_puro)
+  registra(itens, "sys_cookie_requisicao", "puro", intr_host_puro)
+  registra(itens, "sys_sessao_parse", "puro", intr_host_puro)
+  registra(itens, "sys_caminho_seguro", "puro", intr_host_puro)
+  registra(itens, "sys_mime_por_caminho", "puro", intr_host_puro)
+fecha
+
+campo registra_rede(itens: Lista<Intrinseco>) -> Nada ::
+  registra(itens, "sys_tcp_escuta", "rede", intr_host_rede)
+  registra(itens, "sys_tcp_aceita", "rede", intr_host_rede)
+  registra(itens, "sys_tcp_le", "rede", intr_host_rede)
+  registra(itens, "sys_tcp_escreve", "rede", intr_host_rede)
+  registra(itens, "sys_tcp_fecha", "rede", intr_host_rede)
+  registra(itens, "sys_udp_abre", "rede", intr_host_rede)
+  registra(itens, "sys_udp_envia", "rede", intr_host_rede)
+  registra(itens, "sys_udp_recebe", "rede", intr_host_rede)
+  registra(itens, "sys_udp_fecha", "rede", intr_host_rede)
+  registra(itens, "sys_dns_resolve", "rede", intr_host_rede)
+  registra(itens, "sys_tls_conecta", "rede", intr_host_rede)
+  registra(itens, "sys_tls_le", "rede", intr_host_rede)
+  registra(itens, "sys_tls_escreve", "rede", intr_host_rede)
+  registra(itens, "sys_snmp_get", "rede", intr_host_rede)
+  registra(itens, "sys_snmp_walk", "rede", intr_host_rede)
+  registra(itens, "sys_ws_aceita", "rede", intr_host_rede)
+  registra(itens, "sys_ws_conecta", "rede", intr_host_rede)
+  registra(itens, "sys_ws_envia", "rede", intr_host_rede)
+  registra(itens, "sys_ws_recebe", "rede", intr_host_rede)
+  registra(itens, "sys_mqtt_conecta", "rede", intr_host_rede)
+  registra(itens, "sys_mqtt_publica", "rede", intr_host_rede)
+  registra(itens, "sys_mqtt_assina", "rede", intr_host_rede)
+  registra(itens, "sys_mqtt_recebe", "rede", intr_host_rede)
+  registra(itens, "sys_http_envia", "rede", intr_host_rede)
+  registra(itens, "sys_http_ler_requisicao", "rede", intr_host_rede)
+  registra(itens, "sys_http_escreve_resposta", "rede", intr_host_rede)
+  registra(itens, "sys_smtp_envia", "rede", intr_host_rede)
+  registra(itens, "sys_imap_conecta", "rede", intr_host_rede)
+  registra(itens, "sys_imap_caixas", "rede", intr_host_rede)
+  registra(itens, "sys_imap_busca", "rede", intr_host_rede)
+  registra(itens, "sys_imap_fecha", "rede", intr_host_rede)
+fecha
+
+campo registra_dados(itens: Lista<Intrinseco>) -> Nada ::
+  registra(itens, "sys_db_conecta", "rede", intr_host_rede)
+  registra(itens, "sys_db_executa", "rede", intr_host_rede)
+  registra(itens, "sys_db_fecha", "rede", intr_host_rede)
+  registra(itens, "sys_redis_conecta", "rede", intr_host_rede)
+  registra(itens, "sys_redis_get", "rede", intr_host_rede)
+  registra(itens, "sys_redis_set", "rede", intr_host_rede)
+  registra(itens, "sys_redis_del", "rede", intr_host_rede)
+  registra(itens, "sys_fila_conecta", "rede", intr_host_rede)
+  registra(itens, "sys_fila_publica", "rede", intr_host_rede)
+  registra(itens, "sys_fila_consumir", "rede", intr_host_rede)
+  registra(itens, "sys_csv_parse", "puro", intr_host_puro)
+  registra(itens, "sys_csv_codifica", "puro", intr_host_puro)
+  registra(itens, "sys_xml_parse", "puro", intr_host_puro)
+  registra(itens, "sys_xml_codifica", "puro", intr_host_puro)
+  registra(itens, "sys_yaml_parse", "puro", intr_host_puro)
+  registra(itens, "sys_yaml_codifica", "puro", intr_host_puro)
+  registra(itens, "sys_toml_parse", "puro", intr_host_puro)
+  registra(itens, "sys_toml_codifica", "puro", intr_host_puro)
+  registra(itens, "sys_protobuf_codifica", "puro", intr_host_puro)
+  registra(itens, "sys_protobuf_parse", "puro", intr_host_puro)
+  registra(itens, "sys_zip_codifica", "puro", intr_host_puro)
+  registra(itens, "sys_zip_parse", "puro", intr_host_puro)
+  registra(itens, "sys_gzip_comprime", "puro", intr_host_puro)
+  registra(itens, "sys_gzip_descomprime", "puro", intr_host_puro)
+  registra(itens, "sys_mime_codifica", "puro", intr_host_puro)
+fecha
+
+campo registra_crypto(itens: Lista<Intrinseco>) -> Nada ::
+  registra(itens, "sys_sha256", "ambiente", intr_host_crypto)
+  registra(itens, "sys_aleatorio_bytes", "ambiente", intr_host_crypto)
+  registra(itens, "sys_aleatorio_u64", "ambiente", intr_host_crypto)
+  registra(itens, "sys_uuid_v4", "ambiente", intr_host_crypto)
+  registra(itens, "sys_uuid_parse", "puro", intr_host_puro)
+  registra(itens, "sys_oauth_token", "rede", intr_host_rede)
+  registra(itens, "sys_metrica_emite", "ambiente", intr_host_puro)
+  registra(itens, "sys_trace_inicio", "ambiente", intr_host_puro)
+  registra(itens, "sys_trace_fecha", "ambiente", intr_host_puro)
+fecha
+
+campo registra_ai(itens: Lista<Intrinseco>) -> Nada ::
+  registra(itens, "sys_ai_chat", "rede", intr_host_ai)
+  registra(itens, "sys_ai_embedding", "rede", intr_host_ai)
+  registra(itens, "sys_agente_roda", "rede", intr_host_ai)
+  registra(itens, "sys_vetor_coseno", "puro", intr_host_puro)
+fecha

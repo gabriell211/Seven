@@ -1,0 +1,24 @@
+modulo seven0.svbc0
+
+const MagicSvbc0: Texto := "SVB0"
+const VersaoSvbc0: U32 := 1
+
+const OpPare: Byte := 0
+const OpConstU32: Byte := 1
+const OpConstTexto: Byte := 2
+const OpLocalLe: Byte := 3
+const OpLocalGrava: Byte := 4
+const OpSoma: Byte := 5
+const OpSub: Byte := 6
+const OpMul: Byte := 7
+const OpDiv: Byte := 8
+const OpIgual: Byte := 9
+const OpMenor: Byte := 10
+const OpSalta: Byte := 11
+const OpSaltaFalso: Byte := 12
+const OpChama: Byte := 13
+const OpRetorna: Byte := 14
+const OpCaixa: Byte := 15
+const OpMarcaByte: Byte := 16
+const OpPegaByte: Byte := 17
+const OpEfeito: Byte := 18

@@ -1,0 +1,6 @@
+pacote examples.fullstack_blog
+versao 0.1.0
+criador Gabriel Barcelos
+entrada examples.fullstack_blog.server.inicio
+alvo svbc
+fonte .

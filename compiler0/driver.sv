@@ -1,0 +1,61 @@
+modulo seven0.driver
+
+usa seven0.primitives
+usa seven0.source
+usa seven0.scan
+usa seven0.parse
+usa seven0.check
+usa seven0.emit
+usa seven0.diagnostic
+
+molde Pedido ::
+  entrada: Texto
+  saida: Texto
+fecha
+
+molde Saida ::
+  ok: Bit
+  caminho: Texto
+  diagnosticos: ListaDiagnostico
+fecha
+
+campo pedido_ler(argumentos: ListaTexto) -> Pedido toca ambiente ::
+  veja lista_texto_tamanho(argumentos) == 0 ::
+    devolve Pedido {
+      entrada: "compiler0/seven0.sv",
+      saida: "build/seven0.svbc"
+    }
+  fecha
+
+  guarda entrada := lista_texto_pega(argumentos, 0)
+
+  devolve Pedido {
+    entrada: entrada,
+    saida: entrada + ".svbc"
+  }
+fecha
+
+campo compilar(pedido: Pedido) -> Saida toca disco ::
+  guarda fonte := fonte_ler(pedido.entrada)
+
+  veja fonte.ok == nao ::
+    devolve Saida {
+      ok: nao,
+      caminho: "",
+      diagnosticos: fonte.diagnosticos
+    }
+  fecha
+
+  guarda tokens := tokenizar(fonte.valor)
+  guarda arvore := montar(tokens)
+  guarda medido := conferir(arvore)
+  guarda bytes := emitir_svbc0(medido)
+
+  arquivo_grava(pedido.saida, bytes)
+
+  devolve Saida {
+    ok: sim,
+    caminho: pedido.saida,
+    diagnosticos: lista_diagnostico()
+  }
+fecha

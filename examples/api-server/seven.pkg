@@ -1,0 +1,6 @@
+pacote examples.api_server
+versao 0.1.0
+criador Gabriel Barcelos
+entrada examples.api_server.main.inicio
+alvo svbc
+fonte .

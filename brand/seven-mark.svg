@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Seven Mark</title>
+  <desc id="desc">Official geometric Seven language mark created by Gabriel Barcelos.</desc>
+  <rect width="512" height="512" rx="96" fill="#0B1020"/>
+  <path d="M122 128h268c11 0 20 9 20 20v48c0 7-3 13-8 17L247 384c-4 4-9 6-15 6h-68c-17 0-26-20-15-33l146-165H122c-11 0-20-9-20-20v-24c0-11 9-20 20-20Z" fill="#F8FAFC"/>
+  <path d="M312 224h76c14 0 23 15 16 27L318 404c-4 6-10 10-18 10h-62c-16 0-25-18-16-31l90-159Z" fill="#22C55E"/>
+  <circle cx="394" cy="118" r="18" fill="#38BDF8"/>
+</svg>

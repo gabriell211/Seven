@@ -1,0 +1,6 @@
+pacote examples.worker_queue
+versao 0.1.0
+criador Gabriel Barcelos
+entrada examples.worker_queue.main.inicio
+alvo svbc
+fonte .

@@ -1,0 +1,15 @@
+pacote seven
+versao 0.1.0
+criador Gabriel Barcelos
+perfil gabriel211
+entrada seven.compiler.inicio
+alvo svbc
+fonte compiler
+fonte compiler0
+fonte runtime
+fonte std
+fonte bootstrap
+exemplo examples
+conformidade conformance
+seed seed/genesis.svhex
+build build

@@ -1,0 +1,9 @@
+# SVBC0 minimo
+# magic "SVB0"
+# versao 1
+# codigo conceitual: CONST_U32 0; RETORNA; PARE
+
+53564230 00000001
+01 00000000
+0E
+00

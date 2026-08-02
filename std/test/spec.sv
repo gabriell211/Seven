@@ -1,0 +1,33 @@
+modulo std.test.spec
+
+molde Teste ::
+  nome: Texto
+  acao: Campo<Nada, Nada>
+fecha
+
+molde Suite ::
+  nome: Texto
+  testes: Lista<Teste>
+fecha
+
+campo suite(nome: Texto) -> Suite ::
+  devolve Suite {
+    nome: nome,
+    testes: lista<Teste>()
+  }
+fecha
+
+campo testa(s: Suite, nome: Texto, acao: Campo<Nada, Nada>) -> Suite ::
+  lista_coloca(s.testes, Teste {
+    nome: nome,
+    acao: acao
+  })
+
+  devolve s
+fecha
+
+campo espera(condicao: Bit, mensagem: Texto) -> Nada ::
+  veja nao condicao ::
+    falha "SV-TEST-FALHOU" mensagem
+  fecha
+fecha

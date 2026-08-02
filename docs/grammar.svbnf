@@ -1,0 +1,77 @@
+programa       := modulo? importacao* item*
+modulo         := "modulo" caminho
+importacao     := "usa" caminho ("como" nome)?
+item           := campo | molde | selo | constante
+
+campo          := "campo" nome genericos? parametros retorno? efeitos? contrato* "::" comando* "fecha"
+genericos      := "<" nome ("," nome)* ">"
+parametros     := "(" (parametro ("," parametro)*)? ")"
+parametro      := nome ":" tipo
+retorno        := "->" tipo
+efeitos        := "toca" nome ("," nome)*
+contrato       := "requer" expressao
+
+molde          := "molde" nome genericos? "::" membro* "fecha"
+membro         := nome ":" tipo
+selo           := "selo" nome genericos? "::" variante* "fecha"
+variante       := nome ("(" carga_variante ("," carga_variante)* ")")?
+carga_variante := tipo | nome ":" tipo
+constante      := "const" nome ":" tipo ":=" expressao
+
+comando        := cria
+               | altera
+               | saida
+               | decisao
+               | repeticao
+               | para_cada
+               | retorno_cmd
+               | caixa
+               | marca
+               | pega
+               | zona
+               | falha
+               | chamada_cmd
+
+cria           := ("guarda" | "solta") nome anotacao? ":=" expressao
+altera         := "vira" acesso ":=" expressao
+saida          := "diga" expressao
+decisao        := "veja" expressao "::" comando* ("outro" "::" comando*)? "fecha"
+repeticao      := "gira" expressao "::" comando* "fecha"
+para_cada      := "para" "cada" nome "em" expressao "::" comando* "fecha"
+retorno_cmd    := "devolve" expressao
+caixa          := "caixa" nome ":" "Byte" "[" expressao "]"
+marca          := "marca" nome "@" expressao ":=" expressao
+pega           := "pega" nome "@" expressao "->" nome
+zona           := "zona" nome "::" comando* "fecha"
+falha          := "falha" texto texto
+chamada_cmd    := posfixa
+
+anotacao       := ":" tipo
+tipo           := caminho genericos_uso? matriz?
+genericos_uso  := "<" tipo ("," tipo)* ">"
+matriz         := "[" expressao "]"
+caminho        := nome ("." nome)*
+
+expressao      := padrao
+padrao         := binaria ("e" nome)?
+binaria        := unaria (operador unaria)*
+unaria         := ("nao" | "-") unaria | posfixa
+posfixa        := primaria posfixo*
+posfixo        := "." nome
+               | "[" expressao "]"
+               | "@" expressao
+               | "(" (expressao ("," expressao)*)? ")"
+primaria       := literal
+               | construcao
+               | campo_anonimo
+               | nome
+               | "(" expressao ")"
+
+construcao     := caminho "{" campo_valor ("," campo_valor)* "}"
+campo_anonimo  := "campo" parametros retorno? efeitos? "::" comando* "fecha"
+campo_valor    := nome ":" expressao
+acesso         := nome ("." nome)*
+literal        := numero | texto | "sim" | "nao" | "nulo"
+
+operador       := "+" | "-" | "*" | "/" | "%" | "==" | "!=" | "<" | "<=" | ">" | ">=" | "e" | "ou"
+nome           := letra (letra | digito | "_")*

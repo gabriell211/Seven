@@ -1,0 +1,6 @@
+pacote examples.frontend_counter
+versao 0.1.0
+criador Gabriel Barcelos
+entrada examples.frontend_counter.app.inicio
+alvo web
+fonte .

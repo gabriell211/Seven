@@ -1,0 +1,85 @@
+modulo seven.runtime.svbc0.opcode
+
+selo Opcode0 ::
+  Pare0
+  ConstU32
+  ConstTexto
+  LocalLe
+  LocalGrava
+  Soma0
+  Sub0
+  Mul0
+  Div0
+  Igual0
+  Menor0
+  Salta0
+  SaltaFalso0
+  Chama0
+  Retorna0
+  Caixa0
+  MarcaByte0
+  PegaByte0
+  Efeito0
+fecha
+
+campo opcode0_de_byte(valor: Byte) -> Resultado<Opcode0, Falha> ::
+  veja valor == 0 ::
+    devolve Valor(Pare0)
+  fecha
+  veja valor == 1 ::
+    devolve Valor(ConstU32)
+  fecha
+  veja valor == 2 ::
+    devolve Valor(ConstTexto)
+  fecha
+  veja valor == 3 ::
+    devolve Valor(LocalLe)
+  fecha
+  veja valor == 4 ::
+    devolve Valor(LocalGrava)
+  fecha
+  veja valor == 5 ::
+    devolve Valor(Soma0)
+  fecha
+  veja valor == 6 ::
+    devolve Valor(Sub0)
+  fecha
+  veja valor == 7 ::
+    devolve Valor(Mul0)
+  fecha
+  veja valor == 8 ::
+    devolve Valor(Div0)
+  fecha
+  veja valor == 9 ::
+    devolve Valor(Igual0)
+  fecha
+  veja valor == 10 ::
+    devolve Valor(Menor0)
+  fecha
+  veja valor == 11 ::
+    devolve Valor(Salta0)
+  fecha
+  veja valor == 12 ::
+    devolve Valor(SaltaFalso0)
+  fecha
+  veja valor == 13 ::
+    devolve Valor(Chama0)
+  fecha
+  veja valor == 14 ::
+    devolve Valor(Retorna0)
+  fecha
+  veja valor == 15 ::
+    devolve Valor(Caixa0)
+  fecha
+  veja valor == 16 ::
+    devolve Valor(MarcaByte0)
+  fecha
+  veja valor == 17 ::
+    devolve Valor(PegaByte0)
+  fecha
+  veja valor == 18 ::
+    devolve Valor(Efeito0)
+  fecha
+
+  devolve Falha(nova_falha("SVBC0-OPCODE", "opcode Seven-0 desconhecido"))
+fecha

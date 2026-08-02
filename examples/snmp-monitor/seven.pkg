@@ -1,0 +1,6 @@
+pacote examples.snmp_monitor
+versao 0.1.0
+criador Gabriel Barcelos
+entrada examples.snmp_monitor.main.inicio
+alvo svbc
+fonte .

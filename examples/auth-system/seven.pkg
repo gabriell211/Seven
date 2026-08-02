@@ -1,0 +1,6 @@
+pacote examples.auth_system
+versao 0.1.0
+criador Gabriel Barcelos
+entrada examples.auth_system.server.inicio
+alvo svbc
+fonte .

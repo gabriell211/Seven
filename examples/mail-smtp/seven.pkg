@@ -1,0 +1,6 @@
+pacote examples.mail_smtp
+versao 0.1.0
+criador Gabriel Barcelos
+entrada examples.mail_smtp.main.inicio
+alvo svbc
+fonte .

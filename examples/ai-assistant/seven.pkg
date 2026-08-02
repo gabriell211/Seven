@@ -1,0 +1,6 @@
+pacote examples.ai_assistant
+versao 0.1.0
+criador Gabriel Barcelos
+entrada examples.ai_assistant.main.inicio
+alvo svbc
+fonte .

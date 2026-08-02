@@ -1,0 +1,52 @@
+programa      := modulo? uso* item*
+modulo        := "modulo" caminho
+uso           := "usa" caminho
+item          := constante | molde | selo | campo
+
+constante     := "const" nome ":" tipo ":=" expressao
+molde         := "molde" nome "::" membro* "fecha"
+membro        := nome ":" tipo
+selo          := "selo" nome "::" variante* "fecha"
+variante      := nome ("(" carga ("," carga)* ")")?
+carga         := nome ":" tipo
+campo         := "campo" nome parametros retorno? efeitos? "::" comando* "fecha"
+parametros    := "(" (parametro ("," parametro)*)? ")"
+parametro     := nome ":" tipo
+retorno       := "->" tipo
+efeitos       := "toca" nome ("," nome)*
+
+comando       := cria
+              | altera
+              | decisao
+              | repeticao
+              | para_cada
+              | retorno
+              | falha
+              | saida
+              | chamada
+
+cria          := ("guarda" | "solta") nome anotacao? ":=" expressao
+altera        := "vira" acesso ":=" expressao
+decisao       := "veja" expressao "::" comando* ("outro" "::" comando*)? "fecha"
+repeticao     := "gira" expressao "::" comando* "fecha"
+para_cada     := "para" "cada" nome "em" expressao "::" comando* "fecha"
+retorno       := "devolve" expressao
+falha         := "falha" texto texto
+saida         := "diga" expressao
+
+anotacao      := ":" tipo
+tipo          := caminho
+caminho       := nome ("." nome)*
+
+expressao     := binaria
+binaria       := unaria (operador unaria)*
+unaria        := ("nao" | "-") unaria | primaria
+primaria      := literal | chamada | acesso | construcao | "(" expressao ")"
+chamada       := acesso "(" (expressao ("," expressao)*)? ")"
+construcao    := caminho "{" campo_valor ("," campo_valor)* "}"
+campo_valor   := nome ":" expressao
+acesso        := nome ("." nome)*
+literal       := numero | texto | "sim" | "nao" | "nulo"
+
+operador      := "+" | "-" | "*" | "/" | "%" | "==" | "!=" | "<" | "<=" | ">" | ">=" | "e" | "ou"
+nome          := letra (letra | digito | "_")*

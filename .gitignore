@@ -1,0 +1,21 @@
+# Seven build outputs
+out/
+dist/
+tmp/
+*.svbc
+*.svb0
+*.svlog
+
+# Local machine files
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+# Editor settings
+.idea/
+.vscode/
+
+# Keep official bootstrap binaries tracked explicitly.
+!bin/seven.exe
+!brand/seven.ico

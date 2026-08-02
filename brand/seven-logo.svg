@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">Seven Logo</title>
+  <desc id="desc">Official Seven programming language logo created by Gabriel Barcelos.</desc>
+  <rect width="1200" height="360" rx="56" fill="#0B1020"/>
+  <g transform="translate(64 52) scale(.5)">
+    <rect width="512" height="512" rx="96" fill="#111827"/>
+    <path d="M122 128h268c11 0 20 9 20 20v48c0 7-3 13-8 17L247 384c-4 4-9 6-15 6h-68c-17 0-26-20-15-33l146-165H122c-11 0-20-9-20-20v-24c0-11 9-20 20-20Z" fill="#F8FAFC"/>
+    <path d="M312 224h76c14 0 23 15 16 27L318 404c-4 6-10 10-18 10h-62c-16 0-25-18-16-31l90-159Z" fill="#22C55E"/>
+    <circle cx="394" cy="118" r="18" fill="#38BDF8"/>
+  </g>
+  <text x="360" y="164" fill="#F8FAFC" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="92" font-weight="800" letter-spacing="0">Seven</text>
+  <text x="366" y="226" fill="#94A3B8" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="30" letter-spacing="0">Programming Language</text>
+  <text x="366" y="276" fill="#22C55E" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24" letter-spacing="0">Creator: Gabriel Barcelos</text>
+</svg>

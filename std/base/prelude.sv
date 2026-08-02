@@ -1,0 +1,17 @@
+modulo std.base.prelude
+
+usa std.base.resultado
+usa std.base.talvez
+usa std.base.texto
+usa std.base.lista
+usa std.base.mapa
+usa std.base.convert
+usa std.mem.bytes
+
+const SevenVersao: Texto := "0.1.0"
+const SevenCriador: Texto := "Gabriel Barcelos"
+const SevenExtensao: Texto := ".sv"
+
+campo identidade<T>(valor: T) -> T ::
+  devolve valor
+fecha
