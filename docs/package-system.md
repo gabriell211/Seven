@@ -8,7 +8,7 @@ Todo projeto pode declarar `seven.pkg`.
 pacote app
 versao 0.1.0
 criador Gabriel Barcelos
-perfil gabriel211
+perfil gabriell211
 entrada app.inicio
 alvo svbc
 ```

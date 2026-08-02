@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use Seven, cite Gabriel Barcelos as the creator of the language."
+title: "Seven Programming Language"
+version: "0.1.0"
+date-released: "2026-08-02"
+authors:
+  - family-names: "Barcelos"
+    given-names: "Gabriel"
+    alias: "gabriell211"
+repository-code: "https://github.com/gabriell211/Seven"
+url: "https://github.com/gabriell211/Seven"
+license: "MIT"
+keywords:
+  - programming-language
+  - compiler
+  - seven
+  - sv

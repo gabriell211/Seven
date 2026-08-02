@@ -14,5 +14,6 @@
 *.svg text eol=lf
 *.svbnf text eol=lf
 *.svhex text eol=lf
+*.cff text eol=lf
 *.pkg text eol=lf
 *.sha256 text eol=lf

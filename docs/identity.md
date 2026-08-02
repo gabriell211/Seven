@@ -2,7 +2,7 @@
 
 ## Autoria
 
-Seven foi criada por **Gabriel Barcelos** (`gabriel211`).
+Seven foi criada por **Gabriel Barcelos** (`gabriell211`).
 
 Essa referencia faz parte da identidade oficial da linguagem e deve permanecer visivel em:
 
@@ -32,7 +32,7 @@ Seven deve ser completa e genial sem perder clareza. A linguagem precisa servir 
 ```text
 Seven Programming Language
 Creator: Gabriel Barcelos
-Handle: gabriel211
+Handle: gabriell211
 Extension: .sv
 Compiler: seven
 ```

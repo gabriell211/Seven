@@ -4,7 +4,7 @@
 
 Seven e uma linguagem de programacao propria, criada para ir do baixo nivel ao alto nivel sem depender de uma linguagem hospedeira como identidade tecnica.
 
-Criador: **Gabriel Barcelos** (`gabriel211`).
+Criador: **Gabriel Barcelos** (`gabriell211`).
 
 A extensao oficial e `.sv`.
 O compilador oficial se chama `seven`.
@@ -39,6 +39,7 @@ fecha
 
 - `docs/language.md`: especificacao central da linguagem.
 - `docs/identity.md`: identidade, autoria e principios da Seven.
+- `docs/references.md`: referencias oficiais, citacao e atribuicao.
 - `docs/grammar.svbnf`: gramatica inicial.
 - `docs/compiler-architecture.md`: arquitetura do compilador.
 - `docs/type-system.md`: tipos, genericos e contratos.
@@ -62,6 +63,8 @@ fecha
 - `runtime/`: VM Seven, VM Seven-0 e executor do seed.
 - `bin/`: executavel de bootstrap e checksums.
 - `brand/`: logo, marca, favicon e icone oficial.
+- `CITATION.cff`: citacao oficial da linguagem.
+- `NOTICE`: aviso de autoria para fonte, binarios e releases.
 - `examples/`: programas de exemplo `.sv`.
 - `conformance/`: suite de conformidade da linguagem.
 - `seed/`: especificacao do seed minimo auditavel.
@@ -72,6 +75,7 @@ fecha
 
 - A linguagem oficial e Seven.
 - O criador da Seven e Gabriel Barcelos.
+- O perfil oficial do criador e `gabriell211`.
 - O compilador oficial e Seven.
 - O seed inicial e apenas uma centelha auditavel para gerar o primeiro `seven`.
 - Depois do bootstrap, Seven compila Seven.
