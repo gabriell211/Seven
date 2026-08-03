@@ -1,6 +1,6 @@
 ![Seven](brand/seven-logo.svg)
 
-# Seven `.sv`
+# Seven `.sev`
 
 Seven e uma linguagem de programacao propria, criada para ir do baixo nivel ao alto nivel sem depender de uma linguagem hospedeira como identidade tecnica.
 
