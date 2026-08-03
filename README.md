@@ -6,7 +6,7 @@ Seven e uma linguagem de programacao propria, criada para ir do baixo nivel ao a
 
 Criador: **Gabriel Barcelos** (`gabriell211`).
 
-A extensao oficial e `.sv`.
+A extensao oficial e `.sev`.
 O compilador oficial se chama `seven`.
 A fonte do compilador oficial vive em Seven.
 
