@@ -46,14 +46,52 @@ campo ler_item(cursor: CursorTokens) -> Item ::
   veja proximo_e(cursor, "campo") ::
     devolve ItemCampo(ler_campo(cursor))
   outro ::
-    veja proximo_e(cursor, "molde") ::
-      devolve ItemMolde(ler_molde(cursor))
+    veja proximo_e(cursor, "extern") ::
+      devolve ItemExterno(ler_externo(cursor))
     outro ::
-      veja proximo_e(cursor, "selo") ::
-        devolve ItemSelo(ler_selo(cursor))
+      veja proximo_e(cursor, "molde") ::
+        devolve ItemMolde(ler_molde(cursor))
       outro ::
-        devolve ItemConst(ler_constante(cursor))
+        veja proximo_e(cursor, "selo") ::
+          devolve ItemSelo(ler_selo(cursor))
+        outro ::
+          devolve ItemConst(ler_constante(cursor))
+        fecha
       fecha
     fecha
   fecha
+fecha
+
+campo ler_externo(cursor: CursorTokens) -> CampoExterno ::
+  guarda inicio := atual_span(cursor)
+  consome(cursor, "extern")
+  guarda abi_nome := consome_nome(cursor)
+  guarda abi := abi_externa(abi_nome)
+  consome(cursor, "campo")
+  guarda nome := consome_nome(cursor)
+  guarda parametros := ler_parametros(cursor)
+  guarda retorno := ler_retorno(cursor)
+  solta simbolo := nome
+
+  veja proximo_e(cursor, "liga") ::
+    consome(cursor, "liga")
+    vira simbolo := consome_texto(cursor)
+  fecha
+
+  devolve CampoExterno {
+    abi: abi,
+    nome: nome,
+    simbolo: simbolo,
+    parametros: parametros,
+    retorno: retorno,
+    span: inicio
+  }
+fecha
+
+campo abi_externa(nome: Texto) -> AbiExterna ::
+  veja nome == "cpp" ::
+    devolve AbiCpp
+  fecha
+
+  devolve AbiC
 fecha

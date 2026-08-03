@@ -166,6 +166,21 @@ fecha
 
 Regra: codigo cru nunca pode atravessar uma fronteira publica sem tipo, efeito e justificativa.
 
+## Interoperabilidade C/C++
+
+Seven declara simbolos externos de forma explicita:
+
+```sv
+usa std.ffi.c
+
+extern c campo c_puts(texto: Ptr<CChar>) -> I32 liga "puts"
+extern cpp campo cpp_version() -> U32 liga "seven_cpp_version"
+```
+
+`extern c` usa ABI C. `extern cpp` deve ligar por simbolo explicito e, quando
+necessario, usar shim C++ com `extern "C"`. Conversoes de texto, bytes e
+ponteiros tocam efeito `cru`.
+
 ## Erros
 
 Seven usa retorno explicito para falhas recuperaveis.

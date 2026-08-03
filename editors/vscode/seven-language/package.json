@@ -1,0 +1,71 @@
+{
+  "name": "seven-language",
+  "displayName": "Seven Language",
+  "description": "Seven language support with syntax highlighting and a minimal LSP bridge.",
+  "version": "0.1.0",
+  "publisher": "gabriell211",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:seven"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "seven",
+        "aliases": [
+          "Seven",
+          "seven"
+        ],
+        "extensions": [
+          ".sv"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "seven",
+        "scopeName": "source.seven",
+        "path": "./syntaxes/seven.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "seven.checkFile",
+        "title": "Seven: Check Current File"
+      },
+      {
+        "command": "seven.runFile",
+        "title": "Seven: Run Current File"
+      },
+      {
+        "command": "seven.debugFile",
+        "title": "Seven: Debug Current File"
+      }
+    ],
+    "configuration": {
+      "title": "Seven",
+      "properties": {
+        "seven.languageServer.command": {
+          "type": "string",
+          "default": "",
+          "description": "Optional command used to start the Seven language server."
+        },
+        "seven.devCommand": {
+          "type": "string",
+          "default": "",
+          "description": "Optional command used to start the Seven development CLI."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}

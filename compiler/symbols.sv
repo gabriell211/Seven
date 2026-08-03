@@ -10,6 +10,7 @@ selo SimboloTipo ::
   SimboloSelo
   SimboloConstante
   SimboloLocal
+  SimboloExterno
 fecha
 
 molde Simbolo ::

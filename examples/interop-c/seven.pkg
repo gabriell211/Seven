@@ -1,0 +1,6 @@
+pacote examples.interop_c
+versao 0.1.0
+criador Gabriel Barcelos
+entrada examples.interop_c.inicio
+alvo svbc
+fonte .

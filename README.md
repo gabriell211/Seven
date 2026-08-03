@@ -51,10 +51,13 @@ fecha
 - `docs/intelligence.md`: arquitetura de inteligencia da linguagem.
 - `docs/platform.md`: intrinsecos de plataforma Seven.
 - `docs/runtime.md`: VM, runtime e execucao de bytecode.
+- `docs/debugger.md`: debugger inicial e contrato de breakpoints.
 - `docs/targets.md`: alvos `svbc`, `web` e nativo.
 - `docs/readiness.md`: estado de prontidao do release.
 - `docs/bytecode.md`: formato Seven Bytecode (`SVBC`).
 - `docs/package-system.md`: pacotes e resolucao de modulos.
+- `docs/c-interop.md`: interoperabilidade C/C++ por ABI explicita.
+- `editors/vscode/seven-language`: extensao VS Code inicial com LSP.
 - `docs/standard-library.md`: mapa da biblioteca padrao.
 - `docs/diagnostics.md`: codigos de erro estaveis.
 - `docs/roadmap.md`: caminho ate self-hosting e binarios.
@@ -94,6 +97,26 @@ seven web build examples/frontend-counter
 seven serve examples/api-server
 ```
 
+## Verificacao de fundacao
+
+O release de fundacao pode ser validado no Windows com:
+
+```powershell
+.\tools\verify-foundation.ps1
+```
+
+Esse gate executa o `bin/seven.exe`, valida `check/build/run` em smoke tests,
+confere envelopes `SVBC`, percorre a conformidade valida e exige diagnosticos
+estaveis para a conformidade invalida por meio do checker de desenvolvimento.
+
+Tambem valida pacote/lock, LSP e FFI:
+
+```powershell
+.\tools\seven-dev.ps1 pkg add std.http 1.0.0 registry
+.\tools\seven-lsp.ps1 -SelfTest -File .\examples\hello.sv
+.\tools\seven-dev.ps1 ffi header .\examples\interop-c\main.sv .\build\interop-c.h
+```
+
 ## Full Stack Kit
 
 Seven agora define APIs oficiais para:
@@ -131,3 +154,7 @@ Os exemplos oficiais ficam em:
 Esta pasta contem a fundacao profissional da linguagem: especificacao, arquitetura, gramatica, standard library fullstack inicial, seed Seven-0, compilador minimo `compiler0`, fonte do compilador completo em `.sv`, exemplos de frontend/backend e conformidade.
 
 O proximo marco e materializar `seed/genesis.svhex` no primeiro alvo fisico, gerar `build/seven0.svbc` e ligar os intrinsecos de plataforma definidos em `docs/platform.md`.
+
+O bootstrap Windows continua sendo artefato de fundacao; a integracao final e
+levar o checker, a VM, o gerenciador de pacotes, o LSP e a FFI de
+`tools/seven-dev.ps1` para o `seven` self-hosted.

@@ -2,6 +2,7 @@
 out/
 dist/
 tmp/
+.seven/
 *.svbc
 *.svb0
 *.svlog

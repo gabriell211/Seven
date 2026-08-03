@@ -1,0 +1,59 @@
+{
+  "scopeName": "source.seven",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#types" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.seven",
+          "match": "//.*$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.seven",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.seven",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.seven",
+          "match": "\\b[0-9]+\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.seven",
+          "match": "\\b(modulo|usa|como|campo|molde|selo|const|guarda|solta|vira|veja|outro|gira|para|cada|em|devolve|diga|fecha|toca|zona|falha|extern|liga|c|cpp)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "storage.type.seven",
+          "match": "\\b(Num|Nada|Bit|Byte|Texto|I8|I16|I32|I64|U8|U16|U32|U64|Real32|Real64|Ptr|Vista|VistaMut|Posse|Resultado|Talvez|CChar|CVoid)\\b"
+        }
+      ]
+    }
+  }
+}

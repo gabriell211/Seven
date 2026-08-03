@@ -11,9 +11,15 @@
 
 *.sv text eol=lf
 *.md text eol=lf
+*.ps1 text eol=lf
+*.psm1 text eol=lf
+*.js text eol=lf
+*.json text eol=lf
 *.svg text eol=lf
 *.svbnf text eol=lf
 *.svhex text eol=lf
 *.cff text eol=lf
 *.pkg text eol=lf
 *.sha256 text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

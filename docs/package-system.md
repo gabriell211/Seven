@@ -25,6 +25,7 @@ Campos oficiais iniciais:
 - `exemplo`: raiz de exemplos.
 - `conformidade`: raiz de testes de conformidade.
 - `seed`: imagem inicial de bootstrap, quando existir.
+- `dep`: dependencia externa no formato `dep nome versao fonte`.
 
 Alvos oficiais iniciais:
 
@@ -62,3 +63,30 @@ Build profissional precisa registrar:
 - alvo;
 - flags;
 - dependencias resolvidas.
+
+## Gerenciador inicial
+
+Durante a fase de fundacao:
+
+```powershell
+.\tools\seven-dev.ps1 pkg add std.http 1.0.0 registry
+.\tools\seven-dev.ps1 pkg list
+.\tools\seven-dev.ps1 pkg lock
+.\tools\seven-dev.ps1 pkg verify
+.\tools\seven-dev.ps1 pkg install
+.\tools\seven-dev.ps1 pkg remove std.http
+```
+
+`seven.lock` e deterministico:
+
+```text
+version 1
+package app 0.1.0
+dep std.http 1.0.0 registry <sha256>
+```
+
+O `sha256` e calculado sobre `nome|versao|fonte`.
+
+`pkg install` materializa dependencias em `.seven/packages` durante a fase de
+fundacao. A resolucao ainda e local/deterministica; busca remota de registry
+fica para a etapa de ecossistema.

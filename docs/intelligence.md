@@ -42,6 +42,34 @@ A inteligencia da Seven nunca deve alterar codigo silenciosamente. Toda correcao
 6. `lsp`: ponte para editor.
 7. `assist`: interface para assistentes de IA, quando disponivel.
 
+## VS Code
+
+A extensao inicial vive em:
+
+```text
+editors/vscode/seven-language
+```
+
+Ela registra `.sv`, realce de sintaxe e inicia o LSP de fundacao:
+
+```powershell
+.\tools\seven-lsp.ps1
+```
+
+Smoke test:
+
+```powershell
+.\tools\seven-lsp.ps1 -SelfTest -File .\examples\hello.sv
+```
+
+O MVP cobre:
+
+- completions;
+- diagnostics;
+- document symbols;
+- hover;
+- comandos VS Code para check, run e debug.
+
 ## Inteligencia local
 
 A Seven deve funcionar sem rede:

@@ -1,0 +1,18 @@
+name: Seven Foundation
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    name: Verify foundation release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run foundation verifier
+        shell: pwsh
+        run: .\tools\verify-foundation.ps1

@@ -13,6 +13,7 @@
 ## Memoria
 
 - `std.mem.bytes`: `Bytes`, conversoes texto/bytes e acesso seguro.
+- `std.ffi.c`: tipos e conversoes para ABI C/C++ controlada.
 
 ## Entrada e saida
 

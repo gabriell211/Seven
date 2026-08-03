@@ -39,6 +39,17 @@ Toda imagem passa por:
 6. verificacao de efeitos;
 7. execucao.
 
+## Runner de fundacao
+
+O runner oficial em Seven fica em `runtime/svbc/runner.sv`.
+Enquanto o bootstrap Windows ainda emite apenas o envelope inicial, o runner de
+desenvolvimento executa imagens `SVBC` de fundacao:
+
+```powershell
+.\tools\seven-dev.ps1 build .\examples\hello.sv .\build\hello.svbc
+.\tools\seven-dev.ps1 run .\build\hello.svbc
+```
+
 ## Intrinsecos
 
 Os intrinsecos `sys_*` sao pontos oficiais de plataforma, nao dependencias de outra linguagem. Cada alvo Seven precisa implementa-los.

@@ -32,6 +32,35 @@ seven build <file.sv> [out.svbc]
 seven run <file.sv>
 ```
 
+## Foundation Verification
+
+The foundation release has an explicit verifier:
+
+```powershell
+.\tools\verify-foundation.ps1
+```
+
+This verifier checks the Windows bootstrap executable, valid conformance files,
+SVBC envelope generation, development VM execution, package lock generation,
+LSP symbol publication, FFI header generation and invalid conformance
+diagnostics.
+
+The development CLI exposes the current operational gates:
+
+```powershell
+.\tools\seven-dev.ps1 check .\examples\hello.sv
+.\tools\seven-dev.ps1 run .\examples\hello.sv
+.\tools\seven-dev.ps1 debug .\examples\control.sv --break 8 --locals
+.\tools\seven-dev.ps1 pkg add std.http 1.0.0 registry
+.\tools\seven-dev.ps1 pkg verify
+.\tools\seven-dev.ps1 pkg install
+.\tools\seven-dev.ps1 ffi header .\examples\interop-c\main.sv .\build\interop-c.h
+.\tools\seven-dev.ps1 ffi manifest .\examples\interop-c\main.sv .\build\interop-c.json
+```
+
+The Windows bootstrap executable remains a foundation artifact. The production
+compiler should absorb these development gates into the self-hosted `seven`.
+
 ## Production Gate
 
 Seven should be called production-ready only after:

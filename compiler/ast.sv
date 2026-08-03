@@ -20,6 +20,21 @@ selo Item ::
   ItemMolde(Molde)
   ItemSelo(Selo)
   ItemConst(Constante)
+  ItemExterno(CampoExterno)
+fecha
+
+selo AbiExterna ::
+  AbiC
+  AbiCpp
+fecha
+
+molde CampoExterno ::
+  abi: AbiExterna
+  nome: Texto
+  simbolo: Texto
+  parametros: Lista<Parametro>
+  retorno: TipoSintaxe
+  span: Span
 fecha
 
 molde Campo ::

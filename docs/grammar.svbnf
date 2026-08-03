@@ -1,9 +1,10 @@
 programa       := modulo? importacao* item*
 modulo         := "modulo" caminho
 importacao     := "usa" caminho ("como" nome)?
-item           := campo | molde | selo | constante
+item           := campo | externo | molde | selo | constante
 
 campo          := "campo" nome genericos? parametros retorno? efeitos? contrato* "::" comando* "fecha"
+externo        := "extern" ("c" | "cpp") "campo" nome parametros retorno ("liga" texto)?
 genericos      := "<" nome ("," nome)* ">"
 parametros     := "(" (parametro ("," parametro)*)? ")"
 parametro      := nome ":" tipo
