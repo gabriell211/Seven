@@ -7,7 +7,7 @@ molde Hash ::
   valor: Bytes
 fecha
 
-campo sha256(dados: Bytes) -> Hash ::
+campo sha256(dados: Bytes) -> Hash toca ambiente ::
   devolve Hash {
     algoritmo: "sha256",
     valor: sys_sha256(dados)

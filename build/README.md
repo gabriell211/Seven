@@ -24,3 +24,10 @@ E depois:
 ```text
 compiler/*.sv -> build/seven.svbc
 ```
+
+Os arquivos `build/seven0.svbc`, `build/seven.svbc`,
+`build/seven.self.svbc`, `build/seven.host.svbc` e
+`build/seven.launcher.svbc` sao saidas locais ignoradas pelo Git. O gate de
+fundacao pode materializa-los para auditoria. Eles ja usam o cabecalho binario
+`SVBC-v1` durante a transicao, mas so viram artefatos de release quando forem
+emitidos pela cadeia self-hosted e executarem a CLI real.

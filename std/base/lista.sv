@@ -24,6 +24,10 @@ campo lista_pega<T>(itens: Lista<T>, indice: U64) -> T ::
   devolve sys_lista_pega(itens, indice)
 fecha
 
+campo lista_define<T>(itens: Lista<T>, indice: U64, valor: T) -> Lista<T> ::
+  devolve sys_lista_define(itens, indice, valor)
+fecha
+
 campo lista_tamanho<T>(itens: Lista<T>) -> U64 ::
   devolve itens.tamanho
 fecha

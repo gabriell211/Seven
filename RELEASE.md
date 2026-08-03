@@ -21,6 +21,22 @@ Seven 0.1.0 is the first public foundation release.
 - `brand/seven.ico`
 - `brand/seven.ico.sha256`
 
+Artifact integrity is part of the release gate:
+
+```powershell
+.\tools\verify-foundation.ps1
+```
+
+The production gate is tracked by:
+
+```text
+seven verify production
+```
+
+For 0.1.0 this command is a Seven-native contract. It becomes a release blocker
+only after `build/seven.svbc` is real SVBC bytecode instead of the development
+VM envelope.
+
 ## Creator
 
 Gabriel Barcelos.
@@ -34,3 +50,6 @@ The remaining engineering milestone is completing self-hosting validation end to
 ```text
 seed -> seven0 -> seven -> seven.self
 ```
+
+For company evaluation and pilot planning, see `docs/enterprise-readiness.md`,
+`docs/production-gate.md`, `SECURITY.md` and `SUPPORT.md`.

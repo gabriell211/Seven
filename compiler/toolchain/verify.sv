@@ -1,0 +1,195 @@
+modulo seven.compiler.toolchain.verify
+
+usa seven.compiler.toolchain.command
+usa seven.compiler.toolchain.bootstrap_chain
+usa seven.compiler.toolchain.installer
+usa seven.compiler.toolchain.formatter
+usa seven.compiler.toolchain.test_runner
+usa seven.compiler.toolchain.lsp_server
+usa seven.compiler.toolchain.release
+usa seven.compiler.toolchain.library_audit
+usa seven.compiler.toolchain.production_audit
+usa seven.compiler.driver
+usa seven.compiler.package_manager
+usa std.base.resultado
+usa std.base.texto
+usa std.fs.file
+
+molde VerificacaoItem ::
+  nome: Texto
+  ok: Bit
+  detalhe: Texto
+fecha
+
+molde RelatorioFundacao ::
+  itens: Lista<VerificacaoItem>
+  passaram: U64
+  falhas: U64
+fecha
+
+campo verifica_fundacao(contexto: ContextoToolchain) -> Resultado<RelatorioFundacao, Falha> toca disco, ambiente, terminal ::
+  solta rel := relatorio_vazio()
+
+  verifica_item(rel, "fonte Seven-native", verifica_fontes_nativas(), "compiler/runtime/std/bootstrap")
+  verifica_item(rel, "sem JavaScript/TypeScript/npm", verifica_sem_node(), "arvore oficial")
+  verifica_item(rel, "toolchain Seven-native", verifica_toolchain_nativa(), "compiler/toolchain")
+  verifica_item(rel, "artefatos versionados", verifica_artefatos_versionados(), "checksums")
+  verifica_item(rel, "bootstrap chain declarada", verifica_bootstrap_declarado(), "seed -> seven0 -> seven -> seven.self")
+  verifica_item(rel, "compilador", verifica_compilador(contexto), "check/build")
+  verifica_item(rel, "pacotes", verifica_pacotes(contexto), "pkg verify/install")
+  verifica_item(rel, "LSP", verifica_lsp(contexto), "seven lsp")
+  verifica_item(rel, "runtime seven.svbc", verifica_runtime_svbc_comando(), "build/seven.svbc verify foundation")
+  verifica_item(rel, "auditoria dos 10 pontos", verifica_auditoria_producao(), "seven verify production")
+  verifica_item(rel, "instalador", verifica_instalador(), "seven install")
+  verifica_item(rel, "formatter", verifica_formatter(), "seven fmt")
+  verifica_item(rel, "test runner", verifica_test_runner(contexto), "seven test")
+  verifica_item(rel, "release", verifica_release(contexto), "seven release")
+  verifica_item(rel, "biblioteca padrao", verifica_biblioteca(), "std e conformance/libs")
+
+  devolve Valor(rel)
+fecha
+
+campo relatorio_vazio() -> RelatorioFundacao ::
+  devolve RelatorioFundacao {
+    itens: lista<VerificacaoItem>(),
+    passaram: 0,
+    falhas: 0
+  }
+fecha
+
+campo verifica_item(rel: RelatorioFundacao, nome: Texto, ok: Bit, detalhe: Texto) -> Nada ::
+  lista_coloca(rel.itens, VerificacaoItem {
+    nome: nome,
+    ok: ok,
+    detalhe: detalhe
+  })
+
+  veja ok ::
+    vira rel.passaram := rel.passaram + 1
+  outro ::
+    vira rel.falhas := rel.falhas + 1
+  fecha
+fecha
+
+campo verifica_fontes_nativas() -> Bit toca disco ::
+  devolve arquivo_existe("compiler/seven.sv") e
+    arquivo_existe("compiler0/seven0.sv") e
+    arquivo_existe("runtime/svbc/vm.sv") e
+    arquivo_existe("std/base/prelude.sv") e
+    arquivo_existe("bootstrap/stage0.sv")
+fecha
+
+campo verifica_sem_node() -> Bit toca disco ::
+  devolve nao arquivo_existe("editors/vscode/seven-language/extension.js") e
+    nao arquivo_existe("editors/vscode/seven-language/package.json") e
+    nao arquivo_existe("editors/vscode/seven-language/package-lock.json") e
+    nao arquivo_existe("editors/vscode/seven-language/node_modules")
+fecha
+
+campo verifica_toolchain_nativa() -> Bit toca disco ::
+  devolve arquivo_existe("compiler/toolchain/command.sv") e
+    arquivo_existe("compiler/toolchain/cli.sv") e
+    arquivo_existe("compiler/toolchain/launcher.sv") e
+    arquivo_existe("compiler/toolchain/native_host.sv") e
+    arquivo_existe("compiler/toolchain/installer.sv") e
+    arquivo_existe("compiler/toolchain/formatter.sv") e
+    arquivo_existe("compiler/toolchain/test_runner.sv") e
+    arquivo_existe("compiler/toolchain/lsp_server.sv") e
+    arquivo_existe("compiler/toolchain/release.sv") e
+    arquivo_existe("compiler/toolchain/verify.sv")
+fecha
+
+campo verifica_artefatos_versionados() -> Bit toca disco ::
+  devolve arquivo_existe("bin/seven.exe.sha256") e arquivo_existe("brand/seven.ico.sha256")
+fecha
+
+campo verifica_bootstrap_declarado() -> Bit toca disco ::
+  guarda cadeia := verifica_cadeia_bootstrap()
+
+  veja cadeia e Falha ::
+    devolve nao
+  fecha
+
+  devolve sim
+fecha
+
+campo verifica_compilador(contexto: ContextoToolchain) -> Bit toca disco ::
+  guarda pedido := pedido_de_compilacao(lista<Texto>())
+  guarda saida := compila(pedido)
+
+  veja saida e Sucesso ::
+    devolve sim
+  fecha
+
+  devolve nao
+fecha
+
+campo verifica_pacotes(contexto: ContextoToolchain) -> Bit toca disco ::
+  devolve arquivo_existe(contexto.manifesto) e arquivo_existe("compiler/package_manager.sv")
+fecha
+
+campo verifica_lsp(contexto: ContextoToolchain) -> Bit toca disco, terminal ::
+  guarda r := inicia_lsp(contexto)
+
+  veja r e Falha ::
+    devolve nao
+  fecha
+
+  devolve sim
+fecha
+
+campo verifica_runtime_svbc_comando() -> Bit toca disco ::
+  devolve arquivo_existe("runtime/svbc/command_runner.sv") e
+    arquivo_existe("runtime/svbc/runner.sv") e
+    arquivo_existe("runtime/svbc/vm.sv")
+fecha
+
+campo verifica_auditoria_producao() -> Bit toca disco ::
+  devolve arquivo_existe("compiler/toolchain/production_audit.sv")
+fecha
+
+campo verifica_instalador() -> Bit toca disco, ambiente ::
+  guarda plano := plano_instalacao_padrao(".seven/self-test")
+  devolve plano.prefixo != "" e plano.binario != "" e plano.host != "" e plano.host_bytecode != "" e plano.launcher != "" e plano.launcher_bytecode != "" e plano.stdlib != ""
+fecha
+
+campo verifica_formatter() -> Bit toca disco ::
+  guarda texto := fmt_texto("modulo app\ncampo inicio() -> Num ::\ndevolve 0\nfecha\n")
+  devolve texto_comeca(texto, "modulo app")
+fecha
+
+campo verifica_test_runner(contexto: ContextoToolchain) -> Bit toca disco ::
+  guarda r := descobre_testes(contexto, "")
+  devolve lista_tamanho(r) > 0
+fecha
+
+campo verifica_release(contexto: ContextoToolchain) -> Bit toca disco ::
+  guarda r := prepara_release(contexto)
+
+  veja r e Falha ::
+    devolve nao
+  fecha
+
+  devolve sim
+fecha
+
+campo verifica_biblioteca() -> Bit toca disco ::
+  guarda rel := audita_biblioteca_padrao()
+  devolve rel.ok
+fecha
+
+campo relatorio_fundacao_texto(rel: RelatorioFundacao) -> Texto ::
+  solta saida := ""
+
+  para cada item em rel.itens ::
+    veja item.ok ::
+      vira saida := saida + "ok   " + item.nome + "\n"
+    outro ::
+      vira saida := saida + "fail " + item.nome + " " + item.detalhe + "\n"
+    fecha
+  fecha
+
+  vira saida := saida + "passaram: " + texto(rel.passaram) + "\n"
+  vira saida := saida + "falhas: " + texto(rel.falhas) + "\n"
+  devolve saida
+fecha

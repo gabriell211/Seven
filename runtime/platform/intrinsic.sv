@@ -4,6 +4,7 @@ usa seven.runtime.platform.svbc.bytes
 usa seven.runtime.platform.svbc.hosted
 usa seven.runtime.platform.svbc.io
 usa seven.runtime.platform.svbc.pure
+usa seven.runtime.platform.svbc.toolchain
 usa seven.runtime.svbc.value
 
 molde Intrinseco ::
@@ -23,6 +24,7 @@ campo intrinsecos_padrao() -> Lista<Intrinseco> ::
   registra_dados(itens)
   registra_crypto(itens)
   registra_ai(itens)
+  registra_toolchain(itens)
 
   devolve itens
 fecha
@@ -43,6 +45,7 @@ campo registra_puros(itens: Lista<Intrinseco>) -> Nada ::
   registra(itens, "sys_lista_coloca", "puro", intr_lista_coloca)
   registra(itens, "sys_lista_pega", "puro", intr_lista_pega)
   registra(itens, "sys_lista_pop", "puro", intr_lista_pop)
+  registra(itens, "sys_lista_define", "puro", intr_lista_define)
   registra(itens, "sys_lista_reverso", "puro", intr_host_puro)
   registra(itens, "sys_mapa_coloca", "puro", intr_mapa_coloca)
   registra(itens, "sys_mapa_pega", "puro", intr_mapa_pega)
@@ -90,6 +93,20 @@ campo registra_io(itens: Lista<Intrinseco>) -> Nada ::
   registra(itens, "sys_tarefa_aguarda", "tempo", intr_host_puro)
   registra(itens, "sys_grupo_aguarda", "tempo", intr_host_puro)
   registra(itens, "sys_processo_roda", "ambiente", intr_host_disco)
+fecha
+
+campo registra_toolchain(itens: Lista<Intrinseco>) -> Nada ::
+  registra(itens, "seven_args_empty_or_help", "puro", intr_cmd_args_empty_or_help)
+  registra(itens, "seven_args_version", "puro", intr_cmd_args_version)
+  registra(itens, "seven_args_verify_foundation", "puro", intr_cmd_args_verify_foundation)
+  registra(itens, "seven_args_verify_bootstrap", "puro", intr_cmd_args_verify_bootstrap)
+  registra(itens, "seven_args_verify_production", "puro", intr_cmd_args_verify_production)
+  registra(itens, "seven_cmd_help", "terminal", intr_cmd_help)
+  registra(itens, "seven_cmd_version", "terminal", intr_cmd_version)
+  registra(itens, "seven_cmd_unimplemented", "terminal", intr_cmd_unimplemented)
+  registra(itens, "seven_verify_foundation", "disco", intr_cmd_verify_foundation)
+  registra(itens, "seven_verify_bootstrap", "disco", intr_cmd_verify_bootstrap)
+  registra(itens, "seven_verify_production", "disco", intr_cmd_verify_production)
 fecha
 
 campo registra_web(itens: Lista<Intrinseco>) -> Nada ::

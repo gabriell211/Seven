@@ -1,0 +1,352 @@
+modulo seven.compiler.toolchain.cli
+
+usa seven.compiler.driver
+usa seven.compiler.package_manager
+usa seven.compiler.debugger
+usa seven.compiler.toolchain.command
+usa seven.compiler.toolchain.installer
+usa seven.compiler.toolchain.formatter
+usa seven.compiler.toolchain.test_runner
+usa seven.compiler.toolchain.lsp_server
+usa seven.compiler.toolchain.release
+usa seven.compiler.toolchain.adapters
+usa seven.compiler.toolchain.verify
+usa seven.compiler.toolchain.bootstrap_chain
+usa seven.compiler.toolchain.production_audit
+usa std.base.lista
+usa std.io.console
+
+campo executa_cli(argumentos: Lista<Texto>) -> Num toca terminal, disco, ambiente, rede, tempo, frontend ::
+  guarda contexto := contexto_padrao()
+  guarda comando := parseia_comando(argumentos)
+  guarda saida := executa_comando(contexto, comando)
+
+  veja saida e ToolchainOk ::
+    devolve saida.codigo
+  outro ::
+    diga(saida.mensagem)
+    devolve saida.codigo
+  fecha
+fecha
+
+campo parseia_comando(argumentos: Lista<Texto>) -> ComandoSeven ::
+  veja lista_tamanho(argumentos) == 0 ::
+    devolve CmdAjuda
+  fecha
+
+  guarda nome := lista_pega(argumentos, 0)
+
+  veja nome == "--help" ::
+    devolve CmdAjuda
+  fecha
+
+  veja nome == "--version" ::
+    devolve CmdVersao
+  fecha
+
+  veja nome == "new" ::
+    devolve CmdNovo(arg_ou(argumentos, 1, "app"))
+  fecha
+
+  veja nome == "init" ::
+    devolve CmdInit
+  fecha
+
+  veja nome == "check" ::
+    devolve CmdCheck(arg_ou(argumentos, 1, "seven.pkg"))
+  fecha
+
+  veja nome == "build" ::
+    devolve CmdBuild(arg_ou(argumentos, 1, "seven.pkg"), arg_ou(argumentos, 2, "build/out.svbc"))
+  fecha
+
+  veja nome == "run" ::
+    devolve CmdRun(arg_ou(argumentos, 1, "seven.pkg"))
+  fecha
+
+  veja nome == "test" ::
+    devolve CmdTest(arg_ou(argumentos, 1, ""))
+  fecha
+
+  veja nome == "bench" ::
+    devolve CmdBench(arg_ou(argumentos, 1, ""))
+  fecha
+
+  veja nome == "fmt" ::
+    devolve CmdFmt(arg_ou(argumentos, 1, "."), sim)
+  fecha
+
+  veja nome == "lint" ::
+    devolve CmdLint(arg_ou(argumentos, 1, "."))
+  fecha
+
+  veja nome == "doc" ::
+    devolve CmdDoc
+  fecha
+
+  veja nome == "repl" ::
+    devolve CmdRepl
+  fecha
+
+  veja nome == "debug" ::
+    devolve CmdDebug(arg_ou(argumentos, 1, "seven.pkg"))
+  fecha
+
+  veja nome == "profile" ::
+    devolve CmdProfile(arg_ou(argumentos, 1, "seven.pkg"))
+  fecha
+
+  veja nome == "doctor" ::
+    devolve CmdDoctor
+  fecha
+
+  veja nome == "install" ::
+    devolve CmdInstall(arg_ou(argumentos, 1, ""))
+  fecha
+
+  veja nome == "uninstall" ::
+    devolve CmdUninstall(arg_ou(argumentos, 1, ""))
+  fecha
+
+  veja nome == "lsp" ::
+    devolve CmdLsp
+  fecha
+
+  veja nome == "release" ::
+    devolve CmdRelease
+  fecha
+
+  veja nome == "verify" ::
+    devolve parseia_verify(argumentos)
+  fecha
+
+  veja nome == "pkg" ::
+    devolve parseia_pkg(argumentos)
+  fecha
+
+  veja nome == "target" ::
+    veja arg_ou(argumentos, 1, "") == "list" ::
+      devolve CmdTargetList
+    fecha
+  fecha
+
+  veja nome == "web" ::
+    veja arg_ou(argumentos, 1, "") == "build" ::
+      devolve CmdWebBuild(arg_ou(argumentos, 2, "."))
+    fecha
+  fecha
+
+  veja nome == "serve" ::
+    devolve CmdServe(arg_ou(argumentos, 1, "."))
+  fecha
+
+  devolve CmdInvalido("comando desconhecido: " + nome)
+fecha
+
+campo parseia_verify(argumentos: Lista<Texto>) -> ComandoSeven ::
+  guarda alvo := arg_ou(argumentos, 1, "")
+
+  veja alvo == "foundation" ::
+    devolve CmdVerifyFoundation
+  fecha
+
+  veja alvo == "bootstrap" ::
+    devolve CmdVerifyBootstrap
+  fecha
+
+  veja alvo == "production" ::
+    devolve CmdVerifyProduction
+  fecha
+
+  devolve CmdInvalido("uso: seven verify <foundation|bootstrap|production>")
+fecha
+
+campo parseia_pkg(argumentos: Lista<Texto>) -> ComandoSeven ::
+  guarda acao := arg_ou(argumentos, 1, "")
+
+  veja acao == "add" ::
+    devolve CmdPkgAdd(arg_ou(argumentos, 2, ""), arg_ou(argumentos, 3, ""), arg_ou(argumentos, 4, "registry"))
+  fecha
+
+  veja acao == "remove" ::
+    devolve CmdPkgRemove(arg_ou(argumentos, 2, ""))
+  fecha
+
+  veja acao == "verify" ::
+    devolve CmdPkgVerify
+  fecha
+
+  veja acao == "install" ::
+    devolve CmdPkgInstall
+  fecha
+
+  devolve CmdInvalido("acao de pacote desconhecida")
+fecha
+
+campo arg_ou(argumentos: Lista<Texto>, indice: U64, padrao: Texto) -> Texto ::
+  veja lista_tamanho(argumentos) <= indice ::
+    devolve padrao
+  fecha
+
+  devolve lista_pega(argumentos, indice)
+fecha
+
+campo executa_comando(contexto: ContextoToolchain, comando: ComandoSeven) -> SaidaToolchain toca terminal, disco, ambiente, rede, tempo, frontend ::
+  veja comando e CmdAjuda ::
+    diga(texto_ajuda())
+    devolve ToolchainOk(0)
+  fecha
+
+  veja comando e CmdVersao ::
+    diga("Seven 0.1.0")
+    devolve ToolchainOk(0)
+  fecha
+
+  veja comando e CmdCheck ::
+    devolve executa_build_like(contexto, "check")
+  fecha
+
+  veja comando e CmdBuild ::
+    devolve executa_build_like(contexto, "build")
+  fecha
+
+  veja comando e CmdRun ::
+    devolve executa_build_like(contexto, "run")
+  fecha
+
+  veja comando e CmdInstall ::
+    devolve adapta_instalacao(instala_seven(plano_instalacao_padrao(comando.prefixo)))
+  fecha
+
+  veja comando e CmdUninstall ::
+    devolve adapta_instalacao(remove_instalacao(comando.prefixo))
+  fecha
+
+  veja comando e CmdFmt ::
+    devolve adapta_fmt(fmt_caminho(comando.caminho, comando.escreve))
+  fecha
+
+  veja comando e CmdTest ::
+    devolve adapta_testes(roda_testes(contexto, comando.filtro))
+  fecha
+
+  veja comando e CmdBench ::
+    devolve adapta_testes(roda_benchmarks(contexto, comando.filtro))
+  fecha
+
+  veja comando e CmdLsp ::
+    devolve adapta_lsp(inicia_lsp(contexto))
+  fecha
+
+  veja comando e CmdPkgAdd ::
+    devolve adapta_pacote(pacote_add(RequisicaoPacote {
+      manifesto: contexto.manifesto,
+      nome: comando.nome,
+      versao: comando.versao,
+      fonte: comando.fonte
+    }))
+  fecha
+
+  veja comando e CmdPkgRemove ::
+    devolve adapta_pacote(pacote_remove(contexto.manifesto, comando.nome))
+  fecha
+
+  veja comando e CmdPkgVerify ::
+    devolve adapta_pacote(pacote_verify(contexto.manifesto, "seven.lock"))
+  fecha
+
+  veja comando e CmdPkgInstall ::
+    devolve adapta_pacote(pacote_install(contexto.manifesto, contexto.cache))
+  fecha
+
+  veja comando e CmdTargetList ::
+    diga("svbc")
+    diga("web")
+    diga("native")
+    devolve ToolchainOk(0)
+  fecha
+
+  veja comando e CmdRelease ::
+    devolve adapta_release(prepara_release(contexto))
+  fecha
+
+  veja comando e CmdVerifyFoundation ::
+    guarda rel := verifica_fundacao(contexto)
+
+    veja rel e Falha ::
+      devolve ToolchainErro(1, rel.valor.mensagem)
+    outro ::
+      diga(relatorio_fundacao_texto(rel.valor))
+
+      veja rel.valor.falhas > 0 ::
+        devolve ToolchainErro(1, "fundacao com falhas")
+      fecha
+
+      devolve ToolchainOk(0)
+    fecha
+  fecha
+
+  veja comando e CmdVerifyBootstrap ::
+    guarda cadeia := verifica_cadeia_bootstrap()
+
+    veja cadeia e Falha ::
+      devolve ToolchainErro(1, cadeia.valor.mensagem)
+    outro ::
+      veja cadeia_self_hosted(cadeia.valor) ::
+        diga("bootstrap self-hosted produtivo")
+      outro ::
+        veja cadeia.valor.equivalente e cadeia.valor.produtivo ::
+          diga("bootstrap equivalente e SVBC-v1, mas launcher final ainda depende do host de transicao")
+        outro ::
+          veja cadeia.valor.equivalente ::
+            diga("bootstrap equivalente, mas SVBC ainda nao produtivo")
+          outro ::
+            diga("bootstrap declarado; self-hosting ainda nao equivalente")
+          fecha
+        fecha
+      fecha
+      devolve ToolchainOk(0)
+    fecha
+  fecha
+
+  veja comando e CmdVerifyProduction ::
+    guarda rel_producao := audita_prontidao_producao(contexto)
+    diga(relatorio_producao_texto(rel_producao))
+
+    veja rel_producao.falhas > 0 ::
+      devolve ToolchainErro(1, "producao ainda bloqueada")
+    fecha
+
+    devolve ToolchainOk(0)
+  fecha
+
+  veja comando e CmdDoctor ::
+    diga("seven doctor: toolchain Seven-native declarada")
+    devolve ToolchainOk(0)
+  fecha
+
+  veja comando e CmdInvalido ::
+    devolve ToolchainErro(2, comando.mensagem)
+  fecha
+
+  devolve ToolchainErro(2, "comando ainda nao implementado: " + comando_nome(comando))
+fecha
+
+campo executa_build_like(contexto: ContextoToolchain, modo: Texto) -> SaidaToolchain toca terminal, disco, ambiente ::
+  guarda pedido := pedido_de_compilacao(lista<Texto>())
+  guarda saida := compila(pedido)
+
+  veja saida e Sucesso ::
+    veja modo != "check" ::
+      diga(saida.caminho)
+    fecha
+    devolve ToolchainOk(0)
+  outro ::
+    mostra_diagnosticos(saida.diagnosticos)
+    devolve ToolchainErro(1, "compilacao falhou")
+  fecha
+fecha
+
+campo texto_ajuda() -> Texto ::
+  devolve "seven <check|build|run|test|bench|fmt|lint|doc|repl|debug|profile|doctor|install|lsp|pkg|target|web|serve|release|verify>"
+fecha

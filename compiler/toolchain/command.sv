@@ -1,0 +1,186 @@
+modulo seven.compiler.toolchain.command
+
+usa std.base.lista
+
+molde ContextoToolchain ::
+  raiz: Texto
+  manifesto: Texto
+  cache: Texto
+  destino: Texto
+  alvo: Texto
+  modo: Texto
+fecha
+
+selo ComandoSeven ::
+  CmdAjuda
+  CmdVersao
+  CmdNovo(nome: Texto)
+  CmdInit
+  CmdCheck(entrada: Texto)
+  CmdBuild(entrada: Texto, saida: Texto)
+  CmdRun(entrada: Texto)
+  CmdTest(filtro: Texto)
+  CmdBench(filtro: Texto)
+  CmdFmt(caminho: Texto, escreve: Bit)
+  CmdLint(caminho: Texto)
+  CmdDoc
+  CmdRepl
+  CmdDebug(entrada: Texto)
+  CmdProfile(entrada: Texto)
+  CmdDoctor
+  CmdInstall(prefixo: Texto)
+  CmdUninstall(prefixo: Texto)
+  CmdLsp
+  CmdPkgAdd(nome: Texto, versao: Texto, fonte: Texto)
+  CmdPkgRemove(nome: Texto)
+  CmdPkgVerify
+  CmdPkgInstall
+  CmdTargetList
+  CmdWebBuild(projeto: Texto)
+  CmdServe(projeto: Texto)
+  CmdRelease
+  CmdVerifyFoundation
+  CmdVerifyBootstrap
+  CmdVerifyProduction
+  CmdInvalido(mensagem: Texto)
+fecha
+
+selo SaidaToolchain ::
+  ToolchainOk(codigo: Num)
+  ToolchainErro(codigo: Num, mensagem: Texto)
+fecha
+
+campo contexto_padrao() -> ContextoToolchain ::
+  devolve ContextoToolchain {
+    raiz: ".",
+    manifesto: "seven.pkg",
+    cache: ".seven/packages",
+    destino: "build",
+    alvo: "svbc",
+    modo: "seguro"
+  }
+fecha
+
+campo comando_nome(comando: ComandoSeven) -> Texto ::
+  veja comando e CmdAjuda ::
+    devolve "help"
+  fecha
+
+  veja comando e CmdVersao ::
+    devolve "version"
+  fecha
+
+  veja comando e CmdNovo ::
+    devolve "new"
+  fecha
+
+  veja comando e CmdInit ::
+    devolve "init"
+  fecha
+
+  veja comando e CmdCheck ::
+    devolve "check"
+  fecha
+
+  veja comando e CmdBuild ::
+    devolve "build"
+  fecha
+
+  veja comando e CmdRun ::
+    devolve "run"
+  fecha
+
+  veja comando e CmdTest ::
+    devolve "test"
+  fecha
+
+  veja comando e CmdBench ::
+    devolve "bench"
+  fecha
+
+  veja comando e CmdFmt ::
+    devolve "fmt"
+  fecha
+
+  veja comando e CmdLint ::
+    devolve "lint"
+  fecha
+
+  veja comando e CmdDoc ::
+    devolve "doc"
+  fecha
+
+  veja comando e CmdRepl ::
+    devolve "repl"
+  fecha
+
+  veja comando e CmdDebug ::
+    devolve "debug"
+  fecha
+
+  veja comando e CmdProfile ::
+    devolve "profile"
+  fecha
+
+  veja comando e CmdDoctor ::
+    devolve "doctor"
+  fecha
+
+  veja comando e CmdInstall ::
+    devolve "install"
+  fecha
+
+  veja comando e CmdUninstall ::
+    devolve "uninstall"
+  fecha
+
+  veja comando e CmdLsp ::
+    devolve "lsp"
+  fecha
+
+  veja comando e CmdPkgAdd ::
+    devolve "pkg add"
+  fecha
+
+  veja comando e CmdPkgRemove ::
+    devolve "pkg remove"
+  fecha
+
+  veja comando e CmdPkgVerify ::
+    devolve "pkg verify"
+  fecha
+
+  veja comando e CmdPkgInstall ::
+    devolve "pkg install"
+  fecha
+
+  veja comando e CmdTargetList ::
+    devolve "target list"
+  fecha
+
+  veja comando e CmdWebBuild ::
+    devolve "web build"
+  fecha
+
+  veja comando e CmdServe ::
+    devolve "serve"
+  fecha
+
+  veja comando e CmdRelease ::
+    devolve "release"
+  fecha
+
+  veja comando e CmdVerifyFoundation ::
+    devolve "verify foundation"
+  fecha
+
+  veja comando e CmdVerifyBootstrap ::
+    devolve "verify bootstrap"
+  fecha
+
+  veja comando e CmdVerifyProduction ::
+    devolve "verify production"
+  fecha
+
+  devolve "invalid"
+fecha

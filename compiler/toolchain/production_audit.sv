@@ -1,0 +1,136 @@
+modulo seven.compiler.toolchain.production_audit
+
+usa seven.compiler.toolchain.command
+usa seven.compiler.toolchain.bootstrap_chain
+usa seven.compiler.toolchain.installer
+usa seven.compiler.toolchain.launcher
+usa seven.compiler.toolchain.native_host
+usa seven.compiler.toolchain.release
+usa seven.compiler.toolchain.library_audit
+usa seven.runtime.svbc.command_runner
+usa std.base.resultado
+usa std.fs.file
+usa std.mem.bytes
+
+molde ItemProducao ::
+  codigo: Texto
+  nome: Texto
+  ok: Bit
+  detalhe: Texto
+fecha
+
+molde RelatorioProducao ::
+  itens: Lista<ItemProducao>
+  passaram: U64
+  falhas: U64
+fecha
+
+campo audita_prontidao_producao(contexto: ContextoToolchain) -> RelatorioProducao toca disco, ambiente, terminal, rede, tempo, frontend ::
+  solta rel := RelatorioProducao {
+    itens: lista<ItemProducao>(),
+    passaram: 0,
+    falhas: 0
+  }
+
+  guarda hash_seven := hash_arquivo_ou_vazio("build/seven.svbc")
+  guarda hash_self := hash_arquivo_ou_vazio("build/seven.self.svbc")
+  guarda plano := plano_instalacao_padrao(".seven/prod-audit")
+  guarda release := prepara_release(contexto)
+  guarda release_ok := release_valido(release)
+  guarda biblioteca := audita_biblioteca_padrao()
+
+  item_producao(rel, "P01", "gerar build/seven0.svbc", arquivo_existe("build/seven0.svbc"), "artefato seven0 materializado")
+  item_producao(rel, "P02", "seven0 compila compiler/seven.sv", arquivo_existe("build/seven.svbc"), "build/seven.svbc existe")
+  item_producao(rel, "P03", "runtime executa build/seven.svbc verify foundation", runtime_verify_foundation_ok(), "SVBC produtivo e comando retorna 0")
+  item_producao(rel, "P04", "self-hosting fecha seven == seven.self", hash_seven != "" e hash_seven == hash_self, "hashes equivalentes")
+  item_producao(rel, "P05", "CI usa caminho Seven", arquivo_existe(".github/workflows/foundation.yml"), "workflow com gate de transicao")
+  item_producao(rel, "P06", "PowerShell fora do caminho oficial", arquivo_existe("tools/LEGACY.md"), "scripts marcados como legado")
+  item_producao(rel, "P07", "host e launcher Seven substituem bin/seven.exe", launcher_contrato_valido() e host_executavel_contrato_valido(), "host, launcher, runtime SVBC e imagens SVBC declarados")
+  item_producao(rel, "P08", "compilador endurecido", arquivo_existe("compiler/semantic.sv") e arquivo_existe("compiler/effects.sv") e arquivo_existe("compiler/memory.sv"), "semantica, efeitos e memoria")
+  item_producao(rel, "P09", "runtime endurecido", arquivo_existe("runtime/svbc/verifier.sv") e arquivo_existe("runtime/svbc/command_runner.sv"), "verificador SVBC e runner de comando")
+  item_producao(rel, "P10", "release, instalador, biblioteca e libs reais", plano.binario != "" e plano.host != "" e plano.host_bytecode != "" e plano.launcher != "" e plano.launcher_bytecode != "" e plano.stdlib != "" e release_ok e biblioteca.ok, "installer, host, launcher, release, stdlib e conformance/libs em Seven")
+
+  devolve rel
+fecha
+
+campo item_producao(rel: RelatorioProducao, codigo: Texto, nome: Texto, ok: Bit, detalhe: Texto) -> Nada ::
+  lista_coloca(rel.itens, ItemProducao {
+    codigo: codigo,
+    nome: nome,
+    ok: ok,
+    detalhe: detalhe
+  })
+
+  veja ok ::
+    vira rel.passaram := rel.passaram + 1
+  fecha
+
+  veja ok == nao ::
+    vira rel.falhas := rel.falhas + 1
+  fecha
+fecha
+
+campo artefato_svbc_produtivo(caminho: Texto) -> Bit toca disco ::
+  guarda dados := arquivo_bytes(caminho)
+
+  veja dados e Falha ::
+    devolve nao
+  fecha
+
+  devolve bytes_tem_svbc_v1(dados.valor)
+fecha
+
+campo bytes_tem_svbc_v1(dados: Bytes) -> Bit ::
+  veja dados.tamanho < 8 ::
+    devolve nao
+  fecha
+
+  devolve bytes_pega(dados, 0) == 83 e
+    bytes_pega(dados, 1) == 86 e
+    bytes_pega(dados, 2) == 66 e
+    bytes_pega(dados, 3) == 67 e
+    bytes_pega(dados, 4) == 0 e
+    bytes_pega(dados, 5) == 0 e
+    bytes_pega(dados, 6) == 0 e
+    bytes_pega(dados, 7) == 1
+fecha
+
+campo runtime_verify_foundation_ok() -> Bit toca disco, terminal, rede, tempo, ambiente, frontend ::
+  veja artefato_svbc_produtivo("build/seven.svbc") == nao ::
+    devolve nao
+  fecha
+
+  guarda execucao := executa_verify_foundation_de_seven_svbc()
+
+  veja execucao e Falha ::
+    devolve nao
+  fecha
+
+  devolve execucao.valor.codigo == 0
+fecha
+
+campo release_valido(release: Resultado<PlanoRelease, Falha>) -> Bit ::
+  veja release e Falha ::
+    devolve nao
+  fecha
+
+  devolve sim
+fecha
+
+campo relatorio_producao_texto(rel: RelatorioProducao) -> Texto ::
+  solta saida := ""
+
+  para cada item em rel.itens ::
+    veja item.ok ::
+      vira saida := saida + "ok   " + item.codigo + " " + item.nome + "\n"
+    fecha
+
+    veja item.ok == nao ::
+      vira saida := saida + "fail " + item.codigo + " " + item.nome + " " + item.detalhe + "\n"
+    fecha
+  fecha
+
+  vira saida := saida + "passaram: " + texto(rel.passaram) + "\n"
+  vira saida := saida + "falhas: " + texto(rel.falhas) + "\n"
+  devolve saida
+fecha

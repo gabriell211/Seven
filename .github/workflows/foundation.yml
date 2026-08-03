@@ -3,16 +3,76 @@ name: Seven Foundation
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seven-foundation-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:
     name: Verify foundation release
     runs-on: windows-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run foundation verifier
+      - name: Verify transition bridge syntax
+        shell: pwsh
+        run: |
+          $failed = $false
+          foreach ($path in Get-ChildItem -Path .\tools -Recurse -Include *.ps1,*.psm1) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($path.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $failed = $true
+              Write-Host "PowerShell syntax errors in $($path.FullName)"
+              foreach ($error in $errors) {
+                Write-Host $error.Message
+              }
+            }
+          }
+          if ($failed) {
+            exit 1
+          }
+
+      - name: Materialize Seven bootstrap artifacts
+        shell: pwsh
+        run: |
+          .\tools\seven-dev.ps1 check .\compiler0\seven0.sv
+          .\tools\seven-dev.ps1 build .\compiler0\seven0.sv .\build\seven0.svbc
+          .\tools\seven-dev.ps1 check .\compiler\seven.sv
+          .\tools\seven-dev.ps1 build .\compiler\seven.sv .\build\seven.svbc
+          .\tools\seven-dev.ps1 build .\compiler\seven.sv .\build\seven.self.svbc
+          .\tools\seven-dev.ps1 build .\runtime\host\seven.sv .\build\seven.host.svbc
+          .\tools\seven-dev.ps1 build .\runtime\launcher\seven.sv .\build\seven.launcher.svbc
+
+      - name: Run Seven foundation contract from seven.svbc
+        shell: pwsh
+        run: .\tools\seven-dev.ps1 run .\build\seven.svbc verify foundation
+
+      - name: Run Seven bootstrap contract from seven.svbc
+        shell: pwsh
+        run: .\tools\seven-dev.ps1 run .\build\seven.svbc verify bootstrap
+
+      - name: Run Seven launcher bootstrap contract from seven.launcher.svbc
+        shell: pwsh
+        run: .\tools\seven-dev.ps1 run .\build\seven.launcher.svbc verify bootstrap
+
+      - name: Run Seven host bootstrap contract from seven.host.svbc
+        shell: pwsh
+        run: .\tools\seven-dev.ps1 run .\build\seven.host.svbc verify bootstrap
+
+      - name: Run Seven production contract from seven.svbc
+        shell: pwsh
+        run: .\tools\seven-dev.ps1 run .\build\seven.svbc verify production
+
+      - name: Audit transition bridge
         shell: pwsh
         run: .\tools\verify-foundation.ps1

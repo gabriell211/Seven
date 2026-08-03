@@ -1,5 +1,6 @@
 modulo seven.runtime.svbc.decoder
 
+usa std.base.lista
 usa std.base.resultado
 usa std.mem.bytes
 usa seven.runtime.svbc.image
@@ -50,24 +51,127 @@ campo le_texto_fixo(c: CursorBytes, tamanho: U64) -> Texto ::
   devolve texto_lido
 fecha
 
+campo le_texto(c: CursorBytes) -> Texto ::
+  guarda tamanho := le_u32(c)
+  devolve le_texto_fixo(c, tamanho)
+fecha
+
+campo le_byte(c: CursorBytes) -> Byte ::
+  guarda valor := bytes_pega(c.dados, c.pos)
+  vira c.pos := c.pos + 1
+  devolve valor
+fecha
+
 campo le_u32(c: CursorBytes) -> U32 ::
   guarda valor := sys_bytes_u32_be(c.dados, c.pos)
   vira c.pos := c.pos + 4
   devolve valor
 fecha
 
+campo le_u64(c: CursorBytes) -> U64 ::
+  guarda alto := le_u32(c)
+  guarda baixo := le_u32(c)
+  devolve alto * 4294967296 + baixo
+fecha
+
+campo nome_por_indice(img: ImagemSvbc, indice: U32) -> Texto ::
+  veja indice >= lista_tamanho(img.nomes) ::
+    devolve ""
+  fecha
+
+  devolve lista_pega(img.nomes, indice)
+fecha
+
+campo opcode_ou_pare(valor: Byte) -> Opcode ::
+  guarda op := opcode_de_byte(valor)
+
+  veja op e Valor ::
+    devolve op.valor
+  fecha
+
+  devolve Pare
+fecha
+
 campo decodifica_nomes(c: CursorBytes, img: ImagemSvbc) -> Nada ::
-  sys_svbc_decodifica_nomes(c, img)
+  guarda total := le_u32(c)
+  solta indice := 0
+
+  gira indice < total ::
+    lista_coloca(img.nomes, le_texto(c))
+    vira indice := indice + 1
+  fecha
 fecha
 
 campo decodifica_constantes(c: CursorBytes, img: ImagemSvbc) -> Nada ::
-  sys_svbc_decodifica_constantes(c, img)
+  guarda total := le_u32(c)
+  solta indice := 0
+
+  gira indice < total ::
+    guarda tag := le_byte(c)
+
+    veja tag == 3 ::
+      lista_coloca(img.constantes, VmNum(le_u64(c)))
+    outro ::
+      veja tag == 4 ::
+        lista_coloca(img.constantes, VmTexto(le_texto(c)))
+      outro ::
+        lista_coloca(img.constantes, VmNada)
+      fecha
+    fecha
+
+    vira indice := indice + 1
+  fecha
 fecha
 
 campo decodifica_campos(c: CursorBytes, img: ImagemSvbc) -> Nada ::
-  sys_svbc_decodifica_campos(c, img)
+  guarda total := le_u32(c)
+  solta indice := 0
+
+  gira indice < total ::
+    guarda nome_indice := le_u32(c)
+    guarda entrada := le_u64(c)
+    guarda locais := le_u32(c)
+    guarda parametros := le_u32(c)
+    guarda total_efeitos := le_u32(c)
+    solta efeitos := lista<Texto>()
+    solta efeito_indice := 0
+
+    gira efeito_indice < total_efeitos ::
+      lista_coloca(efeitos, nome_por_indice(img, le_u32(c)))
+      vira efeito_indice := efeito_indice + 1
+    fecha
+
+    lista_coloca(img.campos, CampoImagem {
+      nome: nome_por_indice(img, nome_indice),
+      entrada: entrada,
+      locais: locais,
+      parametros: parametros,
+      efeitos: efeitos
+    })
+
+    vira indice := indice + 1
+  fecha
 fecha
 
 campo decodifica_codigo(c: CursorBytes, img: ImagemSvbc) -> Nada ::
-  sys_svbc_decodifica_codigo(c, img)
+  guarda total := le_u32(c)
+  solta indice := 0
+
+  gira indice < total ::
+    guarda op := opcode_ou_pare(le_byte(c))
+    guarda a := le_u32(c)
+    guarda b := le_u32(c)
+    guarda cc := le_u32(c)
+    guarda ip := le_u64(c)
+
+    lista_coloca(img.codigo, Instrucao {
+      opcode: op,
+      a: a,
+      b: b,
+      c: cc,
+      ip: ip
+    })
+
+    vira indice := indice + 1
+  fecha
 fecha

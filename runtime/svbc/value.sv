@@ -7,6 +7,7 @@ selo ValorVm ::
   VmNum(valor: Num)
   VmReal(valor: Real64)
   VmTexto(valor: Texto)
+  VmArgs(valores: Lista<Texto>)
   VmBytes(valor: Bytes)
   VmBloco(id: U64)
 fecha
@@ -33,6 +34,9 @@ campo valor_verdadeiro(valor: ValorVm) -> Bit ::
   veja valor e VmTexto ::
     devolve tamanho(valor.valor) > 0
   fecha
+  veja valor e VmArgs ::
+    devolve lista_tamanho(valor.valores) > 0
+  fecha
 
   devolve sim
 fecha
@@ -56,6 +60,9 @@ campo valor_texto(valor: ValorVm) -> Texto ::
   fecha
   veja valor e VmTexto ::
     devolve valor.valor
+  fecha
+  veja valor e VmArgs ::
+    devolve "<args>"
   fecha
 
   devolve "<valor>"

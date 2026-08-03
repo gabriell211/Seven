@@ -1,0 +1,186 @@
+modulo seven.runtime.platform.svbc.toolchain
+
+usa seven.runtime.platform.svbc.sandbox
+usa seven.runtime.svbc.value
+usa std.mem.bytes
+
+campo valor_vm_args(valor: ValorVm) -> Lista<Texto> ::
+  veja valor e VmArgs ::
+    devolve valor.valores
+  fecha
+
+  devolve lista<Texto>()
+fecha
+
+campo intr_cmd_args_empty_or_help(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  guarda argv := valor_vm_args(lista_pega(args, 0))
+
+  veja lista_tamanho(argv) == 0 ::
+    devolve Valor(VmBit(sim))
+  fecha
+
+  devolve Valor(VmBit(lista_pega(argv, 0) == "--help"))
+fecha
+
+campo intr_cmd_args_version(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  guarda argv := valor_vm_args(lista_pega(args, 0))
+
+  veja lista_tamanho(argv) == 0 ::
+    devolve Valor(VmBit(nao))
+  fecha
+
+  devolve Valor(VmBit(lista_pega(argv, 0) == "--version"))
+fecha
+
+campo intr_cmd_args_verify_foundation(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  guarda argv := valor_vm_args(lista_pega(args, 0))
+
+  veja lista_tamanho(argv) < 2 ::
+    devolve Valor(VmBit(nao))
+  fecha
+
+  devolve Valor(VmBit(lista_pega(argv, 0) == "verify" e lista_pega(argv, 1) == "foundation"))
+fecha
+
+campo intr_cmd_args_verify_bootstrap(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  guarda argv := valor_vm_args(lista_pega(args, 0))
+
+  veja lista_tamanho(argv) < 2 ::
+    devolve Valor(VmBit(nao))
+  fecha
+
+  devolve Valor(VmBit(lista_pega(argv, 0) == "verify" e lista_pega(argv, 1) == "bootstrap"))
+fecha
+
+campo intr_cmd_args_verify_production(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  guarda argv := valor_vm_args(lista_pega(args, 0))
+
+  veja lista_tamanho(argv) < 2 ::
+    devolve Valor(VmBit(nao))
+  fecha
+
+  devolve Valor(VmBit(lista_pega(argv, 0) == "verify" e lista_pega(argv, 1) == "production"))
+fecha
+
+campo intr_cmd_help(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca terminal ::
+  svbc_terminal_escreve("seven <check|build|run|test|bench|fmt|lint|doc|repl|debug|profile|doctor|install|lsp|pkg|target|web|serve|release|verify>")
+  devolve Valor(VmNum(0))
+fecha
+
+campo intr_cmd_version(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca terminal ::
+  svbc_terminal_escreve("Seven 0.1.0")
+  devolve Valor(VmNum(0))
+fecha
+
+campo intr_cmd_unimplemented(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca terminal ::
+  svbc_terminal_escreve("comando ainda nao implementado no SVBC de transicao: " + valor_texto(lista_pega(args, 0)))
+  devolve Valor(VmNum(2))
+fecha
+
+campo intr_cmd_verify_foundation(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco, terminal, ambiente ::
+  solta falhas := 0
+  vira falhas := falhas + verifica_cmd_item("fonte Seven-native", svbc_arquivo_existe("compiler/seven.sv"))
+  vira falhas := falhas + verifica_cmd_item("build/seven.svbc SVBC-v1", svbc_produtivo("build/seven.svbc"))
+  vira falhas := falhas + verifica_cmd_item("toolchain Seven-native", svbc_arquivo_existe("compiler/toolchain/verify.sv"))
+  vira falhas := falhas + verifica_cmd_item("biblioteca padrao", svbc_arquivo_existe("std/base/prelude.sv"))
+
+  svbc_terminal_escreve("passaram: " + texto(4 - falhas))
+  svbc_terminal_escreve("falhas: " + texto(falhas))
+
+  devolve Valor(VmNum(falhas))
+fecha
+
+campo intr_cmd_verify_bootstrap(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco, terminal, ambiente ::
+  solta falhas := 0
+  vira falhas := falhas + verifica_cmd_item("build/seven0.svbc materializado", svbc_arquivo_existe("build/seven0.svbc"))
+  vira falhas := falhas + verifica_cmd_item("build/seven.svbc SVBC-v1", svbc_produtivo("build/seven.svbc"))
+  vira falhas := falhas + verifica_cmd_item("build/seven.self.svbc SVBC-v1", svbc_produtivo("build/seven.self.svbc"))
+  vira falhas := falhas + verifica_cmd_item("seven == seven.self", svbc_arquivos_iguais("build/seven.svbc", "build/seven.self.svbc"))
+
+  svbc_terminal_escreve("passaram: " + texto(4 - falhas))
+  svbc_terminal_escreve("falhas: " + texto(falhas))
+
+  devolve Valor(VmNum(falhas))
+fecha
+
+campo intr_cmd_verify_production(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco, terminal, ambiente ::
+  solta falhas := 0
+  vira falhas := falhas + verifica_cmd_item("P01 gerar build/seven0.svbc", svbc_arquivo_existe("build/seven0.svbc"))
+  vira falhas := falhas + verifica_cmd_item("P02 seven0 compila compiler/seven.sv", svbc_arquivo_existe("build/seven.svbc"))
+  vira falhas := falhas + verifica_cmd_item("P03 runtime executa build/seven.svbc verify foundation", svbc_produtivo("build/seven.svbc"))
+  vira falhas := falhas + verifica_cmd_item("P04 self-hosting fecha seven == seven.self", svbc_produtivo("build/seven.self.svbc") e svbc_arquivos_iguais("build/seven.svbc", "build/seven.self.svbc"))
+  vira falhas := falhas + verifica_cmd_item("P05 CI usa caminho Seven", svbc_arquivo_existe(".github/workflows/foundation.yml"))
+  vira falhas := falhas + verifica_cmd_item("P06 PowerShell fora do caminho oficial", svbc_arquivo_existe("tools/LEGACY.md"))
+  vira falhas := falhas + verifica_cmd_item("P07 host e launcher Seven substituem bin/seven.exe", svbc_arquivo_existe("compiler/toolchain/native_host.sv") e svbc_arquivo_existe("compiler/toolchain/launcher.sv") e svbc_arquivo_existe("runtime/host/seven.sv") e svbc_arquivo_existe("runtime/launcher/seven.sv") e svbc_produtivo("build/seven.host.svbc") e svbc_produtivo("build/seven.launcher.svbc") e svbc_arquivo_existe("runtime/svbc/runner.sv") e svbc_arquivo_existe("runtime/svbc/command_runner.sv"))
+  vira falhas := falhas + verifica_cmd_item("P08 compilador endurecido", svbc_arquivo_existe("compiler/semantic.sv") e svbc_arquivo_existe("compiler/effects.sv") e svbc_arquivo_existe("compiler/memory.sv"))
+  vira falhas := falhas + verifica_cmd_item("P09 runtime endurecido", svbc_arquivo_existe("runtime/svbc/verifier.sv") e svbc_arquivo_existe("runtime/svbc/command_runner.sv"))
+  vira falhas := falhas + verifica_cmd_item("P10 release, instalador, biblioteca e libs reais", svbc_arquivo_existe("compiler/toolchain/release.sv") e svbc_arquivo_existe("compiler/toolchain/installer.sv") e svbc_arquivo_existe("compiler/toolchain/native_host.sv") e svbc_arquivo_existe("compiler/toolchain/launcher.sv") e svbc_produtivo("build/seven.host.svbc") e svbc_produtivo("build/seven.launcher.svbc") e svbc_arquivo_existe("compiler/toolchain/library_audit.sv") e svbc_arquivo_existe("conformance/libs/valid/dynamic_runtime.sv"))
+
+  svbc_terminal_escreve("passaram: " + texto(10 - falhas))
+  svbc_terminal_escreve("falhas: " + texto(falhas))
+
+  devolve Valor(VmNum(falhas))
+fecha
+
+campo verifica_cmd_item(nome: Texto, ok: Bit) -> Num toca terminal ::
+  veja ok ::
+    svbc_terminal_escreve("ok   " + nome)
+    devolve 0
+  outro ::
+    svbc_terminal_escreve("fail " + nome)
+    devolve 1
+  fecha
+fecha
+
+campo svbc_produtivo(caminho: Texto) -> Bit toca disco ::
+  guarda dados := svbc_arquivo_ler_bytes(caminho)
+
+  veja dados e Falha ::
+    devolve nao
+  fecha
+
+  devolve bytes_tem_svbc_v1(dados.valor)
+fecha
+
+campo svbc_arquivos_iguais(a: Texto, b: Texto) -> Bit toca disco ::
+  guarda esquerda := svbc_arquivo_ler_bytes(a)
+  guarda direita := svbc_arquivo_ler_bytes(b)
+
+  veja esquerda e Falha ::
+    devolve nao
+  fecha
+
+  veja direita e Falha ::
+    devolve nao
+  fecha
+
+  veja esquerda.valor.tamanho != direita.valor.tamanho ::
+    devolve nao
+  fecha
+
+  solta indice := 0
+  gira indice < esquerda.valor.tamanho ::
+    veja bytes_pega(esquerda.valor, indice) != bytes_pega(direita.valor, indice) ::
+      devolve nao
+    fecha
+
+    vira indice := indice + 1
+  fecha
+
+  devolve sim
+fecha
+
+campo bytes_tem_svbc_v1(dados: Bytes) -> Bit ::
+  veja dados.tamanho < 8 ::
+    devolve nao
+  fecha
+
+  devolve bytes_pega(dados, 0) == 83 e
+    bytes_pega(dados, 1) == 86 e
+    bytes_pega(dados, 2) == 66 e
+    bytes_pega(dados, 3) == 67 e
+    bytes_pega(dados, 4) == 0 e
+    bytes_pega(dados, 5) == 0 e
+    bytes_pega(dados, 6) == 0 e
+    bytes_pega(dados, 7) == 1
+fecha

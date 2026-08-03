@@ -39,18 +39,27 @@ A inteligencia da Seven nunca deve alterar codigo silenciosamente. Toda correcao
 3. `autofix`: edicoes mecanicas seguras.
 4. `explica`: explicacoes humanas para erros e tipos.
 5. `risco`: seguranca, performance e efeitos perigosos.
-6. `lsp`: ponte para editor.
+6. `lsp`: protocolo para editor implementado no compilador Seven.
 7. `assist`: interface para assistentes de IA, quando disponivel.
 
-## VS Code
+## Editores
 
-A extensao inicial vive em:
+O nucleo oficial nao deve conter extensoes executaveis em JavaScript,
+TypeScript ou outra linguagem hospedeira. Editor e IDE sao adaptadores externos;
+o contrato oficial da Seven e expor inteligencia por LSP a partir do compilador
+e da camada SIA escrita em Seven.
+
+Recursos estaticos de editor podem viver em:
 
 ```text
 editors/vscode/seven-language
 ```
 
-Ela registra `.sv`, realce de sintaxe e inicia o LSP de fundacao:
+Esses arquivos descrevem `.sv`, realce de sintaxe e configuracao textual. Eles
+nao iniciam processos, nao baixam pacotes npm e nao substituem o LSP oficial.
+
+Enquanto o LSP self-hosted nao estiver completo, o smoke test de fundacao ainda
+usa a ponte historica:
 
 ```powershell
 .\tools\seven-lsp.ps1
@@ -68,7 +77,7 @@ O MVP cobre:
 - diagnostics;
 - document symbols;
 - hover;
-- comandos VS Code para check, run e debug.
+- integracao via protocolo LSP, nao por extensao oficial escrita em JS/TS.
 
 ## Inteligencia local
 

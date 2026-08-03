@@ -12,6 +12,10 @@ Criador: **Gabriel Barcelos**
 
 Seven e uma linguagem de sistemas e aplicacoes. Ela combina abstracoes de alto nivel com acesso controlado a recursos de baixo nivel.
 
+O alvo de completude e cobrir capacidades de C e JavaScript por meios proprios:
+memoria/ABI/bits/atomicos para sistemas, e objetos dinamicos/event loop/web para
+aplicacoes. A matriz esta em `docs/c-js-parity.md`.
+
 ## Arquivo
 
 Um arquivo Seven pode declarar um modulo e importar outros modulos.

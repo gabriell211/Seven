@@ -10,6 +10,32 @@ $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $DevCli = Join-Path $Root "tools\seven-dev.ps1"
 $LspCli = Join-Path $Root "tools\seven-lsp.ps1"
 
+function Get-SevenPowerShellHost {
+  $candidates = @()
+
+  if (-not [string]::IsNullOrWhiteSpace($PSHOME)) {
+    $candidates += (Join-Path $PSHOME "pwsh.exe")
+    $candidates += (Join-Path $PSHOME "powershell.exe")
+  }
+
+  foreach ($name in @("pwsh", "pwsh.exe", "powershell", "powershell.exe")) {
+    $command = Get-Command $name -ErrorAction SilentlyContinue
+    if ($null -ne $command -and -not [string]::IsNullOrWhiteSpace($command.Source)) {
+      $candidates += $command.Source
+    }
+  }
+
+  foreach ($candidate in $candidates) {
+    if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path -LiteralPath $candidate)) {
+      return (Resolve-Path -LiteralPath $candidate).Path
+    }
+  }
+
+  throw "PowerShell host nao encontrado. Instale PowerShell 7 ou disponibilize powershell.exe no PATH."
+}
+
+$PowerShellHost = Get-SevenPowerShellHost
+
 if ([string]::IsNullOrWhiteSpace($SevenPath)) {
   $SevenPath = Join-Path $Root "bin\seven.exe"
 }
@@ -91,7 +117,7 @@ function Invoke-Seven {
 function Invoke-SevenDev {
   param([Parameter(Mandatory = $true)][string[]]$DevArgs)
 
-  $output = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $DevCli @DevArgs 2>&1
+  $output = & $PowerShellHost -NoProfile -ExecutionPolicy Bypass -File $DevCli @DevArgs 2>&1
   $exitCode = $LASTEXITCODE
   $text = ($output | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine
 
@@ -104,7 +130,7 @@ function Invoke-SevenDev {
 function Invoke-SevenLspSelfTest {
   param([Parameter(Mandatory = $true)][string]$File)
 
-  $output = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $LspCli -SelfTest -File $File 2>&1
+  $output = & $PowerShellHost -NoProfile -ExecutionPolicy Bypass -File $LspCli -SelfTest -File $File 2>&1
   $exitCode = $LASTEXITCODE
   $text = ($output | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine
 
@@ -123,6 +149,16 @@ function Test-OutputContains {
   return $Result.Output.Contains($Expected)
 }
 
+function ConvertFrom-SevenJsonOutput {
+  param([Parameter(Mandatory = $true)][string]$Text)
+
+  try {
+    return $Text | ConvertFrom-Json -ErrorAction Stop
+  } catch {
+    return $null
+  }
+}
+
 function Test-SvbcEnvelope {
   param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -139,6 +175,519 @@ function Test-SvbcEnvelope {
   return $magic -eq "SVBC"
 }
 
+function Get-SvbcFlavor {
+  param([Parameter(Mandatory = $true)][string]$Path)
+
+  if (-not (Test-Path -LiteralPath $Path)) {
+    return "missing"
+  }
+
+  $bytes = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $Path).Path)
+  if ($bytes.Length -lt 8) {
+    return "invalid"
+  }
+
+  $magic = [System.Text.Encoding]::ASCII.GetString($bytes, 0, 4)
+  if ($magic -ne "SVBC") {
+    return "invalid"
+  }
+
+  if ($bytes[4] -eq 10) {
+    return "seven-dev-vm-v1"
+  }
+
+  if ($bytes[4] -eq 0 -and $bytes[5] -eq 0 -and $bytes[6] -eq 0 -and $bytes[7] -eq 1) {
+    return "svbc-v1"
+  }
+
+  return "unknown"
+}
+
+function Test-SvbcProductionImage {
+  param([Parameter(Mandatory = $true)][string]$Path)
+
+  return (Get-SvbcFlavor -Path $Path) -eq "svbc-v1"
+}
+
+function Get-SevenFileHashOrEmpty {
+  param([Parameter(Mandatory = $true)][string]$Path)
+
+  if (-not (Test-Path -LiteralPath $Path)) {
+    return ""
+  }
+
+  return (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant()
+}
+
+function Test-SevenChecksumFile {
+  param([Parameter(Mandatory = $true)][string]$ChecksumPath)
+
+  if (-not (Test-Path -LiteralPath $ChecksumPath)) {
+    return [pscustomobject]@{ Ok = $false; Message = "checksum ausente: $(Get-RepoRelativePath $ChecksumPath)" }
+  }
+
+  $lines = [System.IO.File]::ReadAllLines((Resolve-Path -LiteralPath $ChecksumPath).Path)
+  foreach ($line in $lines) {
+    $trim = $line.Trim()
+    if ([string]::IsNullOrWhiteSpace($trim)) {
+      continue
+    }
+
+    if ($trim -notmatch '^([a-fA-F0-9]{64})\s+(.+)$') {
+      return [pscustomobject]@{ Ok = $false; Message = "checksum invalido: $(Get-RepoRelativePath $ChecksumPath)" }
+    }
+
+    $expected = $Matches[1].ToLowerInvariant()
+    $targetRelative = $Matches[2].Trim().Replace("/", [System.IO.Path]::DirectorySeparatorChar)
+    $targetPath = Join-Path $Root $targetRelative
+
+    if (-not (Test-Path -LiteralPath $targetPath)) {
+      return [pscustomobject]@{ Ok = $false; Message = "artefato ausente: $($Matches[2].Trim())" }
+    }
+
+    $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant()
+    if ($actual -ne $expected) {
+      return [pscustomobject]@{ Ok = $false; Message = "hash divergente: $($Matches[2].Trim())" }
+    }
+  }
+
+  return [pscustomobject]@{ Ok = $true; Message = "checksum valido: $(Get-RepoRelativePath $ChecksumPath)" }
+}
+
+function Test-SevenNativeSourceBoundary {
+  $coreRoots = @("compiler", "compiler0", "runtime", "std", "bootstrap")
+  $hostSourceExtensions = @(
+    ".c",
+    ".cc",
+    ".cpp",
+    ".cxx",
+    ".h",
+    ".hpp",
+    ".rs",
+    ".zig",
+    ".go",
+    ".java",
+    ".kt",
+    ".swift",
+    ".cs",
+    ".py",
+    ".js",
+    ".ts",
+    ".lua",
+    ".rb",
+    ".php",
+    ".m",
+    ".mm",
+    ".asm",
+    ".s",
+    ".wat",
+    ".wasm",
+    ".ps1",
+    ".sh",
+    ".bat",
+    ".cmd"
+  )
+
+  $unexpected = New-Object System.Collections.Generic.List[string]
+
+  foreach ($relativeRoot in $coreRoots) {
+    $rootPath = Join-Path $Root $relativeRoot
+    if (-not (Test-Path -LiteralPath $rootPath)) {
+      [void]$unexpected.Add("$relativeRoot ausente")
+      continue
+    }
+
+    $sevenSources = Get-ChildItem -LiteralPath $rootPath -Recurse -File -Filter "*.sv"
+    if (@($sevenSources).Count -eq 0) {
+      [void]$unexpected.Add("$relativeRoot sem fonte .sv")
+    }
+
+    foreach ($file in Get-ChildItem -LiteralPath $rootPath -Recurse -File) {
+      $extension = [System.IO.Path]::GetExtension($file.Name).ToLowerInvariant()
+      if ($hostSourceExtensions -contains $extension) {
+        [void]$unexpected.Add((Get-RepoRelativePath $file.FullName))
+      }
+    }
+  }
+
+  if ($unexpected.Count -gt 0) {
+    return [pscustomobject]@{
+      Ok = $false
+      Message = "nucleo contem dependencia de fonte hospedeira"
+      Details = ($unexpected -join [Environment]::NewLine)
+    }
+  }
+
+  return [pscustomobject]@{
+    Ok = $true
+    Message = "nucleo oficial mantem fonte Seven-native"
+    Details = ""
+  }
+}
+
+function Test-SevenNoNodeRuntime {
+  $forbiddenExtensions = @(
+    ".js",
+    ".jsx",
+    ".mjs",
+    ".cjs",
+    ".ts",
+    ".tsx"
+  )
+  $forbiddenNames = @(
+    "package.json",
+    "package-lock.json",
+    "npm-shrinkwrap.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "tsconfig.json"
+  )
+
+  $unexpected = New-Object System.Collections.Generic.List[string]
+
+  foreach ($directory in Get-ChildItem -LiteralPath $Root -Recurse -Directory -Force) {
+    if ($directory.FullName.StartsWith((Join-Path $Root ".git"), [System.StringComparison]::OrdinalIgnoreCase)) {
+      continue
+    }
+
+    if ($directory.Name -eq "node_modules") {
+      [void]$unexpected.Add((Get-RepoRelativePath $directory.FullName))
+    }
+  }
+
+  foreach ($file in Get-ChildItem -LiteralPath $Root -Recurse -File -Force) {
+    if ($file.FullName.StartsWith((Join-Path $Root ".git"), [System.StringComparison]::OrdinalIgnoreCase)) {
+      continue
+    }
+
+    $extension = [System.IO.Path]::GetExtension($file.Name).ToLowerInvariant()
+    $name = $file.Name.ToLowerInvariant()
+    if (($forbiddenExtensions -contains $extension) -or ($forbiddenNames -contains $name)) {
+      [void]$unexpected.Add((Get-RepoRelativePath $file.FullName))
+    }
+  }
+
+  if ($unexpected.Count -gt 0) {
+    return [pscustomobject]@{
+      Ok = $false
+      Message = "arvore oficial contem runtime JavaScript/TypeScript ou npm"
+      Details = ($unexpected -join [Environment]::NewLine)
+    }
+  }
+
+  return [pscustomobject]@{
+    Ok = $true
+    Message = "arvore oficial sem JavaScript/TypeScript e sem npm"
+    Details = ""
+  }
+}
+
+function Test-SevenNativeToolchainSurface {
+  $requiredSources = @(
+    "compiler\bytecode.sv",
+    "compiler\toolchain\command.sv",
+    "compiler\toolchain\cli.sv",
+    "compiler\toolchain\native_host.sv",
+    "compiler\toolchain\launcher.sv",
+    "compiler\toolchain\installer.sv",
+    "compiler\toolchain\formatter.sv",
+    "compiler\toolchain\test_runner.sv",
+    "compiler\toolchain\lsp_server.sv",
+    "compiler\toolchain\release.sv",
+    "compiler\toolchain\bootstrap_chain.sv",
+    "compiler\toolchain\verify.sv",
+    "compiler\toolchain\library_audit.sv",
+    "compiler\toolchain\production_audit.sv",
+    "compiler\toolchain\adapters.sv"
+  )
+
+  $requiredTerms = @{
+    "compiler\bytecode.sv" = @("SvbcMagic", "SvbcVersao", "emite_svbc", "emite_nomes", "emite_tabela_constantes", "emite_campos", "emite_codigo", "emite_instrucao_svbc", "opcode_byte", "opcode_binario", "ip_do_bloco", "IrSalta", "IrSaltaSeNao", "SaltaSeNao", "Syscall", "bytes_coloca_byte", "bytes_coloca_u32", "bytes_coloca_u64", "bytes_coloca_texto_com_tamanho")
+    "compiler\toolchain\command.sv" = @("CmdVerifyFoundation", "CmdVerifyBootstrap", "CmdVerifyProduction")
+    "compiler\toolchain\cli.sv" = @("executa_cli", "parseia_comando", "parseia_verify", "CmdInstall", "CmdPkgAdd", "CmdLsp", "CmdVerifyFoundation", "CmdVerifyProduction")
+    "compiler\toolchain\native_host.sv" = @("PlanoHostExecutavel", "host_executavel_padrao", "host_executavel_manifesto", "host_executavel_contrato_valido", "host_executavel_release_caminho", "host_manifesto_release_caminho", "runtime/host/seven.sv", "build/seven.host.svbc", "build/seven.launcher.svbc")
+    "compiler\toolchain\launcher.sv" = @("PlanoLauncher", "launcher_padrao", "launcher_manifesto", "launcher_contrato_valido", "launcher_release_caminho", "launcher_bytecode_release_caminho", "runtime/svbc/runner.sv", "build/seven.svbc", "build/seven.launcher.svbc")
+    "compiler\toolchain\installer.sv" = @("PlanoInstalacao", "instala_seven", "remove_instalacao", "host", "host_bytecode", "launcher", "launcher_bytecode", "seven.host", "seven.host.svbc", "seven.launcher", "seven.launcher.svbc", "host_executavel_manifesto", "launcher_manifesto")
+    "compiler\toolchain\formatter.sv" = @("fmt_texto", "fmt_caminho")
+    "compiler\toolchain\test_runner.sv" = @("roda_testes", "roda_benchmarks")
+    "compiler\toolchain\lsp_server.sv" = @("inicia_lsp", "SessaoLsp")
+    "compiler\toolchain\release.sv" = @("prepara_release", "sbom_gera", "launcher_release_caminho", "launcher_bytecode_release_caminho", "host_executavel_release_caminho", "host_manifesto_release_caminho", "tipo: ""launcher-svbc""", "tipo: ""host-svbc""")
+    "compiler\toolchain\bootstrap_chain.sv" = @("verifica_cadeia_bootstrap", "seed", "seven0", "seven.self", "artefato_bootstrap_svbc_produtivo", "bytes_tem_svbc_v1", "arquivo_bytes", "bytes_pega")
+    "compiler\toolchain\verify.sv" = @("verifica_fundacao", "relatorio_fundacao_texto", "verifica_sem_node", "verifica_auditoria_producao")
+    "compiler\toolchain\library_audit.sv" = @("audita_biblioteca_padrao", "modulos_obrigatorios", "conformance_libs_obrigatoria")
+    "compiler\toolchain\production_audit.sv" = @("audita_prontidao_producao", "relatorio_producao_texto", "P01", "P10", "launcher_contrato_valido", "host_executavel_contrato_valido", "build/seven.host.svbc", "build/seven.launcher.svbc", "host_bytecode", "launcher_bytecode", "artefato_svbc_produtivo", "bytes_tem_svbc_v1", "runtime_verify_foundation_ok", "executa_verify_foundation_de_seven_svbc", "arquivo_bytes", "bytes_pega")
+  }
+
+  $missing = New-Object System.Collections.Generic.List[string]
+
+  foreach ($relative in $requiredSources) {
+    $path = Join-Path $Root $relative
+    if (-not (Test-Path -LiteralPath $path)) {
+      [void]$missing.Add("$relative ausente")
+      continue
+    }
+
+    $text = Get-Content -LiteralPath $path -Raw
+    if (-not $text.StartsWith("modulo ")) {
+      [void]$missing.Add("$relative sem declaracao de modulo")
+    }
+
+    if ($requiredTerms.ContainsKey($relative)) {
+      foreach ($term in $requiredTerms[$relative]) {
+        if (-not $text.Contains($term)) {
+          [void]$missing.Add("$relative sem $term")
+        }
+      }
+    }
+  }
+
+  $entrypoint = Get-Content -LiteralPath (Join-Path $Root "compiler\seven.sv") -Raw
+  if (-not $entrypoint.Contains("executa_cli(argumentos)")) {
+    [void]$missing.Add("compiler/seven.sv nao delega para a CLI Seven-native")
+  }
+
+  if ($missing.Count -gt 0) {
+    return [pscustomobject]@{
+      Ok = $false
+      Message = "toolchain Seven-native incompleta"
+      Details = ($missing -join [Environment]::NewLine)
+    }
+  }
+
+  return [pscustomobject]@{
+    Ok = $true
+    Message = "toolchain oficial tem superficie Seven-native"
+    Details = ""
+  }
+}
+
+function Test-SevenRuntimeCommandSurface {
+  $requiredSources = @(
+    "runtime\svbc\runner.sv",
+    "runtime\svbc\decoder.sv",
+    "runtime\svbc\vm.sv",
+    "runtime\svbc\verifier.sv",
+    "runtime\svbc\value.sv",
+    "runtime\svbc\command_runner.sv",
+    "runtime\platform\intrinsic.sv",
+    "runtime\platform\svbc\toolchain.sv",
+    "runtime\host\seven.sv",
+    "runtime\launcher\seven.sv"
+  )
+
+  $requiredTerms = @{
+    "runtime\svbc\runner.sv" = @("roda_svbc_com_args", "roda_seven_svbc_verify_foundation", "roda_seven_svbc_verify_bootstrap", "roda_seven_svbc_verify_production", "formato_svbc_produtivo", "bytes_pega(dados, 5)", "bytes_pega(dados, 6)", "bytes_pega(dados, 7)", "build/seven.svbc", "verify", "foundation", "bootstrap", "production")
+    "runtime\svbc\decoder.sv" = @("decodifica_nomes", "decodifica_constantes", "decodifica_campos", "decodifica_codigo", "le_u64", "opcode_ou_pare")
+    "runtime\svbc\vm.sv" = @("vm_executa_com_args", "vm_nova_com_args", "argumentos", "VmArgs", "locais", "vm_carrega", "vm_guarda", "vm_chama", "QuadroVm", "Carrega", "Guarda", "Chama")
+    "runtime\svbc\verifier.sv" = @("verifica_saltos", "verifica_constantes", "verifica_locais", "verifica_pilha", "verifica_efeitos", "efeito_binario_pilha")
+    "runtime\svbc\value.sv" = @("VmArgs")
+    "runtime\svbc\command_runner.sv" = @("executa_verify_foundation_de_seven_svbc", "executa_verify_bootstrap_de_seven_svbc", "executa_verify_production_de_seven_svbc", "comando_verify_foundation", "comando_verify_bootstrap", "comando_verify_production", "executa_comando_svbc")
+    "runtime\platform\intrinsic.sv" = @("seven_args_verify_foundation", "seven_args_verify_bootstrap", "seven_args_verify_production", "seven_verify_foundation", "seven_verify_bootstrap", "seven_verify_production")
+    "runtime\platform\svbc\toolchain.sv" = @("intr_cmd_args_verify_foundation", "intr_cmd_args_verify_bootstrap", "intr_cmd_args_verify_production", "intr_cmd_verify_foundation", "intr_cmd_verify_bootstrap", "intr_cmd_verify_production", "svbc_produtivo", "svbc_arquivos_iguais", "bytes_tem_svbc_v1", "seven <check|build|run", "build/seven.svbc SVBC-v1", "build/seven.host.svbc", "build/seven.launcher.svbc")
+    "runtime\host\seven.sv" = @("seven_host", "roda_svbc_com_args", "build/seven.launcher.svbc")
+    "runtime\launcher\seven.sv" = @("seven_launcher", "roda_svbc_com_args", "build/seven.svbc")
+  }
+
+  $missing = New-Object System.Collections.Generic.List[string]
+
+  foreach ($relative in $requiredSources) {
+    $path = Join-Path $Root $relative
+    if (-not (Test-Path -LiteralPath $path)) {
+      [void]$missing.Add("$relative ausente")
+      continue
+    }
+
+    $text = Get-Content -LiteralPath $path -Raw
+    foreach ($term in $requiredTerms[$relative]) {
+      if (-not $text.Contains($term)) {
+        [void]$missing.Add("$relative sem $term")
+      }
+    }
+
+    if ($relative -eq "runtime\svbc\verifier.sv" -and $text.Contains("sys_svbc_verifica_")) {
+      [void]$missing.Add("runtime\svbc\verifier.sv nao deve chamar sys_svbc_verifica_*")
+    }
+
+    if ($relative -eq "runtime\svbc\decoder.sv" -and $text.Contains("sys_svbc_decodifica_")) {
+      [void]$missing.Add("runtime\svbc\decoder.sv nao deve chamar sys_svbc_decodifica_*")
+    }
+  }
+
+  if ($missing.Count -gt 0) {
+    return [pscustomobject]@{
+      Ok = $false
+      Message = "runtime nao executa comando a partir de seven.svbc"
+      Details = ($missing -join [Environment]::NewLine)
+    }
+  }
+
+  return [pscustomobject]@{
+    Ok = $true
+    Message = "runtime declara execucao de comando via seven.svbc"
+    Details = ""
+  }
+}
+
+function Test-SevenCiTransitionSurface {
+  $workflow = Join-Path $Root ".github\workflows\foundation.yml"
+  if (-not (Test-Path -LiteralPath $workflow)) {
+    return [pscustomobject]@{
+      Ok = $false
+      Message = "workflow de fundacao ausente"
+      Details = ".github/workflows/foundation.yml"
+    }
+  }
+
+  $text = Get-Content -LiteralPath $workflow -Raw
+  $required = @(
+    "Materialize Seven bootstrap artifacts",
+    "build\seven0.svbc",
+    "build\seven.svbc",
+    "build\seven.self.svbc",
+    "build\seven.host.svbc",
+    "build\seven.launcher.svbc",
+    "seven-dev.ps1 build .\runtime\host\seven.sv .\build\seven.host.svbc",
+    "seven-dev.ps1 build .\runtime\launcher\seven.sv .\build\seven.launcher.svbc",
+    "Run Seven foundation contract from seven.svbc",
+    "seven-dev.ps1 run .\build\seven.svbc verify foundation",
+    "Run Seven bootstrap contract from seven.svbc",
+    "seven-dev.ps1 run .\build\seven.svbc verify bootstrap",
+    "Run Seven launcher bootstrap contract from seven.launcher.svbc",
+    "seven-dev.ps1 run .\build\seven.launcher.svbc verify bootstrap",
+    "Run Seven host bootstrap contract from seven.host.svbc",
+    "seven-dev.ps1 run .\build\seven.host.svbc verify bootstrap",
+    "Run Seven production contract from seven.svbc",
+    "seven-dev.ps1 run .\build\seven.svbc verify production",
+    "Audit transition bridge"
+  )
+  $missing = New-Object System.Collections.Generic.List[string]
+
+  foreach ($term in $required) {
+    if (-not $text.Contains($term)) {
+      [void]$missing.Add($term)
+    }
+  }
+
+  if ($missing.Count -gt 0) {
+    return [pscustomobject]@{
+      Ok = $false
+      Message = "CI nao materializa a cadeia Seven antes do gate SVBC"
+      Details = ($missing -join [Environment]::NewLine)
+    }
+  }
+
+  return [pscustomobject]@{
+    Ok = $true
+    Message = "CI materializa a cadeia Seven e roda build/seven.svbc verify foundation/bootstrap/production"
+    Details = ""
+  }
+}
+
+function Test-SevenStdLibrarySurface {
+  $requiredStd = @(
+    "std\base\prelude.sv",
+    "std\base\resultado.sv",
+    "std\base\talvez.sv",
+    "std\base\lista.sv",
+    "std\base\mapa.sv",
+    "std\base\texto.sv",
+    "std\mem\bytes.sv",
+    "std\mem\alloc.sv",
+    "std\mem\ptr.sv",
+    "std\ffi\c.sv",
+    "std\io\console.sv",
+    "std\fs\file.sv",
+    "std\env\runtime.sv",
+    "std\os\process.sv",
+    "std\time\clock.sv",
+    "std\async\task.sv",
+    "std\sync\atomic.sv",
+    "std\runtime\event_loop.sv",
+    "std\net\tcp.sv",
+    "std\net\udp.sv",
+    "std\net\tls.sv",
+    "std\net\dns.sv",
+    "std\net\websocket.sv",
+    "std\net\mqtt.sv",
+    "std\web\http.sv",
+    "std\web\router.sv",
+    "std\web\json.sv",
+    "std\web\server.sv",
+    "std\web\security.sv",
+    "std\db\client.sv",
+    "std\db\query.sv",
+    "std\db\migrate.sv",
+    "std\serial\csv.sv",
+    "std\serial\xml.sv",
+    "std\serial\yaml.sv",
+    "std\serial\toml.sv",
+    "std\serial\protobuf.sv",
+    "std\data\object.sv",
+    "std\system\bits.sv",
+    "std\crypto\hash.sv",
+    "std\crypto\random.sv",
+    "std\auth\jwt.sv",
+    "std\frontend\dom.sv",
+    "std\frontend\css.sv",
+    "std\frontend\bundle.sv",
+    "std\log\logger.sv",
+    "std\observability\metrics.sv",
+    "std\observability\trace.sv",
+    "std\test\spec.sv",
+    "std\ai\model.sv"
+  )
+
+  $requiredLibConformance = @(
+    "conformance\libs\valid\language_intelligence.sv",
+    "conformance\libs\valid\serialization.sv",
+    "conformance\libs\valid\smtp.sv",
+    "conformance\libs\valid\snmp.sv",
+    "conformance\libs\valid\system_level.sv",
+    "conformance\libs\valid\dynamic_runtime.sv"
+  )
+
+  $missing = New-Object System.Collections.Generic.List[string]
+
+  foreach ($relative in @($requiredStd + $requiredLibConformance)) {
+    if (-not (Test-Path -LiteralPath (Join-Path $Root $relative))) {
+      [void]$missing.Add($relative)
+    }
+  }
+
+  $requiredStdTerms = @{
+    "std\base\lista.sv" = @("lista_define", "sys_lista_define")
+    "std\mem\bytes.sv" = @("bytes_coloca_byte", "bytes_coloca_u32", "bytes_coloca_u64", "bytes_coloca_texto", "bytes_coloca_texto_com_tamanho")
+  }
+
+  foreach ($relative in $requiredStdTerms.Keys) {
+    $path = Join-Path $Root $relative
+    if (-not (Test-Path -LiteralPath $path)) {
+      continue
+    }
+
+    $text = Get-Content -LiteralPath $path -Raw
+    foreach ($term in $requiredStdTerms[$relative]) {
+      if (-not $text.Contains($term)) {
+        [void]$missing.Add("$relative sem $term")
+      }
+    }
+  }
+
+  if ($missing.Count -gt 0) {
+    return [pscustomobject]@{
+      Ok = $false
+      Message = "biblioteca padrao ou conformance libs incompleta"
+      Details = ($missing -join [Environment]::NewLine)
+    }
+  }
+
+  return [pscustomobject]@{
+    Ok = $true
+    Message = "biblioteca padrao e libs essenciais presentes"
+    Details = ""
+  }
+}
+
 function Get-ExpectedDiagnostic {
   param([Parameter(Mandatory = $true)][System.IO.FileInfo]$File)
 
@@ -149,6 +698,207 @@ function Get-ExpectedDiagnostic {
   }
 
   return ""
+}
+
+Write-Step "Autonomia do nucleo"
+
+$nativeBoundary = Test-SevenNativeSourceBoundary
+if ($nativeBoundary.Ok) {
+  Add-Pass $nativeBoundary.Message
+} else {
+  Add-Failure $nativeBoundary.Message $nativeBoundary.Details
+}
+
+$noNodeRuntime = Test-SevenNoNodeRuntime
+if ($noNodeRuntime.Ok) {
+  Add-Pass $noNodeRuntime.Message
+} else {
+  Add-Failure $noNodeRuntime.Message $noNodeRuntime.Details
+}
+
+$nativeToolchain = Test-SevenNativeToolchainSurface
+if ($nativeToolchain.Ok) {
+  Add-Pass $nativeToolchain.Message
+} else {
+  Add-Failure $nativeToolchain.Message $nativeToolchain.Details
+}
+
+$runtimeCommand = Test-SevenRuntimeCommandSurface
+if ($runtimeCommand.Ok) {
+  Add-Pass $runtimeCommand.Message
+} else {
+  Add-Failure $runtimeCommand.Message $runtimeCommand.Details
+}
+
+$ciTransition = Test-SevenCiTransitionSurface
+if ($ciTransition.Ok) {
+  Add-Pass $ciTransition.Message
+} else {
+  Add-Failure $ciTransition.Message $ciTransition.Details
+}
+
+$stdlibSurface = Test-SevenStdLibrarySurface
+if ($stdlibSurface.Ok) {
+  Add-Pass $stdlibSurface.Message
+} else {
+  Add-Failure $stdlibSurface.Message $stdlibSurface.Details
+}
+
+Write-Step "Cadeia bootstrap fisica"
+
+$bootstrapMaterialization = @(
+  @{
+    Name = "check compiler0/seven0.sv"
+    Args = @("check", (Join-Path $Root "compiler0\seven0.sv"))
+  },
+  @{
+    Name = "build compiler0/seven0.sv -> build/seven0.svbc"
+    Args = @("build", (Join-Path $Root "compiler0\seven0.sv"), (Join-Path $Root "build\seven0.svbc"))
+  },
+  @{
+    Name = "check compiler/seven.sv"
+    Args = @("check", (Join-Path $Root "compiler\seven.sv"))
+  },
+  @{
+    Name = "build compiler/seven.sv -> build/seven.svbc"
+    Args = @("build", (Join-Path $Root "compiler\seven.sv"), (Join-Path $Root "build\seven.svbc"))
+  },
+  @{
+    Name = "build compiler/seven.sv -> build/seven.self.svbc"
+    Args = @("build", (Join-Path $Root "compiler\seven.sv"), (Join-Path $Root "build\seven.self.svbc"))
+  },
+  @{
+    Name = "build runtime/host/seven.sv -> build/seven.host.svbc"
+    Args = @("build", (Join-Path $Root "runtime\host\seven.sv"), (Join-Path $Root "build\seven.host.svbc"))
+  },
+  @{
+    Name = "build runtime/launcher/seven.sv -> build/seven.launcher.svbc"
+    Args = @("build", (Join-Path $Root "runtime\launcher\seven.sv"), (Join-Path $Root "build\seven.launcher.svbc"))
+  }
+)
+
+foreach ($step in $bootstrapMaterialization) {
+  $result = Invoke-SevenDev -DevArgs $step.Args
+  if ($result.ExitCode -eq 0) {
+    Add-Pass $step.Name
+  } else {
+    Add-Failure "$($step.Name) deveria passar" $result.Output
+  }
+}
+
+foreach ($artifact in @(
+  (Join-Path $Root "build\seven0.svbc"),
+  (Join-Path $Root "build\seven.svbc"),
+  (Join-Path $Root "build\seven.self.svbc"),
+  (Join-Path $Root "build\seven.host.svbc"),
+  (Join-Path $Root "build\seven.launcher.svbc")
+)) {
+  $relative = Get-RepoRelativePath $artifact
+  if (Test-SvbcEnvelope -Path $artifact) {
+    Add-Pass "$relative tem magic SVBC"
+  } else {
+    Add-Failure "$relative deveria ter magic SVBC"
+  }
+}
+
+$sevenHash = Get-SevenFileHashOrEmpty -Path (Join-Path $Root "build\seven.svbc")
+$selfHash = Get-SevenFileHashOrEmpty -Path (Join-Path $Root "build\seven.self.svbc")
+if ($sevenHash -ne "" -and $sevenHash -eq $selfHash) {
+  Add-Pass "build/seven.svbc e build/seven.self.svbc tem hash equivalente"
+} else {
+  Add-Failure "build/seven.svbc e build/seven.self.svbc deveriam ser equivalentes"
+}
+
+$sevenFlavor = Get-SvbcFlavor -Path (Join-Path $Root "build\seven.svbc")
+if ($sevenFlavor -eq "svbc-v1") {
+  Add-Pass "build/seven.svbc usa layout SVBC-v1 binario"
+} else {
+  Add-KnownGap "build/seven.svbc ainda e $sevenFlavor; runtime produtivo nao deve trata-lo como self-hosted"
+}
+
+$svbcVerify = Invoke-SevenDev -DevArgs @("run", (Join-Path $Root "build\seven.svbc"), "verify", "foundation")
+if ($svbcVerify.ExitCode -eq 0 -and (Test-OutputContains -Result $svbcVerify -Expected "falhas: 0")) {
+  Add-Pass "build/seven.svbc executa verify foundation por despacho SVBC"
+} else {
+  Add-Failure "build/seven.svbc verify foundation deveria executar por despacho SVBC" $svbcVerify.Output
+}
+
+$svbcVerifyBootstrap = Invoke-SevenDev -DevArgs @("run", (Join-Path $Root "build\seven.svbc"), "verify", "bootstrap")
+if ($svbcVerifyBootstrap.ExitCode -eq 0 -and
+    (Test-OutputContains -Result $svbcVerifyBootstrap -Expected "seven == seven.self") -and
+    (Test-OutputContains -Result $svbcVerifyBootstrap -Expected "falhas: 0")) {
+  Add-Pass "build/seven.svbc executa verify bootstrap por despacho SVBC"
+} else {
+  Add-Failure "build/seven.svbc verify bootstrap deveria executar por despacho SVBC" $svbcVerifyBootstrap.Output
+}
+
+$launcherVerifyBootstrap = Invoke-SevenDev -DevArgs @("run", (Join-Path $Root "build\seven.launcher.svbc"), "verify", "bootstrap")
+if ($launcherVerifyBootstrap.ExitCode -eq 0 -and
+    (Test-OutputContains -Result $launcherVerifyBootstrap -Expected "seven == seven.self") -and
+    (Test-OutputContains -Result $launcherVerifyBootstrap -Expected "falhas: 0")) {
+  Add-Pass "build/seven.launcher.svbc delega verify bootstrap para build/seven.svbc"
+} else {
+  Add-Failure "build/seven.launcher.svbc deveria delegar verify bootstrap" $launcherVerifyBootstrap.Output
+}
+
+$hostVerifyBootstrap = Invoke-SevenDev -DevArgs @("run", (Join-Path $Root "build\seven.host.svbc"), "verify", "bootstrap")
+if ($hostVerifyBootstrap.ExitCode -eq 0 -and
+    (Test-OutputContains -Result $hostVerifyBootstrap -Expected "seven == seven.self") -and
+    (Test-OutputContains -Result $hostVerifyBootstrap -Expected "falhas: 0")) {
+  Add-Pass "build/seven.host.svbc delega verify bootstrap para build/seven.launcher.svbc"
+} else {
+  Add-Failure "build/seven.host.svbc deveria delegar verify bootstrap" $hostVerifyBootstrap.Output
+}
+
+$svbcVerifyProduction = Invoke-SevenDev -DevArgs @("run", (Join-Path $Root "build\seven.svbc"), "verify", "production")
+if ($svbcVerifyProduction.ExitCode -eq 0 -and
+    (Test-OutputContains -Result $svbcVerifyProduction -Expected "P10") -and
+    (Test-OutputContains -Result $svbcVerifyProduction -Expected "falhas: 0")) {
+  Add-Pass "build/seven.svbc executa verify production por despacho SVBC"
+} else {
+  Add-Failure "build/seven.svbc verify production deveria executar por despacho SVBC" $svbcVerifyProduction.Output
+}
+
+$sevenSvbcText = [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes((Join-Path $Root "build\seven.svbc")))
+if ((-not $sevenSvbcText.Contains("seven_cli")) -and
+    $sevenSvbcText.Contains("seven_args_verify_foundation") -and
+    $sevenSvbcText.Contains("seven_verify_foundation") -and
+    $sevenSvbcText.Contains("seven_args_verify_bootstrap") -and
+    $sevenSvbcText.Contains("seven_verify_bootstrap") -and
+    $sevenSvbcText.Contains("seven_args_verify_production") -and
+    $sevenSvbcText.Contains("seven_verify_production")) {
+  Add-Pass "build/seven.svbc nao emite syscall seven_cli"
+} else {
+  Add-Failure "build/seven.svbc nao deveria depender de seven_cli" ""
+}
+
+$svbcTrace = Invoke-SevenDev -DevArgs @("debug", (Join-Path $Root "build\seven.svbc"))
+if ($svbcTrace.ExitCode -eq 0 -and (Test-OutputContains -Result $svbcTrace -Expected "op 16") -and (Test-OutputContains -Result $svbcTrace -Expected "op 15")) {
+  Add-Pass "build/seven.svbc usa CHAMA e SaltaSeNao para entrar no CLI"
+} else {
+  Add-Failure "build/seven.svbc deveria usar CHAMA e SaltaSeNao para executa_cli" $svbcTrace.Output
+}
+
+$nativeVerify = Invoke-Seven -SevenArgs @("verify", "foundation")
+if ($nativeVerify.ExitCode -eq 0) {
+  Add-Pass "bin/seven.exe executa seven verify foundation"
+} else {
+  Add-Pass "bin/seven.exe fica legado; verify foundation roda por build/seven.svbc"
+  Add-KnownGap "host SVBC ainda usa seven-dev.ps1 ate existir runtime Seven executavel nativo" $nativeVerify.Output
+}
+
+Write-Step "Artefatos versionados"
+
+foreach ($checksum in @(
+  (Join-Path $Root "bin\seven.exe.sha256"),
+  (Join-Path $Root "brand\seven.ico.sha256")
+)) {
+  $result = Test-SevenChecksumFile -ChecksumPath $checksum
+  if ($result.Ok) {
+    Add-Pass $result.Message
+  } else {
+    Add-Failure $result.Message
+  }
 }
 
 Write-Step "Bootstrap CLI"
@@ -184,6 +934,22 @@ foreach ($file in $validFiles) {
   }
 }
 
+Write-Step "Biblioteca padrao"
+
+$stdFiles = Get-ChildItem -Path (Join-Path $Root "std") -Recurse -Filter "*.sv" |
+  Sort-Object FullName
+
+foreach ($file in $stdFiles) {
+  $relative = Get-RepoRelativePath $file.FullName
+  $result = Invoke-SevenDev -DevArgs @("check", $file.FullName)
+
+  if ($result.ExitCode -eq 0 -and $result.Output.StartsWith("ok:")) {
+    Add-Pass "std check $relative"
+  } else {
+    Add-Failure "std check $relative deveria passar" $result.Output
+  }
+}
+
 Write-Step "Build SVBC"
 
 $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("seven-foundation-" + [System.Guid]::NewGuid().ToString("N"))
@@ -192,7 +958,13 @@ New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
 try {
   $buildInputs = @(
     (Join-Path $Root "examples\hello.sv"),
-    (Join-Path $Root "conformance\valid\hello.sv")
+    (Join-Path $Root "examples\control.sv"),
+    (Join-Path $Root "conformance\valid\hello.sv"),
+    (Join-Path $Root "conformance\runtime\valid\svbc_arithmetic.sv"),
+    (Join-Path $Root "conformance\runtime\valid\svbc_branch.sv"),
+    (Join-Path $Root "conformance\runtime\valid\svbc_compare.sv"),
+    (Join-Path $Root "conformance\runtime\valid\svbc_loop.sv"),
+    (Join-Path $Root "conformance\runtime\valid\svbc_call.sv")
   )
 
   foreach ($inputPath in $buildInputs) {
@@ -210,7 +982,76 @@ try {
       continue
     }
 
-    Add-Pass "build $relative -> SVBC"
+    $flavor = Get-SvbcFlavor -Path $outputPath
+    if ($flavor -ne "svbc-v1") {
+      Add-Failure "build $relative deveria gerar SVBC-v1 binario" "formato: $flavor"
+      continue
+    }
+
+    Add-Pass "build $relative -> SVBC-v1 binario"
+
+    if ($relative -eq "examples/hello.sv") {
+      $runBuilt = Invoke-SevenDev -DevArgs @("run", $outputPath)
+      if ($runBuilt.ExitCode -eq 0 -and (Test-OutputContains -Result $runBuilt -Expected "Seven nasceu.")) {
+        Add-Pass "run SVBC-v1 gerado de examples/hello.sv"
+      } else {
+        Add-Failure "run SVBC-v1 gerado de examples/hello.sv deveria passar" $runBuilt.Output
+      }
+    }
+
+    if ($relative -eq "examples/control.sv") {
+      $runBuiltControl = Invoke-SevenDev -DevArgs @("run", $outputPath)
+      if ($runBuiltControl.ExitCode -eq 0 -and (Test-OutputContains -Result $runBuiltControl -Expected "ciclo completo")) {
+        Add-Pass "run SVBC-v1 gerado de examples/control.sv"
+      } else {
+        Add-Failure "run SVBC-v1 gerado de examples/control.sv deveria completar ciclo" $runBuiltControl.Output
+      }
+    }
+
+    if ($relative -eq "conformance/runtime/valid/svbc_call.sv") {
+      $runCall = Invoke-SevenDev -DevArgs @("run", $outputPath)
+      if ($runCall.ExitCode -eq 7) {
+        Add-Pass "run SVBC-v1 com CHAMA retorna 7"
+      } else {
+        Add-Failure "run SVBC-v1 com CHAMA deveria retornar 7" $runCall.Output
+      }
+    }
+
+    if ($relative -eq "conformance/runtime/valid/svbc_arithmetic.sv") {
+      $runArithmetic = Invoke-SevenDev -DevArgs @("run", $outputPath)
+      if ($runArithmetic.ExitCode -eq 7) {
+        Add-Pass "run SVBC-v1 com GUARDA/SOMA retorna 7"
+      } else {
+        Add-Failure "run SVBC-v1 com GUARDA/SOMA deveria retornar 7" $runArithmetic.Output
+      }
+    }
+
+    if ($relative -eq "conformance/runtime/valid/svbc_branch.sv") {
+      $runBranch = Invoke-SevenDev -DevArgs @("run", $outputPath)
+      if ($runBranch.ExitCode -eq 7) {
+        Add-Pass "run SVBC-v1 com veja/outro retorna 7"
+      } else {
+        Add-Failure "run SVBC-v1 com veja/outro deveria retornar 7" $runBranch.Output
+      }
+    }
+
+    if ($relative -eq "conformance/runtime/valid/svbc_compare.sv") {
+      $runCompare = Invoke-SevenDev -DevArgs @("run", $outputPath)
+      if ($runCompare.ExitCode -eq 1) {
+        Add-Pass "run SVBC-v1 com comparacao retorna 1"
+      } else {
+        Add-Failure "run SVBC-v1 com comparacao deveria retornar 1" $runCompare.Output
+      }
+    }
+
+    if ($relative -eq "conformance/runtime/valid/svbc_loop.sv") {
+      $runLoop = Invoke-SevenDev -DevArgs @("run", $outputPath)
+      if ($runLoop.ExitCode -eq 7) {
+        Add-Pass "run SVBC-v1 com gira retorna 7"
+      } else {
+        Add-Failure "run SVBC-v1 com gira deveria retornar 7" $runLoop.Output
+      }
+    }
   }
 } finally {
   Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
@@ -325,14 +1166,28 @@ try {
   }
 
   $lsp = Invoke-SevenLspSelfTest -File (Join-Path $Root "examples\hello.sv")
-  if ($lsp.ExitCode -eq 0 -and (Test-OutputContains -Result $lsp -Expected '"label":  "inicio"') -and (Test-OutputContains -Result $lsp -Expected '"name":  "inicio"')) {
+  $lspPayload = ConvertFrom-SevenJsonOutput -Text $lsp.Output
+  $hasInicioCompletion = $false
+  $hasInicioSymbol = $false
+  if ($null -ne $lspPayload) {
+    $hasInicioCompletion = @($lspPayload.completions | Where-Object { $_.label -eq "inicio" }).Count -gt 0
+    $hasInicioSymbol = @($lspPayload.symbols | Where-Object { $_.name -eq "inicio" }).Count -gt 0
+  }
+
+  if ($lsp.ExitCode -eq 0 -and $hasInicioCompletion -and $hasInicioSymbol) {
     Add-Pass "LSP self-test publica completions e symbols"
   } else {
     Add-Failure "LSP self-test deveria retornar completion e symbol inicio" $lsp.Output
   }
 
   $lspInvalid = Invoke-SevenLspSelfTest -File (Join-Path $Root "conformance\invalid\immutable_assign.sv")
-  if ($lspInvalid.ExitCode -eq 0 -and (Test-OutputContains -Result $lspInvalid -Expected '"code":  "SV-TIPO-IMUTAVEL"')) {
+  $lspInvalidPayload = ConvertFrom-SevenJsonOutput -Text $lspInvalid.Output
+  $hasImmutableDiagnostic = $false
+  if ($null -ne $lspInvalidPayload) {
+    $hasImmutableDiagnostic = @($lspInvalidPayload.diagnostics | Where-Object { $_.code -eq "SV-TIPO-IMUTAVEL" }).Count -gt 0
+  }
+
+  if ($lspInvalid.ExitCode -eq 0 -and $hasImmutableDiagnostic) {
     Add-Pass "LSP self-test publica diagnosticos"
   } else {
     Add-Failure "LSP self-test deveria publicar diagnostico semantico" $lspInvalid.Output
@@ -354,11 +1209,12 @@ try {
   }
 
   if ($ffiManifest.ExitCode -eq 0 -and (Test-Path -LiteralPath $manifestPath)) {
-    $manifest = Get-Content -LiteralPath $manifestPath -Raw
-    if ($manifest.Contains('"format":  "seven-ffi-v1"') -and $manifest.Contains('"symbol":  "puts"')) {
+    $manifest = (Get-Content -LiteralPath $manifestPath -Raw) | ConvertFrom-Json
+    $hasPutsSymbol = @($manifest.symbols | Where-Object { $_.symbol -eq "puts" }).Count -gt 0
+    if ($manifest.format -eq "seven-ffi-v1" -and $hasPutsSymbol) {
       Add-Pass "ffi manifest registra simbolos externos"
     } else {
-      Add-Failure "ffi manifest nao contem simbolos esperados" $manifest
+      Add-Failure "ffi manifest nao contem simbolos esperados" (Get-Content -LiteralPath $manifestPath -Raw)
     }
   } else {
     Add-Failure "ffi manifest deveria gerar arquivo .json" $ffiManifest.Output

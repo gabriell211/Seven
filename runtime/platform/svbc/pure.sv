@@ -14,6 +14,10 @@ campo intr_lista_pop(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
   devolve Valor(sys_vm_lista_pop_valor(lista_pega(args, 0)))
 fecha
 
+campo intr_lista_define(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(sys_vm_lista_define(lista_pega(args, 0), lista_pega(args, 1), lista_pega(args, 2)))
+fecha
+
 campo intr_mapa_coloca(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
   devolve Valor(sys_vm_mapa_coloca(lista_pega(args, 0), lista_pega(args, 1), lista_pega(args, 2)))
 fecha

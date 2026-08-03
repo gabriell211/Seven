@@ -93,13 +93,14 @@ function Invoke-BuildCommand {
   }
 
   $image = New-SevenDevImage -Path $fullPath
-  Write-SevenDevImage -Image $image -OutputPath $outFull
+  Write-SevenProductionImage -Image $image -OutputPath $outFull
   Write-Host "built: $outFull"
 }
 
 function Invoke-RunCommand {
   param(
     [Parameter(Mandatory = $true)][string]$InputPath,
+    [string[]]$ProgramArgs = @(),
     [switch]$Trace,
     [int[]]$Breakpoints = @(),
     [switch]$ShowLocals
@@ -117,7 +118,7 @@ function Invoke-RunCommand {
     }
 
     $loaded = Read-SevenDevImage -Path $fullPath
-    $code = Invoke-SevenDevImage -Image $loaded -Trace:$Trace -Breakpoints $Breakpoints -ShowLocals:$ShowLocals
+    $code = Invoke-SevenDevImage -Image $loaded -ProgramArgs $ProgramArgs -Trace:$Trace -Breakpoints $Breakpoints -ShowLocals:$ShowLocals
     exit $code
   } finally {
     if ($null -ne $temp) {
@@ -269,7 +270,7 @@ switch ($Command) {
   }
   "run" {
     if ($Args.Count -lt 1) { throw "use: seven-dev run <file.sv|file.svbc>" }
-    Invoke-RunCommand -InputPath $Args[0]
+    Invoke-RunCommand -InputPath $Args[0] -ProgramArgs @($Args | Select-Object -Skip 1)
   }
   "debug" {
     $debug = Get-DebugOptions -Remaining $Args

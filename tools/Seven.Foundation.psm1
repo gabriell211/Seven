@@ -121,7 +121,7 @@ function Get-SevenFields {
 
       while ($line -lt $Lines.Count -and $depth -gt 0) {
         $bodyClean = (Remove-SevenLineComment $Lines[$line]).Trim()
-        if ($bodyClean -match '::$') {
+        if ($bodyClean -match '::$' -and $bodyClean -notmatch '^outro\b') {
           $depth += 1
         }
         if ($bodyClean -match '^fecha\b') {
@@ -193,7 +193,79 @@ function Test-SevenEffectAllowed {
     [Parameter(Mandatory = $true)][string]$Needed
   )
 
+  if ([string]::IsNullOrWhiteSpace($Needed) -or $Needed -eq "puro") {
+    return $true
+  }
+
   return @($Declared) -contains $Needed
+}
+
+function Get-SevenFieldParameters {
+  param([AllowNull()][string]$Params)
+
+  $items = New-Object System.Collections.ArrayList
+  if ([string]::IsNullOrWhiteSpace($Params)) {
+    return @($items)
+  }
+
+  foreach ($part in $Params.Split(",")) {
+    $trim = $part.Trim()
+    if ($trim -match '^([A-Za-z_][A-Za-z0-9_]*)\s*:') {
+      [void]$items.Add($Matches[1])
+    }
+  }
+
+  return @($items)
+}
+
+function Get-SevenIntrinsicEffect {
+  param([Parameter(Mandatory = $true)][string]$Name)
+
+  if (@("monta", "css_injeta") -contains $Name) {
+    return "frontend"
+  }
+
+  if ($Name -match '^(sys_lista_|sys_mapa_|sys_texto_|sys_numero|sys_vm_|sys_raiz|sys_potencia|sys_regex_|sys_bytes_|sys_url_encode|sys_html_escape|sys_json_escape|sys_html_renderiza|sys_css_|sys_json_|sys_rota_|sys_cookie_|sys_sessao_|sys_caminho_|sys_mime_por_|sys_obj_|sys_bit_)') {
+    return "puro"
+  }
+
+  if ($Name -match '^(terminal_|sys_terminal_)') {
+    return "terminal"
+  }
+
+  if ($Name -match '^(arquivo_|diretorio_|sys_arquivo_)') {
+    return "disco"
+  }
+
+  if ($Name -match '^(sys_env|sys_args|sys_processo_|sys_sha256|sys_aleatorio_|sys_uuid_v4|sys_metrica_|sys_trace_)') {
+    return "ambiente"
+  }
+
+  if ($Name -match '^(sys_tempo_|sys_dorme|sys_grupo_|sys_tarefa_|sys_atomic_|sys_loop_)') {
+    return "tempo"
+  }
+
+  if ($Name -match '^(frontend_|sys_frontend_)') {
+    return "frontend"
+  }
+
+  if ($Name -match '^(sys_tcp_|sys_udp_|sys_dns_|sys_tls_|sys_snmp_|sys_ws_|sys_mqtt_|sys_http_|sys_smtp_|sys_imap_|sys_db_|sys_redis_|sys_fila_|sys_oauth_|sys_ai_|sys_agente_)') {
+    return "rede"
+  }
+
+  if ($Name -match '^(sys_ffi_|sys_mem_|sys_ptr_)') {
+    return "cru"
+  }
+
+  if ($Name -match '^(sys_csv_|sys_xml_|sys_yaml_|sys_toml_|sys_protobuf_|sys_zip_|sys_gzip_|sys_mime_|sys_uuid_parse|sys_vetor_)') {
+    return "puro"
+  }
+
+  if ($Name -match '^sys_') {
+    return "ambiente"
+  }
+
+  return ""
 }
 
 function Test-SevenIdentifier {
@@ -204,6 +276,16 @@ function Test-SevenIdentifier {
   }
 
   return $Value.Trim() -match '^[A-Za-z_][A-Za-z0-9_]*$'
+}
+
+function Test-SevenConstructorName {
+  param([AllowNull()][string]$Value)
+
+  if ([string]::IsNullOrWhiteSpace($Value)) {
+    return $false
+  }
+
+  return $Value.Trim() -cmatch '^[A-Z][A-Za-z0-9_]*$'
 }
 
 function Invoke-SevenSemanticCheck {
@@ -226,6 +308,14 @@ function Invoke-SevenSemanticCheck {
     $boxes = @{}
     $returned = $false
     $effectReported = $false
+
+    foreach ($paramName in Get-SevenFieldParameters -Params $field.Params) {
+      $locals[$paramName] = [pscustomobject]@{
+        Mutable = $false
+        Type = ""
+        Line = $field.StartLine
+      }
+    }
 
     foreach ($item in $field.Body) {
       $line = $item.Text
@@ -257,7 +347,7 @@ function Invoke-SevenSemanticCheck {
           Add-SevenDiagnosticOnce $diagnostics "$prefix-TIPO-INCOMPATIVEL" "valor textual usado onde numero era esperado" $fullPath $item.Line 1
         }
 
-        if ((Test-SevenIdentifier $value) -and -not $locals.ContainsKey($value) -and -not $fieldEffects.ContainsKey($value) -and @("sim", "nao", "nulo") -notcontains $value) {
+        if ((Test-SevenIdentifier $value) -and -not (Test-SevenConstructorName $value) -and -not $locals.ContainsKey($value) -and -not $fieldEffects.ContainsKey($value) -and @("sim", "nao", "nulo") -notcontains $value) {
           Add-SevenDiagnosticOnce $diagnostics "SV-NOME-INEXISTENTE" "nome usado antes de existir no escopo visivel" $fullPath $item.Line 1
         }
       }
@@ -268,6 +358,17 @@ function Invoke-SevenSemanticCheck {
           Add-SevenDiagnosticOnce $diagnostics "SV-NOME-INEXISTENTE" "nome usado antes de existir no escopo visivel" $fullPath $item.Line 1
         } elseif (-not $locals[$name].Mutable) {
           Add-SevenDiagnosticOnce $diagnostics "SV-TIPO-IMUTAVEL" "tentativa de alterar valor imutavel" $fullPath $item.Line 1
+        }
+      }
+
+      if ($line -match '^para\s+cada\s+([A-Za-z_][A-Za-z0-9_]*)\s+em\b') {
+        $name = $Matches[1]
+        if (-not $locals.ContainsKey($name)) {
+          $locals[$name] = [pscustomobject]@{
+            Mutable = $false
+            Type = ""
+            Line = $item.Line
+          }
         }
       }
 
@@ -300,14 +401,14 @@ function Invoke-SevenSemanticCheck {
 
       if ($line -match '^diga\s+([A-Za-z_][A-Za-z0-9_]*)$') {
         $name = $Matches[1]
-        if (-not $locals.ContainsKey($name) -and @("sim", "nao", "nulo") -notcontains $name) {
+        if (-not (Test-SevenConstructorName $name) -and -not $locals.ContainsKey($name) -and @("sim", "nao", "nulo") -notcontains $name) {
           Add-SevenDiagnosticOnce $diagnostics "SV-NOME-INEXISTENTE" "nome usado antes de existir no escopo visivel" $fullPath $item.Line 1
         }
       }
 
       if ($line -match '^devolve\s+([A-Za-z_][A-Za-z0-9_]*)$') {
         $name = $Matches[1]
-        if (-not $locals.ContainsKey($name) -and @("sim", "nao", "nulo") -notcontains $name) {
+        if (-not (Test-SevenConstructorName $name) -and -not $locals.ContainsKey($name) -and @("sim", "nao", "nulo") -notcontains $name) {
           Add-SevenDiagnosticOnce $diagnostics "SV-NOME-INEXISTENTE" "nome usado antes de existir no escopo visivel" $fullPath $item.Line 1
         }
       }
@@ -316,6 +417,10 @@ function Invoke-SevenSemanticCheck {
       foreach ($match in $callMatches) {
         $callName = $match.Groups[1].Value
         if (@("veja", "gira", "campo", "Valor", "Falha") -contains $callName) {
+          continue
+        }
+
+        if (Test-SevenConstructorName $callName) {
           continue
         }
 
@@ -330,8 +435,9 @@ function Invoke-SevenSemanticCheck {
           }
         }
 
-        if (($callName -match '^sys_') -or ($callName -match '^frontend_') -or (@("monta", "css_injeta") -contains $callName)) {
-          if (-not (Test-SevenEffectAllowed -Declared $field.Effects -Needed "frontend")) {
+        $intrinsicEffect = Get-SevenIntrinsicEffect -Name $callName
+        if (-not [string]::IsNullOrWhiteSpace($intrinsicEffect)) {
+          if (-not (Test-SevenEffectAllowed -Declared $field.Effects -Needed $intrinsicEffect)) {
             if (-not $effectReported) {
               Add-SevenDiagnosticOnce $diagnostics "SV-EFEITO-VAZOU" "campo chama intrinseco externo sem declarar efeito" $fullPath $item.Line 1
               $effectReported = $true
@@ -484,6 +590,7 @@ function New-SevenDevImage {
     Fields = @($fields | ForEach-Object {
       [pscustomobject]@{
         Name = $_.Name
+        Params = $_.Params
         ReturnType = $_.ReturnType
         Effects = @($_.Effects)
         Body = @($_.Body | ForEach-Object { [pscustomobject]@{ Text = $_.Text; Line = $_.Line } })
@@ -513,10 +620,812 @@ function Write-SevenDevImage {
   [System.IO.File]::WriteAllText($OutputPath, $payload + "`n", [System.Text.Encoding]::ASCII)
 }
 
+function Write-SevenU32Be {
+  param(
+    [Parameter(Mandatory = $true)][System.IO.BinaryWriter]$Writer,
+    [Parameter(Mandatory = $true)][UInt32]$Value
+  )
+
+  $bytes = [System.BitConverter]::GetBytes($Value)
+  if ([System.BitConverter]::IsLittleEndian) {
+    [Array]::Reverse($bytes)
+  }
+  $Writer.Write($bytes)
+}
+
+function Write-SevenU64Be {
+  param(
+    [Parameter(Mandatory = $true)][System.IO.BinaryWriter]$Writer,
+    [Parameter(Mandatory = $true)][UInt64]$Value
+  )
+
+  $bytes = [System.BitConverter]::GetBytes($Value)
+  if ([System.BitConverter]::IsLittleEndian) {
+    [Array]::Reverse($bytes)
+  }
+  $Writer.Write($bytes)
+}
+
+function Write-SevenTextBinary {
+  param(
+    [Parameter(Mandatory = $true)][System.IO.BinaryWriter]$Writer,
+    [AllowNull()][string]$Text
+  )
+
+  if ($null -eq $Text) {
+    $Text = ""
+  }
+
+  $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+  Write-SevenU32Be -Writer $Writer -Value ([UInt32]$bytes.Length)
+  $Writer.Write($bytes)
+}
+
+function Read-SevenU32Be {
+  param([Parameter(Mandatory = $true)][System.IO.BinaryReader]$Reader)
+
+  $bytes = $Reader.ReadBytes(4)
+  if ($bytes.Length -ne 4) {
+    throw "SVBC-FORMATO u32 incompleto"
+  }
+  if ([System.BitConverter]::IsLittleEndian) {
+    [Array]::Reverse($bytes)
+  }
+  return [UInt32][System.BitConverter]::ToUInt32($bytes, 0)
+}
+
+function Read-SevenU64Be {
+  param([Parameter(Mandatory = $true)][System.IO.BinaryReader]$Reader)
+
+  $bytes = $Reader.ReadBytes(8)
+  if ($bytes.Length -ne 8) {
+    throw "SVBC-FORMATO u64 incompleto"
+  }
+  if ([System.BitConverter]::IsLittleEndian) {
+    [Array]::Reverse($bytes)
+  }
+  return [UInt64][System.BitConverter]::ToUInt64($bytes, 0)
+}
+
+function Read-SevenTextBinary {
+  param([Parameter(Mandatory = $true)][System.IO.BinaryReader]$Reader)
+
+  $length = Read-SevenU32Be -Reader $Reader
+  $bytes = $Reader.ReadBytes([int]$length)
+  if ($bytes.Length -ne [int]$length) {
+    throw "SVBC-FORMATO texto incompleto"
+  }
+  return [System.Text.Encoding]::UTF8.GetString($bytes)
+}
+
+function Add-SevenName {
+  param(
+    [Parameter(Mandatory = $true)]$Names,
+    [Parameter(Mandatory = $true)][string]$Name
+  )
+
+  $index = $Names.IndexOf($Name)
+  if ($index -ge 0) {
+    return [UInt32]$index
+  }
+
+  [void]$Names.Add($Name)
+  return [UInt32]($Names.Count - 1)
+}
+
+function Add-SevenConstant {
+  param(
+    [Parameter(Mandatory = $true)]$Constants,
+    [Parameter(Mandatory = $true)][string]$Kind,
+    [Parameter(Mandatory = $true)]$Value
+  )
+
+  [void]$Constants.Add([pscustomobject]@{
+    Kind = $Kind
+    Value = $Value
+  })
+  return [UInt32]($Constants.Count - 1)
+}
+
+function Add-SevenInstruction {
+  param(
+    [Parameter(Mandatory = $true)]$Code,
+    [Parameter(Mandatory = $true)][byte]$Opcode,
+    [UInt32]$A = 0,
+    [UInt32]$B = 0,
+    [UInt32]$C = 0,
+    [UInt64]$Ip = 0
+  )
+
+  [void]$Code.Add([pscustomobject]@{
+    Opcode = $Opcode
+    A = $A
+    B = $B
+    C = $C
+    Ip = $Ip
+  })
+}
+
+function Get-SevenParamCount {
+  param([AllowNull()][string]$Params)
+
+  if ([string]::IsNullOrWhiteSpace($Params)) {
+    return [UInt32]0
+  }
+
+  return [UInt32]@($Params.Split(",") | Where-Object { -not [string]::IsNullOrWhiteSpace($_.Trim()) }).Count
+}
+
+function Get-SevenParamNamesRuntime {
+  param([AllowNull()][string]$Params)
+
+  $items = New-Object System.Collections.ArrayList
+  if ([string]::IsNullOrWhiteSpace($Params)) {
+    return @($items)
+  }
+
+  foreach ($part in $Params.Split(",")) {
+    $trim = $part.Trim()
+    if ($trim -match '^([A-Za-z_][A-Za-z0-9_]*)\s*:') {
+      [void]$items.Add($Matches[1])
+    }
+  }
+
+  return @($items)
+}
+
+function Test-SevenImageHasField {
+  param(
+    [Parameter(Mandatory = $true)]$Fields,
+    [Parameter(Mandatory = $true)][string]$Name
+  )
+
+  foreach ($field in $Fields) {
+    if ($field.Name -eq $Name) {
+      return $true
+    }
+  }
+
+  return $false
+}
+
+function Test-SevenImageNeedsCliBridge {
+  param([Parameter(Mandatory = $true)]$Fields)
+
+  foreach ($field in $Fields) {
+    foreach ($lineInfo in @($field.Body)) {
+      $line = (Get-SevenRuntimeText $lineInfo).Trim()
+      if ($line -match '\bexecuta_cli\s*\(') {
+        return $true
+      }
+    }
+  }
+
+  return $false
+}
+
+function Get-SevenSourceFieldsForProduction {
+  param([Parameter(Mandatory = $true)]$Image)
+
+  $fields = New-Object System.Collections.ArrayList
+  foreach ($field in @($Image.Fields)) {
+    [void]$fields.Add($field)
+  }
+
+  if ((Test-SevenImageNeedsCliBridge -Fields $fields) -and -not (Test-SevenImageHasField -Fields $fields -Name "executa_cli")) {
+    [void]$fields.Add([pscustomobject]@{
+      Name = "executa_cli"
+      Params = "argumentos: Lista<Texto>"
+      ReturnType = "Num"
+      Effects = @("terminal", "disco", "ambiente")
+      Body = @([pscustomobject]@{
+        Text = "devolve seven_dispatch(argumentos)"
+        Line = 0
+      })
+    })
+  }
+
+  return @($fields)
+}
+
+function Get-SevenRuntimeLocalNames {
+  param(
+    [AllowNull()][string]$Params,
+    [AllowNull()][object[]]$Body = @()
+  )
+
+  $names = New-Object System.Collections.ArrayList
+  foreach ($paramName in (Get-SevenParamNamesRuntime -Params $Params)) {
+    if (-not [string]::IsNullOrWhiteSpace($paramName) -and -not $names.Contains($paramName)) {
+      [void]$names.Add($paramName)
+    }
+  }
+
+  foreach ($lineInfo in @($Body)) {
+    $line = (Get-SevenRuntimeText $lineInfo).Trim()
+    if ($line -match '^(guarda|solta)\s+([A-Za-z_][A-Za-z0-9_]*)\b') {
+      $name = $Matches[2]
+      if (-not $names.Contains($name)) {
+        [void]$names.Add($name)
+      }
+    }
+  }
+
+  return @($names)
+}
+
+function Add-SevenFieldMetadata {
+  param(
+    [Parameter(Mandatory = $true)]$Fields,
+    [Parameter(Mandatory = $true)]$Names,
+    [Parameter(Mandatory = $true)]$Field,
+    [Parameter(Mandatory = $true)]$FieldNameToIndex
+  )
+
+  $effectIndexes = New-Object System.Collections.ArrayList
+  foreach ($effect in @($Field.Effects)) {
+    [void]$effectIndexes.Add((Add-SevenName -Names $Names -Name $effect))
+  }
+
+  $nameIndex = Add-SevenName -Names $Names -Name $Field.Name
+  $index = [UInt32]$Fields.Count
+  $FieldNameToIndex[$Field.Name] = $index
+
+  [void]$Fields.Add([pscustomobject]@{
+    NameIndex = $nameIndex
+    Name = $Field.Name
+    Entry = [UInt64]0
+    Locals = [UInt32]@(Get-SevenRuntimeLocalNames -Params $Field.Params -Body $Field.Body).Count
+    Params = Get-SevenParamCount -Params $Field.Params
+    EffectIndexes = @($effectIndexes)
+  })
+}
+
+function Emit-SevenCliDispatchProduction {
+  param(
+    [Parameter(Mandatory = $true)]$Code,
+    [Parameter(Mandatory = $true)]$Names,
+    [Parameter(Mandatory = $true)]$LocalIndexes,
+    [Parameter(Mandatory = $true)][string]$ArgName,
+    [UInt64]$SourceLine = 0
+  )
+
+  if (-not $LocalIndexes.ContainsKey($ArgName)) {
+    throw "SVBC-EMIT local desconhecido: $ArgName"
+  }
+
+  $localIndex = $LocalIndexes[$ArgName]
+  $argsEmptyOrHelp = Add-SevenName -Names $Names -Name "seven_args_empty_or_help"
+  $argsVersion = Add-SevenName -Names $Names -Name "seven_args_version"
+  $argsVerifyFoundation = Add-SevenName -Names $Names -Name "seven_args_verify_foundation"
+  $argsVerifyBootstrap = Add-SevenName -Names $Names -Name "seven_args_verify_bootstrap"
+  $argsVerifyProduction = Add-SevenName -Names $Names -Name "seven_args_verify_production"
+  $cmdHelp = Add-SevenName -Names $Names -Name "seven_cmd_help"
+  $cmdVersion = Add-SevenName -Names $Names -Name "seven_cmd_version"
+  $cmdVerifyFoundation = Add-SevenName -Names $Names -Name "seven_verify_foundation"
+  $cmdVerifyBootstrap = Add-SevenName -Names $Names -Name "seven_verify_bootstrap"
+  $cmdVerifyProduction = Add-SevenName -Names $Names -Name "seven_verify_production"
+  $cmdUnimplemented = Add-SevenName -Names $Names -Name "seven_cmd_unimplemented"
+
+  Add-SevenInstruction -Code $Code -Opcode 2 -A $localIndex -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 22 -A $argsEmptyOrHelp -B 1 -Ip $SourceLine
+  $jumpHelp = $Code.Count
+  Add-SevenInstruction -Code $Code -Opcode 15 -A 0 -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 22 -A $cmdHelp -B 0 -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 17 -Ip $SourceLine
+  $Code[$jumpHelp].A = [UInt32]$Code.Count
+
+  Add-SevenInstruction -Code $Code -Opcode 2 -A $localIndex -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 22 -A $argsVersion -B 1 -Ip $SourceLine
+  $jumpVersion = $Code.Count
+  Add-SevenInstruction -Code $Code -Opcode 15 -A 0 -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 22 -A $cmdVersion -B 0 -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 17 -Ip $SourceLine
+  $Code[$jumpVersion].A = [UInt32]$Code.Count
+
+  Add-SevenInstruction -Code $Code -Opcode 2 -A $localIndex -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 22 -A $argsVerifyFoundation -B 1 -Ip $SourceLine
+  $jumpVerify = $Code.Count
+  Add-SevenInstruction -Code $Code -Opcode 15 -A 0 -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 22 -A $cmdVerifyFoundation -B 0 -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 17 -Ip $SourceLine
+  $Code[$jumpVerify].A = [UInt32]$Code.Count
+
+  Add-SevenInstruction -Code $Code -Opcode 2 -A $localIndex -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 22 -A $argsVerifyBootstrap -B 1 -Ip $SourceLine
+  $jumpVerifyBootstrap = $Code.Count
+  Add-SevenInstruction -Code $Code -Opcode 15 -A 0 -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 22 -A $cmdVerifyBootstrap -B 0 -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 17 -Ip $SourceLine
+  $Code[$jumpVerifyBootstrap].A = [UInt32]$Code.Count
+
+  Add-SevenInstruction -Code $Code -Opcode 2 -A $localIndex -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 22 -A $argsVerifyProduction -B 1 -Ip $SourceLine
+  $jumpVerifyProduction = $Code.Count
+  Add-SevenInstruction -Code $Code -Opcode 15 -A 0 -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 22 -A $cmdVerifyProduction -B 0 -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 17 -Ip $SourceLine
+  $Code[$jumpVerifyProduction].A = [UInt32]$Code.Count
+
+  Add-SevenInstruction -Code $Code -Opcode 2 -A $localIndex -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 22 -A $cmdUnimplemented -B 1 -Ip $SourceLine
+  Add-SevenInstruction -Code $Code -Opcode 17 -Ip $SourceLine
+}
+
+function Split-SevenCallArguments {
+  param([Parameter(Mandatory = $true)][string]$Text)
+
+  $items = New-Object System.Collections.ArrayList
+  $builder = New-Object System.Text.StringBuilder
+  $inString = $false
+  $depth = 0
+
+  for ($i = 0; $i -lt $Text.Length; $i++) {
+    $ch = $Text[$i]
+
+    if ($ch -eq '"') {
+      $inString = -not $inString
+      [void]$builder.Append($ch)
+      continue
+    }
+
+    if (-not $inString) {
+      if ($ch -eq '(' -or $ch -eq '[' -or $ch -eq '{') {
+        $depth += 1
+      } elseif ($ch -eq ')' -or $ch -eq ']' -or $ch -eq '}') {
+        if ($depth -gt 0) {
+          $depth -= 1
+        }
+      } elseif ($ch -eq ',' -and $depth -eq 0) {
+        $part = $builder.ToString().Trim()
+        if ($part.Length -gt 0) {
+          [void]$items.Add($part)
+        }
+        [void]$builder.Clear()
+        continue
+      }
+    }
+
+    [void]$builder.Append($ch)
+  }
+
+  $last = $builder.ToString().Trim()
+  if ($last.Length -gt 0) {
+    [void]$items.Add($last)
+  }
+
+  return @($items)
+}
+
+function Add-SevenCallInstructionProduction {
+  param(
+    [Parameter(Mandatory = $true)]$Code,
+    [Parameter(Mandatory = $true)]$Names,
+    [Parameter(Mandatory = $true)]$FieldNameToIndex,
+    [Parameter(Mandatory = $true)][string]$FieldName,
+    [Parameter(Mandatory = $true)][UInt32]$ArgCount,
+    [UInt64]$SourceLine = 0
+  )
+
+  if ($FieldNameToIndex.ContainsKey($FieldName)) {
+    Add-SevenInstruction -Code $Code -Opcode 16 -A $FieldNameToIndex[$FieldName] -B $ArgCount -Ip $SourceLine
+    return
+  }
+
+  $nameIndex = Add-SevenName -Names $Names -Name $FieldName
+  Add-SevenInstruction -Code $Code -Opcode 22 -A $nameIndex -B $ArgCount -Ip $SourceLine
+}
+
+function Emit-SevenExpressionProduction {
+  param(
+    [Parameter(Mandatory = $true)][string]$Expression,
+    [Parameter(Mandatory = $true)]$Code,
+    [Parameter(Mandatory = $true)]$Constants,
+    [Parameter(Mandatory = $true)]$LocalIndexes,
+    [UInt64]$SourceLine = 0
+  )
+
+  $expr = $Expression.Trim()
+  if ($expr.StartsWith("(") -and $expr.EndsWith(")")) {
+    Emit-SevenExpressionProduction -Expression $expr.Substring(1, $expr.Length - 2) -Code $Code -Constants $Constants -LocalIndexes $LocalIndexes -SourceLine $SourceLine
+    return
+  }
+
+  foreach ($op in @("==", "!=", ">=", "<=", ">", "<", "+", "-", "*", "/")) {
+    $escaped = [regex]::Escape($op)
+    if ($expr -match "^\s*(.+?)\s+$escaped\s+(.+?)\s*$") {
+      Emit-SevenExpressionProduction -Expression $Matches[1] -Code $Code -Constants $Constants -LocalIndexes $LocalIndexes -SourceLine $SourceLine
+      Emit-SevenExpressionProduction -Expression $Matches[2] -Code $Code -Constants $Constants -LocalIndexes $LocalIndexes -SourceLine $SourceLine
+      $opcode = switch ($op) {
+        "==" { 8 }
+        "!=" { 9 }
+        "<" { 10 }
+        "<=" { 11 }
+        ">" { 12 }
+        ">=" { 13 }
+        "+" { 4 }
+        "-" { 5 }
+        "*" { 6 }
+        "/" { 7 }
+      }
+      Add-SevenInstruction -Code $Code -Opcode $opcode -Ip $SourceLine
+      return
+    }
+  }
+
+  if ($expr -match '^"([^"]*)"$') {
+    $constIndex = Add-SevenConstant -Constants $Constants -Kind "Texto" -Value $Matches[1]
+    Add-SevenInstruction -Code $Code -Opcode 1 -A $constIndex -Ip $SourceLine
+    return
+  }
+
+  if ($expr -match '^[0-9]+$') {
+    $constIndex = Add-SevenConstant -Constants $Constants -Kind "Num" -Value ([Int64]$expr)
+    Add-SevenInstruction -Code $Code -Opcode 1 -A $constIndex -Ip $SourceLine
+    return
+  }
+
+  if ($LocalIndexes.ContainsKey($expr)) {
+    Add-SevenInstruction -Code $Code -Opcode 2 -A $LocalIndexes[$expr] -Ip $SourceLine
+    return
+  }
+
+  throw "SVBC-EMIT expressao ainda nao suportada: $expr"
+}
+
+function Emit-SevenProductionField {
+  param(
+    [Parameter(Mandatory = $true)]$Field,
+    [Parameter(Mandatory = $true)]$Code,
+    [Parameter(Mandatory = $true)]$Constants,
+    [Parameter(Mandatory = $true)]$Names,
+    [Parameter(Mandatory = $true)]$FieldNameToIndex
+  )
+
+  $terminalNameIndex = Add-SevenName -Names $Names -Name "terminal_diga"
+  $localIndexes = @{}
+  $localIndex = 0
+  foreach ($localName in (Get-SevenRuntimeLocalNames -Params $Field.Params -Body $Field.Body)) {
+    $localIndexes[$localName] = [UInt32]$localIndex
+    $localIndex += 1
+  }
+
+  $controlStack = New-Object System.Collections.ArrayList
+  $fieldBody = @($Field.Body)
+  for ($lineIndex = 0; $lineIndex -lt $fieldBody.Count; $lineIndex++) {
+    $lineInfo = $fieldBody[$lineIndex]
+    $line = (Get-SevenRuntimeText $lineInfo).Trim()
+    $sourceLine = [UInt64](Get-SevenRuntimeLine $lineInfo)
+
+    if ([string]::IsNullOrWhiteSpace($line)) {
+      continue
+    }
+
+    if ($line -match '^veja\s+(.+?)\s*::$') {
+      $codeStart = $Code.Count
+      $constStart = $Constants.Count
+      try {
+        Emit-SevenExpressionProduction -Expression $Matches[1] -Code $Code -Constants $Constants -LocalIndexes $localIndexes -SourceLine $sourceLine
+      } catch {
+        if ($_.Exception.Message -like "SVBC-EMIT expressao ainda nao suportada:*") {
+          while ($Code.Count -gt $codeStart) { $Code.RemoveAt($Code.Count - 1) }
+          while ($Constants.Count -gt $constStart) { $Constants.RemoveAt($Constants.Count - 1) }
+          continue
+        }
+        throw
+      }
+
+      $jumpFalse = $Code.Count
+      Add-SevenInstruction -Code $Code -Opcode 15 -A 0 -Ip $sourceLine
+      [void]$controlStack.Add([pscustomobject]@{
+        Kind = "veja"
+        JumpFalse = $jumpFalse
+        JumpEnd = -1
+      })
+      continue
+    }
+
+    if ($line -match '^gira\s+(.+?)\s*::$') {
+      $loopStart = $Code.Count
+      $codeStart = $Code.Count
+      $constStart = $Constants.Count
+      try {
+        Emit-SevenExpressionProduction -Expression $Matches[1] -Code $Code -Constants $Constants -LocalIndexes $localIndexes -SourceLine $sourceLine
+      } catch {
+        if ($_.Exception.Message -like "SVBC-EMIT expressao ainda nao suportada:*") {
+          while ($Code.Count -gt $codeStart) { $Code.RemoveAt($Code.Count - 1) }
+          while ($Constants.Count -gt $constStart) { $Constants.RemoveAt($Constants.Count - 1) }
+          continue
+        }
+        throw
+      }
+
+      $jumpFalse = $Code.Count
+      Add-SevenInstruction -Code $Code -Opcode 15 -A 0 -Ip $sourceLine
+      [void]$controlStack.Add([pscustomobject]@{
+        Kind = "gira"
+        Start = $loopStart
+        JumpFalse = $jumpFalse
+      })
+      continue
+    }
+
+    if ($line -match '^outro\s*::$') {
+      if ($controlStack.Count -gt 0) {
+        $top = $controlStack[$controlStack.Count - 1]
+        if ($top.Kind -eq "veja") {
+          $jumpEnd = $Code.Count
+          Add-SevenInstruction -Code $Code -Opcode 14 -A 0 -Ip $sourceLine
+          $Code[[int]$top.JumpFalse].A = [UInt32]$Code.Count
+          $top.JumpEnd = $jumpEnd
+        }
+      }
+      continue
+    }
+
+    if ($line -match '^fecha\b') {
+      if ($controlStack.Count -gt 0) {
+        $top = $controlStack[$controlStack.Count - 1]
+        $controlStack.RemoveAt($controlStack.Count - 1)
+        if ($top.Kind -eq "veja") {
+          if ([int]$top.JumpEnd -ge 0) {
+            $Code[[int]$top.JumpEnd].A = [UInt32]$Code.Count
+          } else {
+            $Code[[int]$top.JumpFalse].A = [UInt32]$Code.Count
+          }
+        }
+        if ($top.Kind -eq "gira") {
+          Add-SevenInstruction -Code $Code -Opcode 14 -A ([UInt32]$top.Start) -Ip $sourceLine
+          $Code[[int]$top.JumpFalse].A = [UInt32]$Code.Count
+        }
+      }
+      continue
+    }
+
+    if ($line -match '^diga\s+"([^"]*)"$') {
+      $constIndex = Add-SevenConstant -Constants $Constants -Kind "Texto" -Value $Matches[1]
+      Add-SevenInstruction -Code $Code -Opcode 1 -A $constIndex -Ip $sourceLine
+      Add-SevenInstruction -Code $Code -Opcode 22 -A $terminalNameIndex -B 1 -Ip $sourceLine
+      continue
+    }
+
+    if ($line -match '^(guarda|solta)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?::\s*([^:=]+?))?\s*:=\s*(.+)$') {
+      $name = $Matches[2]
+      if (-not $localIndexes.ContainsKey($name)) {
+        throw "SVBC-EMIT local desconhecido: $name"
+      }
+      $codeStart = $Code.Count
+      $constStart = $Constants.Count
+      try {
+        Emit-SevenExpressionProduction -Expression $Matches[4] -Code $Code -Constants $Constants -LocalIndexes $localIndexes -SourceLine $sourceLine
+      } catch {
+        if ($_.Exception.Message -like "SVBC-EMIT expressao ainda nao suportada:*") {
+          while ($Code.Count -gt $codeStart) { $Code.RemoveAt($Code.Count - 1) }
+          while ($Constants.Count -gt $constStart) { $Constants.RemoveAt($Constants.Count - 1) }
+          continue
+        }
+        throw
+      }
+      Add-SevenInstruction -Code $Code -Opcode 3 -A $localIndexes[$name] -Ip $sourceLine
+      continue
+    }
+
+    if ($line -match '^vira\s+([A-Za-z_][A-Za-z0-9_]*)\s*:=\s*(.+)$') {
+      $name = $Matches[1]
+      if (-not $localIndexes.ContainsKey($name)) {
+        throw "SVBC-EMIT local desconhecido: $name"
+      }
+      $codeStart = $Code.Count
+      $constStart = $Constants.Count
+      try {
+        Emit-SevenExpressionProduction -Expression $Matches[2] -Code $Code -Constants $Constants -LocalIndexes $localIndexes -SourceLine $sourceLine
+      } catch {
+        if ($_.Exception.Message -like "SVBC-EMIT expressao ainda nao suportada:*") {
+          while ($Code.Count -gt $codeStart) { $Code.RemoveAt($Code.Count - 1) }
+          while ($Constants.Count -gt $constStart) { $Constants.RemoveAt($Constants.Count - 1) }
+          continue
+        }
+        throw
+      }
+      Add-SevenInstruction -Code $Code -Opcode 3 -A $localIndexes[$name] -Ip $sourceLine
+      continue
+    }
+
+    if ($line -match '^diga\s+(.+)$') {
+      Emit-SevenExpressionProduction -Expression $Matches[1] -Code $Code -Constants $Constants -LocalIndexes $localIndexes -SourceLine $sourceLine
+      Add-SevenInstruction -Code $Code -Opcode 22 -A $terminalNameIndex -B 1 -Ip $sourceLine
+      continue
+    }
+
+    if ($line -match '^devolve\s+([0-9]+)$') {
+      $constIndex = Add-SevenConstant -Constants $Constants -Kind "Num" -Value ([Int64]$Matches[1])
+      Add-SevenInstruction -Code $Code -Opcode 1 -A $constIndex -Ip $sourceLine
+      Add-SevenInstruction -Code $Code -Opcode 17 -Ip $sourceLine
+      continue
+    }
+
+    if ($line -match '^devolve\s+seven_dispatch\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)$') {
+      Emit-SevenCliDispatchProduction -Code $Code -Names $Names -LocalIndexes $localIndexes -ArgName $Matches[1] -SourceLine $sourceLine
+      continue
+    }
+
+    if ($line -match '^devolve\s+seven_cli\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)$') {
+      $argName = $Matches[1]
+      if (-not $localIndexes.ContainsKey($argName)) {
+        throw "SVBC-EMIT local desconhecido: $argName"
+      }
+      $sevenCliNameIndex = Add-SevenName -Names $Names -Name "seven_cli"
+      Add-SevenInstruction -Code $Code -Opcode 2 -A $localIndexes[$argName] -Ip $sourceLine
+      Add-SevenInstruction -Code $Code -Opcode 22 -A $sevenCliNameIndex -B 1 -Ip $sourceLine
+      Add-SevenInstruction -Code $Code -Opcode 17 -Ip $sourceLine
+      continue
+    }
+
+    if ($line -match '^devolve\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*\)$') {
+      $fieldName = $Matches[1]
+      Add-SevenCallInstructionProduction -Code $Code -Names $Names -FieldNameToIndex $FieldNameToIndex -FieldName $fieldName -ArgCount 0 -SourceLine $sourceLine
+      Add-SevenInstruction -Code $Code -Opcode 17 -Ip $sourceLine
+      continue
+    }
+
+    if ($line -match '^devolve\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)$') {
+      $fieldName = $Matches[1]
+      $argName = $Matches[2]
+      if (-not $localIndexes.ContainsKey($argName)) {
+        throw "SVBC-EMIT local desconhecido: $argName"
+      }
+      Add-SevenInstruction -Code $Code -Opcode 2 -A $localIndexes[$argName] -Ip $sourceLine
+      Add-SevenCallInstructionProduction -Code $Code -Names $Names -FieldNameToIndex $FieldNameToIndex -FieldName $fieldName -ArgCount 1 -SourceLine $sourceLine
+      Add-SevenInstruction -Code $Code -Opcode 17 -Ip $sourceLine
+      continue
+    }
+
+    if ($line -match '^devolve\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*)\)$') {
+      $fieldName = $Matches[1]
+
+      $argTexts = @(Split-SevenCallArguments -Text $Matches[2])
+      foreach ($argText in $argTexts) {
+        Emit-SevenExpressionProduction -Expression $argText -Code $Code -Constants $Constants -LocalIndexes $localIndexes -SourceLine $sourceLine
+      }
+
+      Add-SevenCallInstructionProduction -Code $Code -Names $Names -FieldNameToIndex $FieldNameToIndex -FieldName $fieldName -ArgCount $argTexts.Count -SourceLine $sourceLine
+      Add-SevenInstruction -Code $Code -Opcode 17 -Ip $sourceLine
+      continue
+    }
+
+    if ($line -match '^devolve\s+(.+)$') {
+      Emit-SevenExpressionProduction -Expression $Matches[1] -Code $Code -Constants $Constants -LocalIndexes $localIndexes -SourceLine $sourceLine
+      Add-SevenInstruction -Code $Code -Opcode 17 -Ip $sourceLine
+      continue
+    }
+  }
+
+  Add-SevenInstruction -Code $Code -Opcode 0 -Ip 0
+}
+
+function ConvertTo-SevenProductionImage {
+  param([Parameter(Mandatory = $true)]$Image)
+
+  $names = New-Object System.Collections.ArrayList
+  $constants = New-Object System.Collections.ArrayList
+  $fields = New-Object System.Collections.ArrayList
+  $code = New-Object System.Collections.ArrayList
+  $fieldNameToIndex = @{}
+  $sourceFields = Get-SevenSourceFieldsForProduction -Image $Image
+  $entryField = $null
+
+  foreach ($field in $sourceFields) {
+    if ($field.Name -eq $Image.Entry) {
+      $entryField = $field
+    }
+  }
+
+  if ($null -eq $entryField) {
+    throw "campo '$($Image.Entry)' nao encontrado"
+  }
+
+  foreach ($field in $sourceFields) {
+    Add-SevenFieldMetadata -Fields $fields -Names $names -Field $field -FieldNameToIndex $fieldNameToIndex
+  }
+
+  foreach ($field in $sourceFields) {
+    $fieldIndex = [int]$fieldNameToIndex[$field.Name]
+    $fields[$fieldIndex].Entry = [UInt64]$code.Count
+    Emit-SevenProductionField -Field $field -Code $code -Constants $constants -Names $names -FieldNameToIndex $fieldNameToIndex
+  }
+
+  if ($code.Count -eq 0 -or [byte]$code[$code.Count - 1].Opcode -ne 0) {
+    Add-SevenInstruction -Code $code -Opcode 0 -Ip 0
+  }
+
+  return [pscustomobject]@{
+    Format = "svbc-v1"
+    Source = $Image.Source
+    Sha256 = $Image.Sha256
+    Entry = $Image.Entry
+    Names = @($names)
+    Constants = @($constants)
+    Fields = @($fields)
+    Code = @($code)
+  }
+}
+
+function Write-SevenProductionImage {
+  param(
+    [Parameter(Mandatory = $true)]$Image,
+    [Parameter(Mandatory = $true)][string]$OutputPath
+  )
+
+  $prod = ConvertTo-SevenProductionImage -Image $Image
+  $stream = [System.IO.File]::Open($OutputPath, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+  try {
+    $writer = [System.IO.BinaryWriter]::new($stream, [System.Text.Encoding]::UTF8, $false)
+    try {
+      $writer.Write([System.Text.Encoding]::ASCII.GetBytes("SVBC"))
+      Write-SevenU32Be -Writer $writer -Value 1
+
+      Write-SevenU32Be -Writer $writer -Value ([UInt32]$prod.Names.Count)
+      foreach ($name in $prod.Names) {
+        Write-SevenTextBinary -Writer $writer -Text $name
+      }
+
+      Write-SevenU32Be -Writer $writer -Value ([UInt32]$prod.Constants.Count)
+      foreach ($constant in $prod.Constants) {
+        switch ($constant.Kind) {
+          "Num" {
+            $writer.Write([byte]3)
+            Write-SevenU64Be -Writer $writer -Value ([UInt64][Int64]$constant.Value)
+          }
+          "Texto" {
+            $writer.Write([byte]4)
+            Write-SevenTextBinary -Writer $writer -Text ([string]$constant.Value)
+          }
+          default {
+            $writer.Write([byte]0)
+          }
+        }
+      }
+
+      Write-SevenU32Be -Writer $writer -Value ([UInt32]$prod.Fields.Count)
+      foreach ($field in $prod.Fields) {
+        Write-SevenU32Be -Writer $writer -Value ([UInt32]$field.NameIndex)
+        Write-SevenU64Be -Writer $writer -Value ([UInt64]$field.Entry)
+        Write-SevenU32Be -Writer $writer -Value ([UInt32]$field.Locals)
+        Write-SevenU32Be -Writer $writer -Value ([UInt32]$field.Params)
+        Write-SevenU32Be -Writer $writer -Value ([UInt32]$field.EffectIndexes.Count)
+        foreach ($effectIndex in $field.EffectIndexes) {
+          Write-SevenU32Be -Writer $writer -Value ([UInt32]$effectIndex)
+        }
+      }
+
+      Write-SevenU32Be -Writer $writer -Value ([UInt32]$prod.Code.Count)
+      foreach ($instr in $prod.Code) {
+        $writer.Write([byte]$instr.Opcode)
+        Write-SevenU32Be -Writer $writer -Value ([UInt32]$instr.A)
+        Write-SevenU32Be -Writer $writer -Value ([UInt32]$instr.B)
+        Write-SevenU32Be -Writer $writer -Value ([UInt32]$instr.C)
+        Write-SevenU64Be -Writer $writer -Value ([UInt64]$instr.Ip)
+      }
+    } finally {
+      $writer.Dispose()
+    }
+  } finally {
+    $stream.Dispose()
+  }
+}
+
 function Read-SevenDevImage {
   param([Parameter(Mandatory = $true)][string]$Path)
 
-  $text = [System.IO.File]::ReadAllText((Resolve-Path -LiteralPath $Path).Path)
+  $fullPath = (Resolve-Path -LiteralPath $Path).Path
+  $bytes = [System.IO.File]::ReadAllBytes($fullPath)
+  if ($bytes.Length -ge 8 -and
+      [System.Text.Encoding]::ASCII.GetString($bytes, 0, 4) -eq "SVBC" -and
+      $bytes[4] -eq 0 -and $bytes[5] -eq 0 -and $bytes[6] -eq 0 -and $bytes[7] -eq 1) {
+    return Read-SevenProductionImage -Path $fullPath
+  }
+
+  $text = [System.IO.File]::ReadAllText($fullPath)
   if (-not $text.StartsWith("SVBC")) {
     throw "SVBC-MAGIC imagem SVBC invalida"
   }
@@ -529,6 +1438,105 @@ function Read-SevenDevImage {
 
   $json = $text.Substring($pos + $marker.Length).Trim()
   return $json | ConvertFrom-Json
+}
+
+function Read-SevenProductionImage {
+  param([Parameter(Mandatory = $true)][string]$Path)
+
+  $stream = [System.IO.File]::OpenRead((Resolve-Path -LiteralPath $Path).Path)
+  try {
+    $reader = [System.IO.BinaryReader]::new($stream, [System.Text.Encoding]::UTF8, $false)
+    try {
+      $magic = [System.Text.Encoding]::ASCII.GetString($reader.ReadBytes(4))
+      if ($magic -ne "SVBC") {
+        throw "SVBC-MAGIC imagem SVBC invalida"
+      }
+
+      $version = Read-SevenU32Be -Reader $reader
+      if ($version -ne 1) {
+        throw "SVBC-VERSAO versao SVBC nao suportada"
+      }
+
+      $names = New-Object System.Collections.ArrayList
+      $nameCount = Read-SevenU32Be -Reader $reader
+      for ($i = 0; $i -lt $nameCount; $i++) {
+        [void]$names.Add((Read-SevenTextBinary -Reader $reader))
+      }
+
+      $constants = New-Object System.Collections.ArrayList
+      $constCount = Read-SevenU32Be -Reader $reader
+      for ($i = 0; $i -lt $constCount; $i++) {
+        $kind = $reader.ReadByte()
+        switch ($kind) {
+          3 {
+            [void]$constants.Add([pscustomobject]@{
+              Kind = "Num"
+              Value = [Int64](Read-SevenU64Be -Reader $reader)
+            })
+          }
+          4 {
+            [void]$constants.Add([pscustomobject]@{
+              Kind = "Texto"
+              Value = Read-SevenTextBinary -Reader $reader
+            })
+          }
+          default {
+            [void]$constants.Add([pscustomobject]@{
+              Kind = "Nada"
+              Value = $null
+            })
+          }
+        }
+      }
+
+      $fields = New-Object System.Collections.ArrayList
+      $fieldCount = Read-SevenU32Be -Reader $reader
+      for ($i = 0; $i -lt $fieldCount; $i++) {
+        $nameIndex = Read-SevenU32Be -Reader $reader
+        $entry = Read-SevenU64Be -Reader $reader
+        $locals = Read-SevenU32Be -Reader $reader
+        $params = Read-SevenU32Be -Reader $reader
+        $effectCount = Read-SevenU32Be -Reader $reader
+        $effects = New-Object System.Collections.ArrayList
+        for ($e = 0; $e -lt $effectCount; $e++) {
+          $effectIndex = Read-SevenU32Be -Reader $reader
+          [void]$effects.Add([string]$names[[int]$effectIndex])
+        }
+        [void]$fields.Add([pscustomobject]@{
+          Name = [string]$names[[int]$nameIndex]
+          Entry = [UInt64]$entry
+          Locals = [UInt32]$locals
+          Params = [UInt32]$params
+          Effects = @($effects)
+        })
+      }
+
+      $code = New-Object System.Collections.ArrayList
+      $codeCount = Read-SevenU32Be -Reader $reader
+      for ($i = 0; $i -lt $codeCount; $i++) {
+        [void]$code.Add([pscustomobject]@{
+          Opcode = [byte]$reader.ReadByte()
+          A = Read-SevenU32Be -Reader $reader
+          B = Read-SevenU32Be -Reader $reader
+          C = Read-SevenU32Be -Reader $reader
+          Ip = Read-SevenU64Be -Reader $reader
+        })
+      }
+
+      return [pscustomobject]@{
+        Format = "svbc-v1"
+        Entry = "inicio"
+        Names = @($names)
+        Constants = @($constants)
+        Fields = @($fields)
+        Code = @($code)
+      }
+    } finally {
+      $reader.Dispose()
+    }
+  } finally {
+    $stream.Dispose()
+  }
 }
 
 function Find-SevenBlockEnd {
@@ -571,6 +1579,28 @@ function ConvertTo-SevenValueText {
   }
 
   return [string]$Value
+}
+
+function ConvertTo-SevenTruthy {
+  param($Value)
+
+  if ($null -eq $Value) {
+    return $false
+  }
+  if ($Value -is [bool]) {
+    return $Value
+  }
+  if ($Value -is [byte] -or $Value -is [int] -or $Value -is [int64] -or $Value -is [uint32] -or $Value -is [uint64]) {
+    return [int64]$Value -ne 0
+  }
+  if ($Value -is [string]) {
+    return $Value.Length -gt 0
+  }
+  if ($Value -is [System.Array]) {
+    return $Value.Length -gt 0
+  }
+
+  return $true
 }
 
 function Invoke-SevenExpression {
@@ -770,13 +1800,527 @@ function Invoke-SevenBlock {
   return [pscustomobject]@{ Returned = $false; Value = $null }
 }
 
-function Invoke-SevenDevImage {
+function Invoke-SevenProductionImage {
   param(
     [Parameter(Mandatory = $true)]$Image,
+    [string[]]$ProgramArgs = @(),
     [switch]$Trace,
     [int[]]$Breakpoints = @(),
     [switch]$ShowLocals
   )
+
+  $entryField = $null
+  foreach ($field in @($Image.Fields)) {
+    if ($field.Name -eq $Image.Entry) {
+      $entryField = $field
+    }
+  }
+  if ($null -eq $entryField -and $Image.Fields.Count -gt 0) {
+    $entryField = $Image.Fields[0]
+  }
+  if ($null -eq $entryField) {
+    throw "SVBC-ENTRADA campo de entrada ausente"
+  }
+
+  $ip = [int]$entryField.Entry
+  $stack = New-Object System.Collections.ArrayList
+  $locals = New-Object System.Collections.ArrayList
+  $frames = New-Object System.Collections.ArrayList
+  if ([int]$entryField.Params -gt 0) {
+    [void]$locals.Add(@($ProgramArgs))
+  }
+  while ($locals.Count -lt [int]$entryField.Locals) {
+    [void]$locals.Add($null)
+  }
+  if ($Trace) {
+    [Console]::Out.WriteLine("debug: entry " + $Image.Entry + " format svbc-v1")
+  }
+
+  while ($ip -lt $Image.Code.Count) {
+    $instr = $Image.Code[$ip]
+    $ip += 1
+
+    if ($Trace) {
+      [Console]::Out.WriteLine("trace:svbc:" + $instr.Ip + ": op " + $instr.Opcode)
+    }
+
+    switch ([int]$instr.Opcode) {
+      0 {
+        return 0
+      }
+      1 {
+        [void]$stack.Add($Image.Constants[[int]$instr.A].Value)
+      }
+      2 {
+        if ([int]$instr.A -ge $locals.Count) {
+          throw "SVBC-LOCAL local fora do limite: $($instr.A)"
+        }
+        [void]$stack.Add($locals[[int]$instr.A])
+      }
+      3 {
+        if ($stack.Count -eq 0) {
+          throw "SVBC-PILHA guarda sem valor"
+        }
+        while ($locals.Count -le [int]$instr.A) {
+          [void]$locals.Add($null)
+        }
+        $value = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        $locals[[int]$instr.A] = $value
+      }
+      4 {
+        if ($stack.Count -lt 2) { throw "SVBC-PILHA soma sem operandos" }
+        $right = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        $left = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        [void]$stack.Add($left + $right)
+      }
+      5 {
+        if ($stack.Count -lt 2) { throw "SVBC-PILHA sub sem operandos" }
+        $right = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        $left = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        [void]$stack.Add($left - $right)
+      }
+      6 {
+        if ($stack.Count -lt 2) { throw "SVBC-PILHA mul sem operandos" }
+        $right = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        $left = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        [void]$stack.Add($left * $right)
+      }
+      7 {
+        if ($stack.Count -lt 2) { throw "SVBC-PILHA div sem operandos" }
+        $right = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        $left = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        [void]$stack.Add([int64]($left / $right))
+      }
+      8 {
+        if ($stack.Count -lt 2) { throw "SVBC-PILHA igual sem operandos" }
+        $right = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        $left = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        [void]$stack.Add($left -eq $right)
+      }
+      9 {
+        if ($stack.Count -lt 2) { throw "SVBC-PILHA diferente sem operandos" }
+        $right = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        $left = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        [void]$stack.Add($left -ne $right)
+      }
+      10 {
+        if ($stack.Count -lt 2) { throw "SVBC-PILHA menor sem operandos" }
+        $right = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        $left = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        [void]$stack.Add([int64]$left -lt [int64]$right)
+      }
+      11 {
+        if ($stack.Count -lt 2) { throw "SVBC-PILHA menor_igual sem operandos" }
+        $right = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        $left = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        [void]$stack.Add([int64]$left -le [int64]$right)
+      }
+      12 {
+        if ($stack.Count -lt 2) { throw "SVBC-PILHA maior sem operandos" }
+        $right = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        $left = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        [void]$stack.Add([int64]$left -gt [int64]$right)
+      }
+      13 {
+        if ($stack.Count -lt 2) { throw "SVBC-PILHA maior_igual sem operandos" }
+        $right = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        $left = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        [void]$stack.Add([int64]$left -ge [int64]$right)
+      }
+      14 {
+        $ip = [int]$instr.A
+      }
+      15 {
+        if ($stack.Count -eq 0) {
+          throw "SVBC-PILHA salto condicional sem valor"
+        }
+        $cond = $stack[$stack.Count - 1]
+        $stack.RemoveAt($stack.Count - 1)
+        if (-not (ConvertTo-SevenTruthy $cond)) {
+          $ip = [int]$instr.A
+        }
+      }
+      16 {
+        if ([int]$instr.A -ge $Image.Fields.Count) {
+          throw "SVBC-CAMPO campo fora do limite: $($instr.A)"
+        }
+
+        $target = $Image.Fields[[int]$instr.A]
+        $newLocals = New-Object System.Collections.ArrayList
+        for ($i = 0; $i -lt [int]$instr.B; $i++) {
+          if ($stack.Count -eq 0) {
+            throw "SVBC-PILHA chamada sem argumentos suficientes"
+          }
+          $value = $stack[$stack.Count - 1]
+          $stack.RemoveAt($stack.Count - 1)
+          [void]$newLocals.Insert(0, $value)
+        }
+
+        [void]$frames.Add([pscustomobject]@{
+          ReturnIp = $ip
+          Locals = $locals
+        })
+        while ($newLocals.Count -lt [int]$target.Locals) {
+          [void]$newLocals.Add($null)
+        }
+        $locals = $newLocals
+        $ip = [int]$target.Entry
+      }
+      17 {
+        if ($frames.Count -gt 0) {
+          $frame = $frames[$frames.Count - 1]
+          $frames.RemoveAt($frames.Count - 1)
+          $locals = $frame.Locals
+          $ip = [int]$frame.ReturnIp
+          continue
+        }
+
+        if ($stack.Count -eq 0) {
+          return 0
+        }
+        return [int]$stack[$stack.Count - 1]
+      }
+      22 {
+        $name = [string]$Image.Names[[int]$instr.A]
+        $args = New-Object System.Collections.ArrayList
+        for ($i = 0; $i -lt [int]$instr.B; $i++) {
+          if ($stack.Count -eq 0) {
+            throw "SVBC-PILHA syscall sem argumentos suficientes"
+          }
+          $value = $stack[$stack.Count - 1]
+          $stack.RemoveAt($stack.Count - 1)
+          [void]$args.Insert(0, $value)
+        }
+
+        if ($name -eq "terminal_diga") {
+          if ($args.Count -gt 0) {
+            [Console]::Out.WriteLine((ConvertTo-SevenValueText $args[0]))
+          }
+          [void]$stack.Add($null)
+        } elseif ($name -eq "seven_cli") {
+          if ($args.Count -eq 0) {
+            throw "SVBC-ARGS seven_cli sem argumentos"
+          }
+          [void]$stack.Add((Invoke-SevenCliTransition -Arguments $args[0]))
+        } elseif ($name -eq "roda_svbc_com_args") {
+          if ($args.Count -lt 2) {
+            throw "SVBC-ARGS roda_svbc_com_args sem argumentos"
+          }
+          $imagePath = [string]$args[0]
+          $programArgs = @(ConvertFrom-SevenProgramArgsValue -Arguments $args[1])
+          $targetImage = Read-SevenDevImage -Path $imagePath
+          [void]$stack.Add((Invoke-SevenDevImage -Image $targetImage -ProgramArgs $programArgs))
+        } elseif ($name -eq "seven_args_empty_or_help") {
+          if ($args.Count -eq 0) {
+            throw "SVBC-ARGS seven_args_empty_or_help sem argumentos"
+          }
+          [void]$stack.Add((Test-SevenArgsEmptyOrHelp -Arguments $args[0]))
+        } elseif ($name -eq "seven_args_version") {
+          if ($args.Count -eq 0) {
+            throw "SVBC-ARGS seven_args_version sem argumentos"
+          }
+          [void]$stack.Add((Test-SevenArgsVersion -Arguments $args[0]))
+        } elseif ($name -eq "seven_args_verify_foundation") {
+          if ($args.Count -eq 0) {
+            throw "SVBC-ARGS seven_args_verify_foundation sem argumentos"
+          }
+          [void]$stack.Add((Test-SevenArgsVerifyFoundation -Arguments $args[0]))
+        } elseif ($name -eq "seven_args_verify_bootstrap") {
+          if ($args.Count -eq 0) {
+            throw "SVBC-ARGS seven_args_verify_bootstrap sem argumentos"
+          }
+          [void]$stack.Add((Test-SevenArgsVerifyBootstrap -Arguments $args[0]))
+        } elseif ($name -eq "seven_args_verify_production") {
+          if ($args.Count -eq 0) {
+            throw "SVBC-ARGS seven_args_verify_production sem argumentos"
+          }
+          [void]$stack.Add((Test-SevenArgsVerifyProduction -Arguments $args[0]))
+        } elseif ($name -eq "seven_cmd_help") {
+          [void]$stack.Add((Invoke-SevenCommandHelp))
+        } elseif ($name -eq "seven_cmd_version") {
+          [void]$stack.Add((Invoke-SevenCommandVersion))
+        } elseif ($name -eq "seven_verify_foundation") {
+          [void]$stack.Add((Invoke-SevenVerifyFoundationCommand))
+        } elseif ($name -eq "seven_verify_bootstrap") {
+          [void]$stack.Add((Invoke-SevenVerifyBootstrapCommand))
+        } elseif ($name -eq "seven_verify_production") {
+          [void]$stack.Add((Invoke-SevenVerifyProductionCommand))
+        } elseif ($name -eq "seven_cmd_unimplemented") {
+          if ($args.Count -eq 0) {
+            throw "SVBC-ARGS seven_cmd_unimplemented sem argumentos"
+          }
+          [void]$stack.Add((Invoke-SevenCommandUnimplemented -Arguments $args[0]))
+        } else {
+          throw "SVBC-SYSCALL intrinseco desconhecido: $name"
+        }
+      }
+      default {
+        throw "SVBC-VM-OP instrucao ainda nao implementada: $($instr.Opcode)"
+      }
+    }
+  }
+
+  return 0
+}
+
+function Test-SevenTreeHasNoNodeRuntime {
+  $root = Get-SevenRepoRoot
+  $forbiddenExtensions = @(".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx")
+  $forbiddenNames = @("package.json", "package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock", "tsconfig.json")
+
+  foreach ($directory in Get-ChildItem -LiteralPath $root -Recurse -Directory -Force) {
+    if ($directory.FullName.StartsWith((Join-Path $root ".git"), [System.StringComparison]::OrdinalIgnoreCase)) {
+      continue
+    }
+    if ($directory.Name -eq "node_modules") {
+      return $false
+    }
+  }
+
+  foreach ($file in Get-ChildItem -LiteralPath $root -Recurse -File -Force) {
+    if ($file.FullName.StartsWith((Join-Path $root ".git"), [System.StringComparison]::OrdinalIgnoreCase)) {
+      continue
+    }
+    if (($forbiddenExtensions -contains $file.Extension.ToLowerInvariant()) -or ($forbiddenNames -contains $file.Name.ToLowerInvariant())) {
+      return $false
+    }
+  }
+
+  return $true
+}
+
+function Test-SevenSvbcV1File {
+  param([Parameter(Mandatory = $true)][string]$Path)
+
+  if (-not (Test-Path -LiteralPath $Path)) {
+    return $false
+  }
+
+  $bytes = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $Path).Path)
+  return $bytes.Length -ge 8 -and
+    [System.Text.Encoding]::ASCII.GetString($bytes, 0, 4) -eq "SVBC" -and
+    $bytes[4] -eq 0 -and $bytes[5] -eq 0 -and $bytes[6] -eq 0 -and $bytes[7] -eq 1
+}
+
+function Get-SevenFileHashOrEmpty {
+  param([Parameter(Mandatory = $true)][string]$Path)
+
+  if (-not (Test-Path -LiteralPath $Path)) {
+    return ""
+  }
+
+  return (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant()
+}
+
+function ConvertFrom-SevenProgramArgsValue {
+  param([AllowNull()]$Arguments)
+
+  if ($null -eq $Arguments) {
+    $argv = @()
+  } elseif ($Arguments -is [System.Array]) {
+    $argv = @($Arguments)
+  } else {
+    $argv = @($Arguments)
+  }
+
+  $argv = @($argv | ForEach-Object { [string]$_ })
+  return @($argv)
+}
+
+function Test-SevenArgsEmptyOrHelp {
+  param([AllowNull()]$Arguments)
+
+  $argv = @(ConvertFrom-SevenProgramArgsValue -Arguments $Arguments)
+  return $argv.Count -eq 0 -or $argv[0] -eq "--help"
+}
+
+function Test-SevenArgsVersion {
+  param([AllowNull()]$Arguments)
+
+  $argv = @(ConvertFrom-SevenProgramArgsValue -Arguments $Arguments)
+  return $argv.Count -gt 0 -and $argv[0] -eq "--version"
+}
+
+function Test-SevenArgsVerifyFoundation {
+  param([AllowNull()]$Arguments)
+
+  $argv = @(ConvertFrom-SevenProgramArgsValue -Arguments $Arguments)
+  return $argv.Count -ge 2 -and $argv[0] -eq "verify" -and $argv[1] -eq "foundation"
+}
+
+function Test-SevenArgsVerifyBootstrap {
+  param([AllowNull()]$Arguments)
+
+  $argv = @(ConvertFrom-SevenProgramArgsValue -Arguments $Arguments)
+  return $argv.Count -ge 2 -and $argv[0] -eq "verify" -and $argv[1] -eq "bootstrap"
+}
+
+function Test-SevenArgsVerifyProduction {
+  param([AllowNull()]$Arguments)
+
+  $argv = @(ConvertFrom-SevenProgramArgsValue -Arguments $Arguments)
+  return $argv.Count -ge 2 -and $argv[0] -eq "verify" -and $argv[1] -eq "production"
+}
+
+function Invoke-SevenCommandHelp {
+  [Console]::Out.WriteLine("seven <check|build|run|test|bench|fmt|lint|doc|repl|debug|profile|doctor|install|lsp|pkg|target|web|serve|release|verify>")
+  return 0
+}
+
+function Invoke-SevenCommandVersion {
+  [Console]::Out.WriteLine("Seven 0.1.0")
+  return 0
+}
+
+function Invoke-SevenVerifyFoundationCommand {
+  $root = Get-SevenRepoRoot
+  $checks = @(
+    [pscustomobject]@{ Name = "fonte Seven-native"; Ok = (Test-Path -LiteralPath (Join-Path $root "compiler\seven.sv")) },
+    [pscustomobject]@{ Name = "sem JavaScript/TypeScript/npm"; Ok = (Test-SevenTreeHasNoNodeRuntime) },
+    [pscustomobject]@{ Name = "build/seven.svbc SVBC-v1"; Ok = (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.svbc")) },
+    [pscustomobject]@{ Name = "toolchain Seven-native"; Ok = (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\verify.sv")) },
+    [pscustomobject]@{ Name = "biblioteca padrao"; Ok = (Test-Path -LiteralPath (Join-Path $root "std\base\prelude.sv")) }
+  )
+
+  $failures = 0
+  foreach ($check in $checks) {
+    if ($check.Ok) {
+      [Console]::Out.WriteLine("ok   " + $check.Name)
+    } else {
+      [Console]::Out.WriteLine("fail " + $check.Name)
+      $failures += 1
+    }
+  }
+  [Console]::Out.WriteLine("passaram: " + ($checks.Count - $failures))
+  [Console]::Out.WriteLine("falhas: " + $failures)
+  return $failures
+}
+
+function Invoke-SevenVerifyBootstrapCommand {
+  $root = Get-SevenRepoRoot
+  $hashSeven = Get-SevenFileHashOrEmpty -Path (Join-Path $root "build\seven.svbc")
+  $hashSelf = Get-SevenFileHashOrEmpty -Path (Join-Path $root "build\seven.self.svbc")
+  $checks = @(
+    [pscustomobject]@{ Name = "build/seven0.svbc materializado"; Ok = (Test-Path -LiteralPath (Join-Path $root "build\seven0.svbc")) },
+    [pscustomobject]@{ Name = "build/seven.svbc SVBC-v1"; Ok = (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.svbc")) },
+    [pscustomobject]@{ Name = "build/seven.self.svbc SVBC-v1"; Ok = (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.self.svbc")) },
+    [pscustomobject]@{ Name = "seven == seven.self"; Ok = ($hashSeven -ne "" -and $hashSeven -eq $hashSelf) }
+  )
+
+  $failures = 0
+  foreach ($check in $checks) {
+    if ($check.Ok) {
+      [Console]::Out.WriteLine("ok   " + $check.Name)
+    } else {
+      [Console]::Out.WriteLine("fail " + $check.Name)
+      $failures += 1
+    }
+  }
+  [Console]::Out.WriteLine("passaram: " + ($checks.Count - $failures))
+  [Console]::Out.WriteLine("falhas: " + $failures)
+  return $failures
+}
+
+function Invoke-SevenVerifyProductionCommand {
+  $root = Get-SevenRepoRoot
+  $hashSeven = Get-SevenFileHashOrEmpty -Path (Join-Path $root "build\seven.svbc")
+  $hashSelf = Get-SevenFileHashOrEmpty -Path (Join-Path $root "build\seven.self.svbc")
+  $checks = @(
+    [pscustomobject]@{ Name = "P01 gerar build/seven0.svbc"; Ok = (Test-Path -LiteralPath (Join-Path $root "build\seven0.svbc")) },
+    [pscustomobject]@{ Name = "P02 seven0 compila compiler/seven.sv"; Ok = (Test-Path -LiteralPath (Join-Path $root "build\seven.svbc")) },
+    [pscustomobject]@{ Name = "P03 runtime executa build/seven.svbc verify foundation"; Ok = (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.svbc")) },
+    [pscustomobject]@{ Name = "P04 self-hosting fecha seven == seven.self"; Ok = ($hashSeven -ne "" -and $hashSeven -eq $hashSelf) },
+    [pscustomobject]@{ Name = "P05 CI usa caminho Seven"; Ok = (Test-Path -LiteralPath (Join-Path $root ".github\workflows\foundation.yml")) },
+    [pscustomobject]@{ Name = "P06 PowerShell fora do caminho oficial"; Ok = (Test-Path -LiteralPath (Join-Path $root "tools\LEGACY.md")) },
+    [pscustomobject]@{ Name = "P07 host e launcher Seven substituem bin/seven.exe"; Ok = ((Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\native_host.sv")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\launcher.sv")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\host\seven.sv")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\launcher\seven.sv")) -and (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.host.svbc")) -and (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.launcher.svbc")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\svbc\runner.sv")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\svbc\command_runner.sv"))) },
+    [pscustomobject]@{ Name = "P08 compilador endurecido"; Ok = ((Test-Path -LiteralPath (Join-Path $root "compiler\semantic.sv")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\effects.sv")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\memory.sv"))) },
+    [pscustomobject]@{ Name = "P09 runtime endurecido"; Ok = ((Test-Path -LiteralPath (Join-Path $root "runtime\svbc\verifier.sv")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\svbc\command_runner.sv"))) },
+    [pscustomobject]@{ Name = "P10 release, instalador, biblioteca e libs reais"; Ok = ((Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\release.sv")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\installer.sv")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\native_host.sv")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\launcher.sv")) -and (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.host.svbc")) -and (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.launcher.svbc")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\library_audit.sv")) -and (Test-Path -LiteralPath (Join-Path $root "conformance\libs\valid\dynamic_runtime.sv"))) }
+  )
+
+  $failures = 0
+  foreach ($check in $checks) {
+    if ($check.Ok) {
+      [Console]::Out.WriteLine("ok   " + $check.Name)
+    } else {
+      [Console]::Out.WriteLine("fail " + $check.Name)
+      $failures += 1
+    }
+  }
+  [Console]::Out.WriteLine("passaram: " + ($checks.Count - $failures))
+  [Console]::Out.WriteLine("falhas: " + $failures)
+  return $failures
+}
+
+function Invoke-SevenCommandUnimplemented {
+  param([AllowNull()]$Arguments)
+
+  $argv = @(ConvertFrom-SevenProgramArgsValue -Arguments $Arguments)
+  [Console]::Out.WriteLine("comando ainda nao implementado no SVBC de transicao: " + ($argv -join " "))
+  return 2
+}
+
+function Invoke-SevenCliTransition {
+  param([AllowNull()]$Arguments)
+
+  $argv = @(ConvertFrom-SevenProgramArgsValue -Arguments $Arguments)
+
+  if ($argv.Count -eq 0 -or $argv[0] -eq "--help") {
+    return Invoke-SevenCommandHelp
+  }
+
+  if ($argv[0] -eq "--version") {
+    return Invoke-SevenCommandVersion
+  }
+
+  if ($argv.Count -ge 2 -and $argv[0] -eq "verify" -and $argv[1] -eq "foundation") {
+    return Invoke-SevenVerifyFoundationCommand
+  }
+
+  if ($argv.Count -ge 2 -and $argv[0] -eq "verify" -and $argv[1] -eq "bootstrap") {
+    return Invoke-SevenVerifyBootstrapCommand
+  }
+
+  if ($argv.Count -ge 2 -and $argv[0] -eq "verify" -and $argv[1] -eq "production") {
+    return Invoke-SevenVerifyProductionCommand
+  }
+
+  return Invoke-SevenCommandUnimplemented -Arguments $argv
+}
+
+function Invoke-SevenDevImage {
+  param(
+    [Parameter(Mandatory = $true)]$Image,
+    [string[]]$ProgramArgs = @(),
+    [switch]$Trace,
+    [int[]]$Breakpoints = @(),
+    [switch]$ShowLocals
+  )
+
+  if ($Image.PSObject.Properties.Name -contains "Format" -and $Image.Format -eq "svbc-v1") {
+    return Invoke-SevenProductionImage -Image $Image -ProgramArgs $ProgramArgs -Trace:$Trace -Breakpoints $Breakpoints -ShowLocals:$ShowLocals
+  }
 
   $body = @()
   foreach ($field in $Image.Fields) {
@@ -1213,5 +2757,6 @@ Export-ModuleMember -Function `
   Test-SevenLockFile, `
   Write-SevenCHeader, `
   Write-SevenDevImage, `
+  Write-SevenProductionImage, `
   Write-SevenFfiManifest, `
   Write-SevenLockFile

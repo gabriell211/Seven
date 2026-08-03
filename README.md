@@ -52,17 +52,31 @@ fecha
 - `docs/platform.md`: intrinsecos de plataforma Seven.
 - `docs/runtime.md`: VM, runtime e execucao de bytecode.
 - `docs/debugger.md`: debugger inicial e contrato de breakpoints.
+- `docs/toolchain.md`: CLI, instalador, formatter, test runner, LSP e release
+  oficiais em Seven.
 - `docs/targets.md`: alvos `svbc`, `web` e nativo.
 - `docs/readiness.md`: estado de prontidao do release.
+- `docs/enterprise-readiness.md`: matriz de adocao corporativa, riscos e gates.
 - `docs/bytecode.md`: formato Seven Bytecode (`SVBC`).
 - `docs/package-system.md`: pacotes e resolucao de modulos.
 - `docs/c-interop.md`: interoperabilidade C/C++ por ABI explicita.
-- `editors/vscode/seven-language`: extensao VS Code inicial com LSP.
+- `editors/vscode/seven-language`: recursos estaticos de editor para `.sv`,
+  sem runtime JavaScript/TypeScript no nucleo oficial.
 - `docs/standard-library.md`: mapa da biblioteca padrao.
 - `docs/diagnostics.md`: codigos de erro estaveis.
 - `docs/roadmap.md`: caminho ate self-hosting e binarios.
+- `docs/market-readiness.md`: contrato para tornar Seven pronta para mercados
+  reais sem depender de outra linguagem como identidade tecnica.
+- `docs/c-js-parity.md`: matriz de capacidades para chegar ao nivel de C e
+  JavaScript sem copiar suas dependencias.
+- `docs/bridge-retirement.md`: plano para aposentar PowerShell e bootstrap
+  binario do caminho oficial.
+- `docs/production-gate.md`: checklist dos 10 pontos para producao self-hosted.
 - `std/`: biblioteca padrao escrita em Seven.
 - `compiler/`: compilador Seven escrito em Seven.
+- `compiler/toolchain/`: toolchain oficial Seven-native.
+- `compiler/toolchain/launcher.sv`: contrato do launcher e manifesto
+  `seven.launcher` usado por instalador/release.
 - `compiler0/`: compilador minimo Seven-0 usado no bootstrap.
 - `runtime/`: VM Seven, VM Seven-0 e executor do seed.
 - `bin/`: executavel de bootstrap e checksums.
@@ -93,6 +107,12 @@ seven check
 seven fmt
 seven test
 seven doc
+seven install
+seven lsp
+seven release
+seven verify foundation
+seven verify bootstrap
+seven verify production
 seven web build examples/frontend-counter
 seven serve examples/api-server
 ```
@@ -116,6 +136,40 @@ Tambem valida pacote/lock, LSP e FFI:
 .\tools\seven-lsp.ps1 -SelfTest -File .\examples\hello.sv
 .\tools\seven-dev.ps1 ffi header .\examples\interop-c\main.sv .\build\interop-c.h
 ```
+
+## Adocao por empresas
+
+Seven 0.1.0 e uma fundacao publica verificavel para avaliacao, pesquisa,
+pilotos internos e contribuicoes tecnicas. Para uso corporativo, comece por:
+
+- `docs/market-readiness.md`: autonomia tecnica, mercados-alvo e gates 1.0;
+- `docs/enterprise-readiness.md`: matriz de prontidao, riscos e gates;
+- `SECURITY.md`: politica de seguranca e reporte privado;
+- `SUPPORT.md`: escopo de suporte da fundacao;
+- `.\tools\verify-foundation.ps1`: gate local e de CI.
+
+Seven so deve ser chamado de compilador de producao depois que a cadeia abaixo
+passar com saida deterministica equivalente:
+
+```text
+seed -> seven0 -> seven -> seven.self
+```
+
+## Prontidao para qualquer mercado
+
+Seven deve crescer como uma linguagem completa, nao como wrapper permanente de
+outra linguagem. A regra do projeto e:
+
+- compilador oficial em Seven;
+- runtime oficial em Seven;
+- biblioteca padrao oficial em Seven;
+- bootstrap apenas como nascimento auditavel;
+- interoperabilidade por FFI, WASM, ABI C, Win32/POSIX e navegadores como ponte
+  explicita, nao como dependencia estrutural.
+
+O contrato de mercado esta em `docs/market-readiness.md` e cobre CLI, backend,
+frontend, full stack, sistemas, cloud, dados, IA, financeiro, governo, saude,
+IoT, desktop, mobile e jogos.
 
 ## Full Stack Kit
 

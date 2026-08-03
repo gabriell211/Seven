@@ -1,5 +1,15 @@
 # Biblioteca padrao Seven
 
+## Gate
+
+`seven verify foundation` chama a auditoria Seven-native em
+`compiler/toolchain/library_audit.sv`. O gate exige os modulos essenciais da
+stdlib e os casos de `conformance/libs/valid`.
+
+O verificador legado tambem executa `seven-dev check` em todos os arquivos
+`std/**/*.sv` ate que `seven verify foundation` rode diretamente por
+`build/seven.svbc`.
+
 ## Base
 
 - `std.base.prelude`: importacao padrao.
@@ -13,6 +23,8 @@
 ## Memoria
 
 - `std.mem.bytes`: `Bytes`, conversoes texto/bytes e acesso seguro.
+- `std.mem.alloc`: alocacao, realocacao, liberacao, zero e copia.
+- `std.mem.ptr`: ponteiros tipados dentro de efeito `cru`.
 - `std.ffi.c`: tipos e conversoes para ABI C/C++ controlada.
 
 ## Entrada e saida
@@ -46,6 +58,7 @@
 - `std.cache.*`: cache local e Redis.
 - `std.queue.*`: filas e mensageria.
 - `std.serial.*`: CSV, XML, YAML, TOML e Protobuf.
+- `std.data.object`: objeto dinamico tipado para cargas JS-like.
 
 ## Seguranca
 
@@ -56,6 +69,8 @@
 ## Concorrencia
 
 - `std.async.task`: tarefas e grupos estruturados.
+- `std.sync.atomic`: atomicos para `U64` e `Bit`.
+- `std.runtime.event_loop`: microtarefas, temporizadores e loop de eventos.
 
 ## Frontend
 
@@ -87,3 +102,4 @@
 - `std.archive.zip`: arquivos zip.
 - `std.math.core`: matematica comum.
 - `std.data.uuid`: UUID.
+- `std.system.bits`: operacoes bitwise para cargas C-like.
