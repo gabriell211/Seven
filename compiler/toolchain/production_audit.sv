@@ -45,7 +45,7 @@ campo audita_prontidao_producao(contexto: ContextoToolchain) -> RelatorioProduca
   item_producao(rel, "P04", "self-hosting fecha seven == seven.self", hash_seven != "" e hash_seven == hash_self, "hashes equivalentes")
   item_producao(rel, "P05", "CI usa caminho Seven", arquivo_existe(".github/workflows/foundation.yml"), "workflow com gate de transicao")
   item_producao(rel, "P06", "PowerShell fora do caminho oficial", arquivo_existe("tools/LEGACY.md"), "scripts marcados como legado")
-  item_producao(rel, "P07", "host e launcher Seven substituem bin/seven.exe", launcher_contrato_valido() e host_executavel_contrato_valido(), "host, launcher, runtime SVBC e imagens SVBC declarados")
+  item_producao(rel, "P07", "host e launcher Seven substituem bin/seven.exe", launcher_contrato_valido() e host_executavel_contrato_valido() e artefato_svbc_produtivo("build/seven.host.svbc") e artefato_svbc_produtivo("build/seven.launcher.svbc"), "host, launcher, runtime SVBC e imagens SVBC declarados")
   item_producao(rel, "P08", "compilador endurecido", arquivo_existe("compiler/semantic.sv") e arquivo_existe("compiler/effects.sv") e arquivo_existe("compiler/memory.sv"), "semantica, efeitos e memoria")
   item_producao(rel, "P09", "runtime endurecido", arquivo_existe("runtime/svbc/verifier.sv") e arquivo_existe("runtime/svbc/command_runner.sv"), "verificador SVBC e runner de comando")
   item_producao(rel, "P10", "release, instalador, biblioteca e libs reais", plano.binario != "" e plano.host != "" e plano.host_bytecode != "" e plano.launcher != "" e plano.launcher_bytecode != "" e plano.stdlib != "" e release_ok e biblioteca.ok, "installer, host, launcher, release, stdlib e conformance/libs em Seven")
