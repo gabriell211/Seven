@@ -40,6 +40,7 @@ fecha
 - `docs/language.md`: especificacao central da linguagem.
 - `docs/identity.md`: identidade, autoria e principios da Seven.
 - `docs/references.md`: referencias oficiais, citacao e atribuicao.
+- `docs/community-growth.md`: plano publico de comunidade, reputacao e contribuicoes legitimas.
 - `docs/grammar.svbnf`: gramatica inicial.
 - `docs/compiler-architecture.md`: arquitetura do compilador.
 - `docs/type-system.md`: tipos, genericos e contratos.
