@@ -13,18 +13,18 @@ function Show-Help {
   Write-Host "Seven development CLI"
   Write-Host ""
   Write-Host "usage:"
-  Write-Host "  seven-dev check <file.sv>"
-  Write-Host "  seven-dev build <file.sv> [out.svbc]"
-  Write-Host "  seven-dev run <file.sv|file.svbc>"
-  Write-Host "  seven-dev debug <file.sv|file.svbc> [--break <line>] [--locals]"
+  Write-Host "  seven-dev check <file.sev>"
+  Write-Host "  seven-dev build <file.sev> [out.svbc]"
+  Write-Host "  seven-dev run <file.sev|file.svbc>"
+  Write-Host "  seven-dev debug <file.sev|file.svbc> [--break <line>] [--locals]"
   Write-Host "  seven-dev pkg add <name> <version> [source]"
   Write-Host "  seven-dev pkg remove <name>"
   Write-Host "  seven-dev pkg list [seven.pkg]"
   Write-Host "  seven-dev pkg lock [seven.pkg]"
   Write-Host "  seven-dev pkg verify [seven.pkg]"
   Write-Host "  seven-dev pkg install [seven.pkg]"
-  Write-Host "  seven-dev ffi header <file.sv> <out.h>"
-  Write-Host "  seven-dev ffi manifest <file.sv> <out.json>"
+  Write-Host "  seven-dev ffi header <file.sev> <out.h>"
+  Write-Host "  seven-dev ffi manifest <file.sev> <out.json>"
   Write-Host "  seven-dev lsp"
 }
 
@@ -110,7 +110,7 @@ function Invoke-RunCommand {
   $temp = $null
 
   try {
-    if ([System.IO.Path]::GetExtension($fullPath) -eq ".sv") {
+    if ([System.IO.Path]::GetExtension($fullPath) -eq ".sev") {
       $temp = Join-Path ([System.IO.Path]::GetTempPath()) ("seven-run-" + [System.Guid]::NewGuid().ToString("N") + ".svbc")
       $image = New-SevenDevImage -Path $fullPath
       Write-SevenDevImage -Image $image -OutputPath $temp
@@ -195,7 +195,7 @@ function Invoke-FfiCommand {
   param([string[]]$Remaining)
 
   if ($Remaining.Count -lt 3) {
-    throw "use: seven-dev ffi header|manifest <file.sv> <out>"
+    throw "use: seven-dev ffi header|manifest <file.sev> <out>"
   }
 
   switch ($Remaining[0]) {
@@ -208,7 +208,7 @@ function Invoke-FfiCommand {
       Write-Host "manifest: $out"
     }
     default {
-      throw "use: seven-dev ffi header|manifest <file.sv> <out>"
+      throw "use: seven-dev ffi header|manifest <file.sev> <out>"
     }
   }
 }
@@ -245,7 +245,7 @@ function Get-DebugOptions {
   }
 
   if ([string]::IsNullOrWhiteSpace($file)) {
-    throw "use: seven-dev debug <file.sv|file.svbc> [--break <line>] [--locals]"
+    throw "use: seven-dev debug <file.sev|file.svbc> [--break <line>] [--locals]"
   }
 
   return [pscustomobject]@{
@@ -260,16 +260,16 @@ switch ($Command) {
   "--help" { Show-Help }
   "-h" { Show-Help }
   "check" {
-    if ($Args.Count -lt 1) { throw "use: seven-dev check <file.sv>" }
+    if ($Args.Count -lt 1) { throw "use: seven-dev check <file.sev>" }
     Invoke-CheckCommand -Path $Args[0]
   }
   "build" {
-    if ($Args.Count -lt 1) { throw "use: seven-dev build <file.sv> [out.svbc]" }
+    if ($Args.Count -lt 1) { throw "use: seven-dev build <file.sev> [out.svbc]" }
     $out = if ($Args.Count -gt 1) { $Args[1] } else { "" }
     Invoke-BuildCommand -InputPath $Args[0] -OutputPath $out
   }
   "run" {
-    if ($Args.Count -lt 1) { throw "use: seven-dev run <file.sv|file.svbc>" }
+    if ($Args.Count -lt 1) { throw "use: seven-dev run <file.sev|file.svbc>" }
     Invoke-RunCommand -InputPath $Args[0] -ProgramArgs @($Args | Select-Object -Skip 1)
   }
   "debug" {

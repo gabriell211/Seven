@@ -76,7 +76,7 @@ gates e prioridade clara para nao crescer como colecao solta de wrappers.
 Fluxo de compilacao:
 
 ```text
-Fonte .sv
+Fonte .sev
   -> Lexer
   -> Parser
   -> AST
@@ -229,7 +229,7 @@ Fundacao publica:
 Beta tecnico:
 
 - `seven0` gera `seven` a partir do seed;
-- `seven` compila `compiler/seven.sv`;
+- `seven` compila `compiler/seven.sev`;
 - conformance valida/invalida cobre linguagem, runtime, memoria, efeitos,
   pacotes, FFI e web;
 - LSP e formatter usam o mesmo parser oficial.
@@ -283,18 +283,18 @@ Curto prazo:
 
 - manter `bin/seven.exe` e PowerShell apenas como ponte de verificacao;
 - manter a superficie oficial de CLI, instalador, formatter, test runner, LSP
-  e release em `compiler/toolchain/*.sv`;
+  e release em `compiler/toolchain/*.sev`;
 - usar `seven verify foundation` como substituto oficial do verificador
   PowerShell;
 - mover cada gate de `tools/seven-dev.ps1` para `compiler/` e `runtime/`;
-- garantir que todo novo modulo oficial tenha fonte `.sv` e teste de
+- garantir que todo novo modulo oficial tenha fonte `.sev` e teste de
   conformidade.
 
 Medio prazo:
 
 - materializar `seed/genesis.svhex` em `build/seven0.svbc`;
-- executar `compiler0/seven0.sv` na VM Seven-0;
-- emitir `compiler/seven.sv` como `seven.svbc`;
+- executar `compiler0/seven0.sev` na VM Seven-0;
+- emitir `compiler/seven.sev` como `seven.svbc`;
 - comparar builds repetidos por hash estrutural.
 
 Longo prazo:

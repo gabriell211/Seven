@@ -4,7 +4,7 @@
 
 Nome: **Seven**
 
-Extensao: `.sv`
+Extensao: `.sev`
 
 Compilador: `seven`
 

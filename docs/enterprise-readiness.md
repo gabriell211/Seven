@@ -52,14 +52,14 @@ falhas: 0
 For editor intelligence tooling:
 
 ```powershell
-.\tools\seven-lsp.ps1 -SelfTest -File .\examples\hello.sv
+.\tools\seven-lsp.ps1 -SelfTest -File .\examples\hello.sev
 ```
 
 ## Risk Register
 
 | Area | Current Risk | Required Before Production |
 | --- | --- | --- |
-| Compiler | Source exists in `.sv`, but self-hosting is not complete | Deterministic `seven.self` rebuild |
+| Compiler | Source exists in `.sev`, but self-hosting is not complete | Deterministic `seven.self` rebuild |
 | Bootstrap | Windows artifact is checksum-verified | Reproducible binary generation from seed |
 | Runtime | Development VM and SVBC envelope are verified | Full VM conformance and sandbox tests |
 | Standard library | Contracts and examples exist | Implemented, tested modules with compatibility policy |

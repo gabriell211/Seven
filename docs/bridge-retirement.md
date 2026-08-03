@@ -19,14 +19,14 @@ Essas pontes validam a fundacao no Windows, mas nao sao a identidade tecnica da
 linguagem. O caminho oficial passa a ser a fonte Seven-native:
 
 ```text
-compiler/toolchain/verify.sv
-compiler/toolchain/bootstrap_chain.sv
-compiler/toolchain/cli.sv
-compiler/toolchain/installer.sv
-compiler/toolchain/lsp_server.sv
-runtime/svbc/command_runner.sv
-runtime/host/seven.sv
-runtime/launcher/seven.sv
+compiler/toolchain/verify.sev
+compiler/toolchain/bootstrap_chain.sev
+compiler/toolchain/cli.sev
+compiler/toolchain/installer.sev
+compiler/toolchain/lsp_server.sev
+runtime/svbc/command_runner.sev
+runtime/host/seven.sev
+runtime/launcher/seven.sev
 ```
 
 ## Comando substituto
@@ -55,7 +55,7 @@ seven verify production
 
 - Criar `seven verify foundation` em Seven.
 - Criar `seven verify bootstrap` em Seven.
-- Fazer `compiler/seven.sv` delegar para a CLI Seven-native.
+- Fazer `compiler/seven.sev` delegar para a CLI Seven-native.
 - Manter `tools/verify-foundation.ps1` apenas como executor legado de CI.
 
 ### Fase B: execucao self-hosted
@@ -68,19 +68,19 @@ seven verify production
 - `seven verify production` roda pela VM/runtime Seven.
 - `build/seven.svbc` despacha comandos por `CHAMA` e `SALTA_SE_NAO`, sem emitir
   o syscall agregado `seven_cli`.
-- `runtime/svbc/command_runner.sv` executa `build/seven.svbc verify foundation`
+- `runtime/svbc/command_runner.sev` executa `build/seven.svbc verify foundation`
   `build/seven.svbc verify bootstrap` e `build/seven.svbc verify production`.
-- `runtime/host/seven.sv` define o host Seven-native que carrega
+- `runtime/host/seven.sev` define o host Seven-native que carrega
   `build/seven.launcher.svbc`.
-- `runtime/launcher/seven.sv` define o launcher Seven-native que substitui a
+- `runtime/launcher/seven.sev` define o launcher Seven-native que substitui a
   autoridade do `bin/seven.exe`.
-- `compiler/toolchain/native_host.sv` define o manifesto `seven.host` e o
+- `compiler/toolchain/native_host.sev` define o manifesto `seven.host` e o
   bytecode `build/seven.host.svbc`, validados pelo gate de producao e
   consumidos por instalador/release.
-- `compiler/toolchain/launcher.sv` define o manifesto `seven.launcher` e o
+- `compiler/toolchain/launcher.sev` define o manifesto `seven.launcher` e o
   bytecode `build/seven.launcher.svbc`, validados pelo gate de producao e
   consumidos por instalador/release.
-- `runtime/svbc/runner.sv` rejeita envelopes `seven-dev-vm-v1` no caminho
+- `runtime/svbc/runner.sev` rejeita envelopes `seven-dev-vm-v1` no caminho
   produtivo.
 
 ### Fase C: remocao do caminho legado

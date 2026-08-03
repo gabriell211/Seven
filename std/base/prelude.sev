@@ -10,7 +10,7 @@ usa std.mem.bytes
 
 const SevenVersao: Texto := "0.1.0"
 const SevenCriador: Texto := "Gabriel Barcelos"
-const SevenExtensao: Texto := ".sv"
+const SevenExtensao: Texto := ".sev"
 
 campo identidade<T>(valor: T) -> T ::
   devolve valor

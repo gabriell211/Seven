@@ -9,7 +9,7 @@
 *.webp binary
 *.pdf binary
 
-*.sv text eol=lf
+*.sev text eol=lf
 *.md text eol=lf
 *.ps1 text eol=lf
 *.psm1 text eol=lf

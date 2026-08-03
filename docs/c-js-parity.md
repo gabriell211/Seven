@@ -35,12 +35,12 @@ equivalentes em Seven, com tipos, efeitos e verificacao.
 Casos obrigatorios:
 
 ```text
-conformance/libs/valid/system_level.sv
-conformance/libs/valid/dynamic_runtime.sv
+conformance/libs/valid/system_level.sev
+conformance/libs/valid/dynamic_runtime.sev
 ```
 
 Esses casos entram no `seven verify foundation` por meio de
-`compiler/toolchain/library_audit.sv`.
+`compiler/toolchain/library_audit.sev`.
 
 ## Ainda faltam para paridade total
 

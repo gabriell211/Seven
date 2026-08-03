@@ -72,11 +72,11 @@ campo verifica_item(rel: RelatorioFundacao, nome: Texto, ok: Bit, detalhe: Texto
 fecha
 
 campo verifica_fontes_nativas() -> Bit toca disco ::
-  devolve arquivo_existe("compiler/seven.sv") e
-    arquivo_existe("compiler0/seven0.sv") e
-    arquivo_existe("runtime/svbc/vm.sv") e
-    arquivo_existe("std/base/prelude.sv") e
-    arquivo_existe("bootstrap/stage0.sv")
+  devolve arquivo_existe("compiler/seven.sev") e
+    arquivo_existe("compiler0/seven0.sev") e
+    arquivo_existe("runtime/svbc/vm.sev") e
+    arquivo_existe("std/base/prelude.sev") e
+    arquivo_existe("bootstrap/stage0.sev")
 fecha
 
 campo verifica_sem_node() -> Bit toca disco ::
@@ -87,16 +87,16 @@ campo verifica_sem_node() -> Bit toca disco ::
 fecha
 
 campo verifica_toolchain_nativa() -> Bit toca disco ::
-  devolve arquivo_existe("compiler/toolchain/command.sv") e
-    arquivo_existe("compiler/toolchain/cli.sv") e
-    arquivo_existe("compiler/toolchain/launcher.sv") e
-    arquivo_existe("compiler/toolchain/native_host.sv") e
-    arquivo_existe("compiler/toolchain/installer.sv") e
-    arquivo_existe("compiler/toolchain/formatter.sv") e
-    arquivo_existe("compiler/toolchain/test_runner.sv") e
-    arquivo_existe("compiler/toolchain/lsp_server.sv") e
-    arquivo_existe("compiler/toolchain/release.sv") e
-    arquivo_existe("compiler/toolchain/verify.sv")
+  devolve arquivo_existe("compiler/toolchain/command.sev") e
+    arquivo_existe("compiler/toolchain/cli.sev") e
+    arquivo_existe("compiler/toolchain/launcher.sev") e
+    arquivo_existe("compiler/toolchain/native_host.sev") e
+    arquivo_existe("compiler/toolchain/installer.sev") e
+    arquivo_existe("compiler/toolchain/formatter.sev") e
+    arquivo_existe("compiler/toolchain/test_runner.sev") e
+    arquivo_existe("compiler/toolchain/lsp_server.sev") e
+    arquivo_existe("compiler/toolchain/release.sev") e
+    arquivo_existe("compiler/toolchain/verify.sev")
 fecha
 
 campo verifica_artefatos_versionados() -> Bit toca disco ::
@@ -125,7 +125,7 @@ campo verifica_compilador(contexto: ContextoToolchain) -> Bit toca disco ::
 fecha
 
 campo verifica_pacotes(contexto: ContextoToolchain) -> Bit toca disco ::
-  devolve arquivo_existe(contexto.manifesto) e arquivo_existe("compiler/package_manager.sv")
+  devolve arquivo_existe(contexto.manifesto) e arquivo_existe("compiler/package_manager.sev")
 fecha
 
 campo verifica_lsp(contexto: ContextoToolchain) -> Bit toca disco, terminal ::
@@ -139,13 +139,13 @@ campo verifica_lsp(contexto: ContextoToolchain) -> Bit toca disco, terminal ::
 fecha
 
 campo verifica_runtime_svbc_comando() -> Bit toca disco ::
-  devolve arquivo_existe("runtime/svbc/command_runner.sv") e
-    arquivo_existe("runtime/svbc/runner.sv") e
-    arquivo_existe("runtime/svbc/vm.sv")
+  devolve arquivo_existe("runtime/svbc/command_runner.sev") e
+    arquivo_existe("runtime/svbc/runner.sev") e
+    arquivo_existe("runtime/svbc/vm.sev")
 fecha
 
 campo verifica_auditoria_producao() -> Bit toca disco ::
-  devolve arquivo_existe("compiler/toolchain/production_audit.sv")
+  devolve arquivo_existe("compiler/toolchain/production_audit.sev")
 fecha
 
 campo verifica_instalador() -> Bit toca disco, ambiente ::

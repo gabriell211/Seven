@@ -468,10 +468,10 @@ function Invoke-SevenSemanticCheck {
 function Invoke-SevenSemanticCheckText {
   param(
     [Parameter(Mandatory = $true)][string]$Text,
-    [string]$VirtualPath = "memory.sv"
+    [string]$VirtualPath = "memory.sev"
   )
 
-  $tempPath = Join-Path ([System.IO.Path]::GetTempPath()) ("seven-lsp-" + [System.Guid]::NewGuid().ToString("N") + ".sv")
+  $tempPath = Join-Path ([System.IO.Path]::GetTempPath()) ("seven-lsp-" + [System.Guid]::NewGuid().ToString("N") + ".sev")
   [System.IO.File]::WriteAllText($tempPath, $Text, [System.Text.Encoding]::UTF8)
 
   try {
@@ -2196,11 +2196,11 @@ function Invoke-SevenCommandVersion {
 function Invoke-SevenVerifyFoundationCommand {
   $root = Get-SevenRepoRoot
   $checks = @(
-    [pscustomobject]@{ Name = "fonte Seven-native"; Ok = (Test-Path -LiteralPath (Join-Path $root "compiler\seven.sv")) },
+    [pscustomobject]@{ Name = "fonte Seven-native"; Ok = (Test-Path -LiteralPath (Join-Path $root "compiler\seven.sev")) },
     [pscustomobject]@{ Name = "sem JavaScript/TypeScript/npm"; Ok = (Test-SevenTreeHasNoNodeRuntime) },
     [pscustomobject]@{ Name = "build/seven.svbc SVBC-v1"; Ok = (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.svbc")) },
-    [pscustomobject]@{ Name = "toolchain Seven-native"; Ok = (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\verify.sv")) },
-    [pscustomobject]@{ Name = "biblioteca padrao"; Ok = (Test-Path -LiteralPath (Join-Path $root "std\base\prelude.sv")) }
+    [pscustomobject]@{ Name = "toolchain Seven-native"; Ok = (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\verify.sev")) },
+    [pscustomobject]@{ Name = "biblioteca padrao"; Ok = (Test-Path -LiteralPath (Join-Path $root "std\base\prelude.sev")) }
   )
 
   $failures = 0
@@ -2248,15 +2248,15 @@ function Invoke-SevenVerifyProductionCommand {
   $hashSelf = Get-SevenFileHashOrEmpty -Path (Join-Path $root "build\seven.self.svbc")
   $checks = @(
     [pscustomobject]@{ Name = "P01 gerar build/seven0.svbc"; Ok = (Test-Path -LiteralPath (Join-Path $root "build\seven0.svbc")) },
-    [pscustomobject]@{ Name = "P02 seven0 compila compiler/seven.sv"; Ok = (Test-Path -LiteralPath (Join-Path $root "build\seven.svbc")) },
+    [pscustomobject]@{ Name = "P02 seven0 compila compiler/seven.sev"; Ok = (Test-Path -LiteralPath (Join-Path $root "build\seven.svbc")) },
     [pscustomobject]@{ Name = "P03 runtime executa build/seven.svbc verify foundation"; Ok = (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.svbc")) },
     [pscustomobject]@{ Name = "P04 self-hosting fecha seven == seven.self"; Ok = ($hashSeven -ne "" -and $hashSeven -eq $hashSelf) },
     [pscustomobject]@{ Name = "P05 CI usa caminho Seven"; Ok = (Test-Path -LiteralPath (Join-Path $root ".github\workflows\foundation.yml")) },
     [pscustomobject]@{ Name = "P06 PowerShell fora do caminho oficial"; Ok = (Test-Path -LiteralPath (Join-Path $root "tools\LEGACY.md")) },
-    [pscustomobject]@{ Name = "P07 host e launcher Seven substituem bin/seven.exe"; Ok = ((Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\native_host.sv")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\launcher.sv")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\host\seven.sv")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\launcher\seven.sv")) -and (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.host.svbc")) -and (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.launcher.svbc")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\svbc\runner.sv")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\svbc\command_runner.sv"))) },
-    [pscustomobject]@{ Name = "P08 compilador endurecido"; Ok = ((Test-Path -LiteralPath (Join-Path $root "compiler\semantic.sv")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\effects.sv")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\memory.sv"))) },
-    [pscustomobject]@{ Name = "P09 runtime endurecido"; Ok = ((Test-Path -LiteralPath (Join-Path $root "runtime\svbc\verifier.sv")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\svbc\command_runner.sv"))) },
-    [pscustomobject]@{ Name = "P10 release, instalador, biblioteca e libs reais"; Ok = ((Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\release.sv")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\installer.sv")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\native_host.sv")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\launcher.sv")) -and (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.host.svbc")) -and (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.launcher.svbc")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\library_audit.sv")) -and (Test-Path -LiteralPath (Join-Path $root "conformance\libs\valid\dynamic_runtime.sv"))) }
+    [pscustomobject]@{ Name = "P07 host e launcher Seven substituem bin/seven.exe"; Ok = ((Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\native_host.sev")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\launcher.sev")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\host\seven.sev")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\launcher\seven.sev")) -and (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.host.svbc")) -and (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.launcher.svbc")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\svbc\runner.sev")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\svbc\command_runner.sev"))) },
+    [pscustomobject]@{ Name = "P08 compilador endurecido"; Ok = ((Test-Path -LiteralPath (Join-Path $root "compiler\semantic.sev")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\effects.sev")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\memory.sev"))) },
+    [pscustomobject]@{ Name = "P09 runtime endurecido"; Ok = ((Test-Path -LiteralPath (Join-Path $root "runtime\svbc\verifier.sev")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\svbc\command_runner.sev"))) },
+    [pscustomobject]@{ Name = "P10 release, instalador, biblioteca e libs reais"; Ok = ((Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\release.sev")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\installer.sev")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\native_host.sev")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\launcher.sev")) -and (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.host.svbc")) -and (Test-SevenSvbcV1File -Path (Join-Path $root "build\seven.launcher.svbc")) -and (Test-Path -LiteralPath (Join-Path $root "compiler\toolchain\library_audit.sev")) -and (Test-Path -LiteralPath (Join-Path $root "conformance\libs\valid\dynamic_runtime.sev"))) }
   )
 
   $failures = 0

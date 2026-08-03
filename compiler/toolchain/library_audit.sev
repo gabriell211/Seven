@@ -1,0 +1,124 @@
+modulo seven.compiler.toolchain.library_audit
+
+usa std.base.resultado
+usa std.fs.file
+
+molde ModuloBiblioteca ::
+  nome: Texto
+  caminho: Texto
+  area: Texto
+fecha
+
+molde RelatorioBiblioteca ::
+  modulos: Lista<ModuloBiblioteca>
+  faltantes: Lista<Texto>
+  conformance: Lista<Texto>
+  ok: Bit
+fecha
+
+campo audita_biblioteca_padrao() -> RelatorioBiblioteca toca disco ::
+  solta modulos := modulos_obrigatorios()
+  solta faltantes := lista<Texto>()
+  solta conformidade := conformance_libs_obrigatoria()
+
+  para cada modulo em modulos ::
+    veja arquivo_existe(modulo.caminho) == nao ::
+      lista_coloca(faltantes, modulo.caminho)
+    fecha
+  fecha
+
+  para cada caso em conformidade ::
+    veja arquivo_existe(caso) == nao ::
+      lista_coloca(faltantes, caso)
+    fecha
+  fecha
+
+  devolve RelatorioBiblioteca {
+    modulos: modulos,
+    faltantes: faltantes,
+    conformance: conformidade,
+    ok: lista_tamanho(faltantes) == 0
+  }
+fecha
+
+campo modulos_obrigatorios() -> Lista<ModuloBiblioteca> ::
+  solta itens := lista<ModuloBiblioteca>()
+
+  modulo_obrigatorio(itens, "std.base.prelude", "std/base/prelude.sev", "base")
+  modulo_obrigatorio(itens, "std.base.resultado", "std/base/resultado.sev", "base")
+  modulo_obrigatorio(itens, "std.base.talvez", "std/base/talvez.sev", "base")
+  modulo_obrigatorio(itens, "std.base.lista", "std/base/lista.sev", "base")
+  modulo_obrigatorio(itens, "std.base.mapa", "std/base/mapa.sev", "base")
+  modulo_obrigatorio(itens, "std.base.texto", "std/base/texto.sev", "base")
+  modulo_obrigatorio(itens, "std.mem.bytes", "std/mem/bytes.sev", "memoria")
+  modulo_obrigatorio(itens, "std.mem.alloc", "std/mem/alloc.sev", "memoria")
+  modulo_obrigatorio(itens, "std.mem.ptr", "std/mem/ptr.sev", "memoria")
+  modulo_obrigatorio(itens, "std.ffi.c", "std/ffi/c.sev", "ffi")
+  modulo_obrigatorio(itens, "std.io.console", "std/io/console.sev", "io")
+  modulo_obrigatorio(itens, "std.fs.file", "std/fs/file.sev", "io")
+  modulo_obrigatorio(itens, "std.env.runtime", "std/env/runtime.sev", "io")
+  modulo_obrigatorio(itens, "std.os.process", "std/os/process.sev", "io")
+  modulo_obrigatorio(itens, "std.time.clock", "std/time/clock.sev", "tempo")
+  modulo_obrigatorio(itens, "std.async.task", "std/async/task.sev", "concorrencia")
+  modulo_obrigatorio(itens, "std.sync.atomic", "std/sync/atomic.sev", "concorrencia")
+  modulo_obrigatorio(itens, "std.runtime.event_loop", "std/runtime/event_loop.sev", "concorrencia")
+  modulo_obrigatorio(itens, "std.net.tcp", "std/net/tcp.sev", "rede")
+  modulo_obrigatorio(itens, "std.net.udp", "std/net/udp.sev", "rede")
+  modulo_obrigatorio(itens, "std.net.tls", "std/net/tls.sev", "rede")
+  modulo_obrigatorio(itens, "std.net.dns", "std/net/dns.sev", "rede")
+  modulo_obrigatorio(itens, "std.net.websocket", "std/net/websocket.sev", "rede")
+  modulo_obrigatorio(itens, "std.net.mqtt", "std/net/mqtt.sev", "rede")
+  modulo_obrigatorio(itens, "std.web.http", "std/web/http.sev", "web")
+  modulo_obrigatorio(itens, "std.web.router", "std/web/router.sev", "web")
+  modulo_obrigatorio(itens, "std.web.json", "std/web/json.sev", "web")
+  modulo_obrigatorio(itens, "std.web.server", "std/web/server.sev", "web")
+  modulo_obrigatorio(itens, "std.web.security", "std/web/security.sev", "web")
+  modulo_obrigatorio(itens, "std.db.client", "std/db/client.sev", "dados")
+  modulo_obrigatorio(itens, "std.db.query", "std/db/query.sev", "dados")
+  modulo_obrigatorio(itens, "std.db.migrate", "std/db/migrate.sev", "dados")
+  modulo_obrigatorio(itens, "std.serial.csv", "std/serial/csv.sev", "serial")
+  modulo_obrigatorio(itens, "std.serial.xml", "std/serial/xml.sev", "serial")
+  modulo_obrigatorio(itens, "std.serial.yaml", "std/serial/yaml.sev", "serial")
+  modulo_obrigatorio(itens, "std.serial.toml", "std/serial/toml.sev", "serial")
+  modulo_obrigatorio(itens, "std.serial.protobuf", "std/serial/protobuf.sev", "serial")
+  modulo_obrigatorio(itens, "std.data.object", "std/data/object.sev", "dados")
+  modulo_obrigatorio(itens, "std.system.bits", "std/system/bits.sev", "sistemas")
+  modulo_obrigatorio(itens, "std.crypto.hash", "std/crypto/hash.sev", "seguranca")
+  modulo_obrigatorio(itens, "std.crypto.random", "std/crypto/random.sev", "seguranca")
+  modulo_obrigatorio(itens, "std.auth.jwt", "std/auth/jwt.sev", "seguranca")
+  modulo_obrigatorio(itens, "std.frontend.dom", "std/frontend/dom.sev", "frontend")
+  modulo_obrigatorio(itens, "std.frontend.css", "std/frontend/css.sev", "frontend")
+  modulo_obrigatorio(itens, "std.frontend.bundle", "std/frontend/bundle.sev", "frontend")
+  modulo_obrigatorio(itens, "std.log.logger", "std/log/logger.sev", "observabilidade")
+  modulo_obrigatorio(itens, "std.observability.metrics", "std/observability/metrics.sev", "observabilidade")
+  modulo_obrigatorio(itens, "std.observability.trace", "std/observability/trace.sev", "observabilidade")
+  modulo_obrigatorio(itens, "std.test.spec", "std/test/spec.sev", "teste")
+  modulo_obrigatorio(itens, "std.ai.model", "std/ai/model.sev", "ia")
+
+  devolve itens
+fecha
+
+campo modulo_obrigatorio(itens: Lista<ModuloBiblioteca>, nome: Texto, caminho: Texto, area: Texto) -> Nada ::
+  lista_coloca(itens, ModuloBiblioteca {
+    nome: nome,
+    caminho: caminho,
+    area: area
+  })
+fecha
+
+campo conformance_libs_obrigatoria() -> Lista<Texto> ::
+  solta casos := lista<Texto>()
+
+  lista_coloca(casos, "conformance/libs/valid/language_intelligence.sev")
+  lista_coloca(casos, "conformance/libs/valid/serialization.sev")
+  lista_coloca(casos, "conformance/libs/valid/smtp.sev")
+  lista_coloca(casos, "conformance/libs/valid/snmp.sev")
+  lista_coloca(casos, "conformance/libs/valid/system_level.sev")
+  lista_coloca(casos, "conformance/libs/valid/dynamic_runtime.sev")
+
+  devolve casos
+fecha
+
+campo biblioteca_resumo(rel: RelatorioBiblioteca) -> Texto ::
+  devolve "modulos: " + texto(lista_tamanho(rel.modulos)) + "\nconformance: " + texto(lista_tamanho(rel.conformance)) + "\nfaltantes: " + texto(lista_tamanho(rel.faltantes)) + "\n"
+fecha

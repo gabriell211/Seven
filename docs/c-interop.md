@@ -22,8 +22,8 @@ extern cpp campo cpp_version() -> U32 liga "seven_cpp_version"
 Durante o bootstrap de fundacao, headers podem ser gerados por:
 
 ```powershell
-.\tools\seven-dev.ps1 ffi header .\examples\interop-c\main.sv .\build\interop-c.h
-.\tools\seven-dev.ps1 ffi manifest .\examples\interop-c\main.sv .\build\interop-c.json
+.\tools\seven-dev.ps1 ffi header .\examples\interop-c\main.sev .\build\interop-c.h
+.\tools\seven-dev.ps1 ffi manifest .\examples\interop-c\main.sev .\build\interop-c.json
 ```
 
 O header gerado inclui guarda, tipos padrao e bloco `extern "C"` para consumo por

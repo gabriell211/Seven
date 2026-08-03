@@ -14,7 +14,7 @@ atalhos artificiais.
 
 ## Caminhos de contribuicao
 
-1. Melhorar exemplos `.sv` com casos pequenos e verificaveis.
+1. Melhorar exemplos `.sev` com casos pequenos e verificaveis.
 2. Expandir a biblioteca padrao com modulos coerentes.
 3. Escrever guias curtos para frontend, backend, runtime e compilador.
 4. Abrir discussoes publicas sobre sintaxe, ergonomia e tooling.

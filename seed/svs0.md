@@ -44,7 +44,7 @@ codigo      N bytes
 O seed precisa executar este fluxo:
 
 ```text
-entrada .sv
+entrada .sev
 LE_ARQUIVO
 TOKENIZA
 MONTA

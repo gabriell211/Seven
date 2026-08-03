@@ -16,13 +16,13 @@ Arquivos daqui sao auditaveis por texto hexadecimal. Eles nao sao gerados por to
 Quando a cadeia fisica existir, `stage0-return0.svbc0.svhex` sera substituido por:
 
 ```text
-compiler0/*.sv -> build/seven0.svbc
+compiler0/*.sev -> build/seven0.svbc
 ```
 
 E depois:
 
 ```text
-compiler/*.sv -> build/seven.svbc
+compiler/*.sev -> build/seven.svbc
 ```
 
 Os arquivos `build/seven0.svbc`, `build/seven.svbc`,

@@ -7,7 +7,7 @@ Este documento centraliza as referencias publicas da linguagem Seven.
 - Criador: Gabriel Barcelos
 - Perfil oficial: `gabriell211`
 - Repositorio oficial: `https://github.com/gabriell211/Seven`
-- Extensao oficial: `.sv`
+- Extensao oficial: `.sev`
 - Compilador oficial: `seven`
 
 ## Citacao
@@ -20,7 +20,7 @@ Creator: Gabriel Barcelos
 Profile: gabriell211
 Repository: https://github.com/gabriell211/Seven
 Version: 0.1.0
-Extension: .sv
+Extension: .sev
 Compiler: seven
 ```
 

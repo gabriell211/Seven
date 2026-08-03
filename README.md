@@ -1,12 +1,12 @@
 ![Seven](brand/seven-logo.svg)
 
-# Seven `.sv`
+# Seven `.sev`
 
 Seven e uma linguagem de programacao propria, criada para ir do baixo nivel ao alto nivel sem depender de uma linguagem hospedeira como identidade tecnica.
 
 Criador: **Gabriel Barcelos** (`gabriell211`).
 
-A extensao oficial e `.sv`.
+A extensao oficial e `.sev`.
 O compilador oficial se chama `seven`.
 A fonte do compilador oficial vive em Seven.
 
@@ -60,7 +60,7 @@ fecha
 - `docs/bytecode.md`: formato Seven Bytecode (`SVBC`).
 - `docs/package-system.md`: pacotes e resolucao de modulos.
 - `docs/c-interop.md`: interoperabilidade C/C++ por ABI explicita.
-- `editors/vscode/seven-language`: recursos estaticos de editor para `.sv`,
+- `editors/vscode/seven-language`: recursos estaticos de editor para `.sev`,
   sem runtime JavaScript/TypeScript no nucleo oficial.
 - `docs/standard-library.md`: mapa da biblioteca padrao.
 - `docs/diagnostics.md`: codigos de erro estaveis.
@@ -75,7 +75,7 @@ fecha
 - `std/`: biblioteca padrao escrita em Seven.
 - `compiler/`: compilador Seven escrito em Seven.
 - `compiler/toolchain/`: toolchain oficial Seven-native.
-- `compiler/toolchain/launcher.sv`: contrato do launcher e manifesto
+- `compiler/toolchain/launcher.sev`: contrato do launcher e manifesto
   `seven.launcher` usado por instalador/release.
 - `compiler0/`: compilador minimo Seven-0 usado no bootstrap.
 - `runtime/`: VM Seven, VM Seven-0 e executor do seed.
@@ -83,7 +83,7 @@ fecha
 - `brand/`: logo, marca, favicon e icone oficial.
 - `CITATION.cff`: citacao oficial da linguagem.
 - `NOTICE`: aviso de autoria para fonte, binarios e releases.
-- `examples/`: programas de exemplo `.sv`.
+- `examples/`: programas de exemplo `.sev`.
 - `conformance/`: suite de conformidade da linguagem.
 - `seed/`: especificacao do seed minimo auditavel.
 - `bootstrap/`: estagios planejados de nascimento.
@@ -102,7 +102,7 @@ fecha
 
 ```text
 seven build
-seven run examples/hello.sv
+seven run examples/hello.sev
 seven check
 seven fmt
 seven test
@@ -133,8 +133,8 @@ Tambem valida pacote/lock, LSP e FFI:
 
 ```powershell
 .\tools\seven-dev.ps1 pkg add std.http 1.0.0 registry
-.\tools\seven-lsp.ps1 -SelfTest -File .\examples\hello.sv
-.\tools\seven-dev.ps1 ffi header .\examples\interop-c\main.sv .\build\interop-c.h
+.\tools\seven-lsp.ps1 -SelfTest -File .\examples\hello.sev
+.\tools\seven-dev.ps1 ffi header .\examples\interop-c\main.sev .\build\interop-c.h
 ```
 
 ## Adocao por empresas
@@ -205,7 +205,7 @@ Os exemplos oficiais ficam em:
 
 ## Estado atual
 
-Esta pasta contem a fundacao profissional da linguagem: especificacao, arquitetura, gramatica, standard library fullstack inicial, seed Seven-0, compilador minimo `compiler0`, fonte do compilador completo em `.sv`, exemplos de frontend/backend e conformidade.
+Esta pasta contem a fundacao profissional da linguagem: especificacao, arquitetura, gramatica, standard library fullstack inicial, seed Seven-0, compilador minimo `compiler0`, fonte do compilador completo em `.sev`, exemplos de frontend/backend e conformidade.
 
 O proximo marco e materializar `seed/genesis.svhex` no primeiro alvo fisico, gerar `build/seven0.svbc` e ligar os intrinsecos de plataforma definidos em `docs/platform.md`.
 

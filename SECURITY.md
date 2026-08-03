@@ -31,7 +31,7 @@ Include:
 - affected version or commit;
 - operating system and PowerShell version;
 - exact command used;
-- minimal `.sv` input or artifact needed to reproduce;
+- minimal `.sev` input or artifact needed to reproduce;
 - expected result and actual result;
 - whether the issue affects code execution, filesystem access, package
   integrity, bytecode verification or diagnostics.

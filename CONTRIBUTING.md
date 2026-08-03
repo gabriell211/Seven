@@ -5,7 +5,7 @@ Seven is created by Gabriel Barcelos.
 ## Principles
 
 - Keep Seven self-hosting as the north star.
-- Prefer `.sv` sources for language, compiler, runtime and standard library work.
+- Prefer `.sev` sources for language, compiler, runtime and standard library work.
 - Keep platform bindings explicit through `sys_*`, `frontend_*` and target contracts.
 - Do not add hidden host-language dependencies to the repository.
 - Keep diagnostics stable and documented.

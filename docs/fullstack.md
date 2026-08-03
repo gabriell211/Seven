@@ -71,4 +71,4 @@ Seven full stack nao deve esconder custo nem seguranca:
 
 ## Estado
 
-As APIs oficiais foram definidas em `.sv`. O proximo passo e ligar essas APIs ao backend de execucao do `SVBC` e aos alvos `svbc`, `wasm` e binario nativo.
+As APIs oficiais foram definidas em `.sev`. O proximo passo e ligar essas APIs ao backend de execucao do `SVBC` e aos alvos `svbc`, `wasm` e binario nativo.

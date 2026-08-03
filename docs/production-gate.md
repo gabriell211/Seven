@@ -25,7 +25,7 @@ ate existir o executavel Seven final.
    `build/seven.svbc == build/seven.self.svbc`.
 5. O CI chama o caminho Seven em vez de assumir PowerShell como produto.
 6. `tools/*.ps1` ficam somente como legado de auditoria.
-7. `bin/seven.exe` deixa de ser autoritativo; `launcher.sv` e
+7. `bin/seven.exe` deixa de ser autoritativo; `launcher.sev` e
    `build/seven.launcher.svbc` definem o contrato do launcher Seven-native.
 8. O compilador tem gates de semantica, tipos, efeitos, memoria e FFI.
 9. O runtime rejeita envelopes de desenvolvimento e valida SVBC produtivo.
@@ -40,9 +40,9 @@ transicao ja materializa `SVBC-v1` binario e executa
 `build/seven.svbc verify production` com `inicio -> CHAMA executa_cli` e
 despacho por `SALTA_SE_NAO`. O artefato novo nao emite mais `seven_cli`, e o CI
 ja chama esses comandos antes da auditoria PowerShell. O contrato do launcher agora vive em
-`compiler/toolchain/launcher.sv`, gera `build/seven.launcher.svbc` e entra no
+`compiler/toolchain/launcher.sev`, gera `build/seven.launcher.svbc` e entra no
 instalador/release por manifesto e bytecode. A lacuna real restante e remover o
-executor PowerShell de transicao e empacotar `runtime/launcher/seven.sv` como
+executor PowerShell de transicao e empacotar `runtime/launcher/seven.sev` como
 executavel final.
 
 Por isso, a regra de producao e simples:

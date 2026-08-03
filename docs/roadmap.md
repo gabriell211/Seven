@@ -8,7 +8,7 @@
 - Modelo de memoria.
 - Efeitos.
 - Bytecode.
-- Fonte inicial do compilador em `.sv`.
+- Fonte inicial do compilador em `.sev`.
 - Gate automatizado de fundacao para `check`, `build`, `run` e envelope `SVBC`.
 - Checker semantico de fundacao para os invalidos iniciais.
 - VM de desenvolvimento para smoke tests executaveis.
@@ -31,9 +31,9 @@
 
 ## Fase 2: self-hosting
 
-- `seven` compila `compiler/seven.sv`.
+- `seven` compila `compiler/seven.sev`.
 - Builds repetidos sao equivalentes.
-- Suite de conformidade em `.sv`.
+- Suite de conformidade em `.sev`.
 - `tools/seven-dev.ps1` deixa de ser caminho funcional primario e vira apenas
   ponte historica de verificacao.
 - `seed -> seven0 -> seven -> seven.self` produz saida equivalente.

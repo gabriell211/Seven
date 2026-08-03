@@ -10,7 +10,7 @@ O compilador oficial e escrito em Seven. Para o primeiro nascimento, o projeto d
 
 1. **Seven-0**: subconjunto minimo da linguagem.
 2. **SVS0**: fita minima de seed definida em `seed/genesis.svhex`.
-3. **compiler0**: compilador Seven-0 escrito em `.sv`.
+3. **compiler0**: compilador Seven-0 escrito em `.sev`.
 4. **SVBC0**: bytecode minimo emitido pelo compiler0.
 5. **Seven-1**: primeiro compilador completo gerado pela cadeia.
 6. **Seven-Self**: `seven` compila o proprio `seven`.
@@ -29,9 +29,9 @@ Ele existe apenas para atravessar o primeiro vazio tecnico.
 Seven atinge self-hosting quando estes comandos produzem saidas equivalentes:
 
 ```text
-seed compila compiler/seven.sv -> seven-a
-seven-a compila compiler/seven.sv -> seven-b
-seven-b compila compiler/seven.sv -> seven-c
+seed compila compiler/seven.sev -> seven-a
+seven-a compila compiler/seven.sev -> seven-b
+seven-b compila compiler/seven.sev -> seven-c
 ```
 
 `seven-b` e `seven-c` precisam ser binariamente iguais ou equivalentes por hash normalizado.
@@ -42,8 +42,8 @@ seven-b compila compiler/seven.sv -> seven-c
 seed/genesis.svhex
 build/genesis.svs0.svhex
 build/stage0-return0.svbc0.svhex
-compiler0/*.sv
-compiler/*.sv
-std/*.sv
-conformance/**/*.sv
+compiler0/*.sev
+compiler/*.sev
+std/*.sev
+conformance/**/*.sev
 ```

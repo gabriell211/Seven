@@ -33,14 +33,14 @@ campo cadeia_bootstrap_padrao() -> CadeiaBootstrap toca disco ::
 
   lista_coloca(etapas, EtapaBootstrap {
     nome: "seven0",
-    entrada: "compiler0/seven0.sv",
+    entrada: "compiler0/seven0.sev",
     saida: "build/seven.svbc",
     verificador: "SVBC0"
   })
 
   lista_coloca(etapas, EtapaBootstrap {
     nome: "seven",
-    entrada: "compiler/seven.sv",
+    entrada: "compiler/seven.sev",
     saida: "build/seven.self.svbc",
     verificador: "SVBC"
   })

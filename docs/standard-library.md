@@ -3,11 +3,11 @@
 ## Gate
 
 `seven verify foundation` chama a auditoria Seven-native em
-`compiler/toolchain/library_audit.sv`. O gate exige os modulos essenciais da
+`compiler/toolchain/library_audit.sev`. O gate exige os modulos essenciais da
 stdlib e os casos de `conformance/libs/valid`.
 
 O verificador legado tambem executa `seven-dev check` em todos os arquivos
-`std/**/*.sv` ate que `seven verify foundation` rode diretamente por
+`std/**/*.sev` ate que `seven verify foundation` rode diretamente por
 `build/seven.svbc`.
 
 ## Base

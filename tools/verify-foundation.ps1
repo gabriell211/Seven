@@ -297,9 +297,9 @@ function Test-SevenNativeSourceBoundary {
       continue
     }
 
-    $sevenSources = Get-ChildItem -LiteralPath $rootPath -Recurse -File -Filter "*.sv"
+    $sevenSources = Get-ChildItem -LiteralPath $rootPath -Recurse -File -Filter "*.sev"
     if (@($sevenSources).Count -eq 0) {
-      [void]$unexpected.Add("$relativeRoot sem fonte .sv")
+      [void]$unexpected.Add("$relativeRoot sem fonte .sev")
     }
 
     foreach ($file in Get-ChildItem -LiteralPath $rootPath -Recurse -File) {
@@ -384,38 +384,38 @@ function Test-SevenNoNodeRuntime {
 
 function Test-SevenNativeToolchainSurface {
   $requiredSources = @(
-    "compiler\bytecode.sv",
-    "compiler\toolchain\command.sv",
-    "compiler\toolchain\cli.sv",
-    "compiler\toolchain\native_host.sv",
-    "compiler\toolchain\launcher.sv",
-    "compiler\toolchain\installer.sv",
-    "compiler\toolchain\formatter.sv",
-    "compiler\toolchain\test_runner.sv",
-    "compiler\toolchain\lsp_server.sv",
-    "compiler\toolchain\release.sv",
-    "compiler\toolchain\bootstrap_chain.sv",
-    "compiler\toolchain\verify.sv",
-    "compiler\toolchain\library_audit.sv",
-    "compiler\toolchain\production_audit.sv",
-    "compiler\toolchain\adapters.sv"
+    "compiler\bytecode.sev",
+    "compiler\toolchain\command.sev",
+    "compiler\toolchain\cli.sev",
+    "compiler\toolchain\native_host.sev",
+    "compiler\toolchain\launcher.sev",
+    "compiler\toolchain\installer.sev",
+    "compiler\toolchain\formatter.sev",
+    "compiler\toolchain\test_runner.sev",
+    "compiler\toolchain\lsp_server.sev",
+    "compiler\toolchain\release.sev",
+    "compiler\toolchain\bootstrap_chain.sev",
+    "compiler\toolchain\verify.sev",
+    "compiler\toolchain\library_audit.sev",
+    "compiler\toolchain\production_audit.sev",
+    "compiler\toolchain\adapters.sev"
   )
 
   $requiredTerms = @{
-    "compiler\bytecode.sv" = @("SvbcMagic", "SvbcVersao", "emite_svbc", "emite_nomes", "emite_tabela_constantes", "emite_campos", "emite_codigo", "emite_instrucao_svbc", "opcode_byte", "opcode_binario", "ip_do_bloco", "IrSalta", "IrSaltaSeNao", "SaltaSeNao", "Syscall", "bytes_coloca_byte", "bytes_coloca_u32", "bytes_coloca_u64", "bytes_coloca_texto_com_tamanho")
-    "compiler\toolchain\command.sv" = @("CmdVerifyFoundation", "CmdVerifyBootstrap", "CmdVerifyProduction")
-    "compiler\toolchain\cli.sv" = @("executa_cli", "parseia_comando", "parseia_verify", "CmdInstall", "CmdPkgAdd", "CmdLsp", "CmdVerifyFoundation", "CmdVerifyProduction")
-    "compiler\toolchain\native_host.sv" = @("PlanoHostExecutavel", "host_executavel_padrao", "host_executavel_manifesto", "host_executavel_contrato_valido", "host_executavel_release_caminho", "host_manifesto_release_caminho", "runtime/host/seven.sv", "build/seven.host.svbc", "build/seven.launcher.svbc")
-    "compiler\toolchain\launcher.sv" = @("PlanoLauncher", "launcher_padrao", "launcher_manifesto", "launcher_contrato_valido", "launcher_release_caminho", "launcher_bytecode_release_caminho", "runtime/svbc/runner.sv", "build/seven.svbc", "build/seven.launcher.svbc")
-    "compiler\toolchain\installer.sv" = @("PlanoInstalacao", "instala_seven", "remove_instalacao", "host", "host_bytecode", "launcher", "launcher_bytecode", "seven.host", "seven.host.svbc", "seven.launcher", "seven.launcher.svbc", "host_executavel_manifesto", "launcher_manifesto")
-    "compiler\toolchain\formatter.sv" = @("fmt_texto", "fmt_caminho")
-    "compiler\toolchain\test_runner.sv" = @("roda_testes", "roda_benchmarks")
-    "compiler\toolchain\lsp_server.sv" = @("inicia_lsp", "SessaoLsp")
-    "compiler\toolchain\release.sv" = @("prepara_release", "sbom_gera", "launcher_release_caminho", "launcher_bytecode_release_caminho", "host_executavel_release_caminho", "host_manifesto_release_caminho", "tipo: ""launcher-svbc""", "tipo: ""host-svbc""")
-    "compiler\toolchain\bootstrap_chain.sv" = @("verifica_cadeia_bootstrap", "seed", "seven0", "seven.self", "artefato_bootstrap_svbc_produtivo", "bytes_tem_svbc_v1", "arquivo_bytes", "bytes_pega")
-    "compiler\toolchain\verify.sv" = @("verifica_fundacao", "relatorio_fundacao_texto", "verifica_sem_node", "verifica_auditoria_producao")
-    "compiler\toolchain\library_audit.sv" = @("audita_biblioteca_padrao", "modulos_obrigatorios", "conformance_libs_obrigatoria")
-    "compiler\toolchain\production_audit.sv" = @("audita_prontidao_producao", "relatorio_producao_texto", "P01", "P10", "launcher_contrato_valido", "host_executavel_contrato_valido", "build/seven.host.svbc", "build/seven.launcher.svbc", "host_bytecode", "launcher_bytecode", "artefato_svbc_produtivo", "bytes_tem_svbc_v1", "runtime_verify_foundation_ok", "executa_verify_foundation_de_seven_svbc", "arquivo_bytes", "bytes_pega")
+    "compiler\bytecode.sev" = @("SvbcMagic", "SvbcVersao", "emite_svbc", "emite_nomes", "emite_tabela_constantes", "emite_campos", "emite_codigo", "emite_instrucao_svbc", "opcode_byte", "opcode_binario", "ip_do_bloco", "IrSalta", "IrSaltaSeNao", "SaltaSeNao", "Syscall", "bytes_coloca_byte", "bytes_coloca_u32", "bytes_coloca_u64", "bytes_coloca_texto_com_tamanho")
+    "compiler\toolchain\command.sev" = @("CmdVerifyFoundation", "CmdVerifyBootstrap", "CmdVerifyProduction")
+    "compiler\toolchain\cli.sev" = @("executa_cli", "parseia_comando", "parseia_verify", "CmdInstall", "CmdPkgAdd", "CmdLsp", "CmdVerifyFoundation", "CmdVerifyProduction")
+    "compiler\toolchain\native_host.sev" = @("PlanoHostExecutavel", "host_executavel_padrao", "host_executavel_manifesto", "host_executavel_contrato_valido", "host_executavel_release_caminho", "host_manifesto_release_caminho", "runtime/host/seven.sev", "build/seven.host.svbc", "build/seven.launcher.svbc")
+    "compiler\toolchain\launcher.sev" = @("PlanoLauncher", "launcher_padrao", "launcher_manifesto", "launcher_contrato_valido", "launcher_release_caminho", "launcher_bytecode_release_caminho", "runtime/svbc/runner.sev", "build/seven.svbc", "build/seven.launcher.svbc")
+    "compiler\toolchain\installer.sev" = @("PlanoInstalacao", "instala_seven", "remove_instalacao", "host", "host_bytecode", "launcher", "launcher_bytecode", "seven.host", "seven.host.svbc", "seven.launcher", "seven.launcher.svbc", "host_executavel_manifesto", "launcher_manifesto")
+    "compiler\toolchain\formatter.sev" = @("fmt_texto", "fmt_caminho")
+    "compiler\toolchain\test_runner.sev" = @("roda_testes", "roda_benchmarks")
+    "compiler\toolchain\lsp_server.sev" = @("inicia_lsp", "SessaoLsp")
+    "compiler\toolchain\release.sev" = @("prepara_release", "sbom_gera", "launcher_release_caminho", "launcher_bytecode_release_caminho", "host_executavel_release_caminho", "host_manifesto_release_caminho", "tipo: ""launcher-svbc""", "tipo: ""host-svbc""")
+    "compiler\toolchain\bootstrap_chain.sev" = @("verifica_cadeia_bootstrap", "seed", "seven0", "seven.self", "artefato_bootstrap_svbc_produtivo", "bytes_tem_svbc_v1", "arquivo_bytes", "bytes_pega")
+    "compiler\toolchain\verify.sev" = @("verifica_fundacao", "relatorio_fundacao_texto", "verifica_sem_node", "verifica_auditoria_producao")
+    "compiler\toolchain\library_audit.sev" = @("audita_biblioteca_padrao", "modulos_obrigatorios", "conformance_libs_obrigatoria")
+    "compiler\toolchain\production_audit.sev" = @("audita_prontidao_producao", "relatorio_producao_texto", "P01", "P10", "launcher_contrato_valido", "host_executavel_contrato_valido", "build/seven.host.svbc", "build/seven.launcher.svbc", "host_bytecode", "launcher_bytecode", "artefato_svbc_produtivo", "bytes_tem_svbc_v1", "runtime_verify_foundation_ok", "executa_verify_foundation_de_seven_svbc", "arquivo_bytes", "bytes_pega")
   }
 
   $missing = New-Object System.Collections.Generic.List[string]
@@ -441,9 +441,9 @@ function Test-SevenNativeToolchainSurface {
     }
   }
 
-  $entrypoint = Get-Content -LiteralPath (Join-Path $Root "compiler\seven.sv") -Raw
+  $entrypoint = Get-Content -LiteralPath (Join-Path $Root "compiler\seven.sev") -Raw
   if (-not $entrypoint.Contains("executa_cli(argumentos)")) {
-    [void]$missing.Add("compiler/seven.sv nao delega para a CLI Seven-native")
+    [void]$missing.Add("compiler/seven.sev nao delega para a CLI Seven-native")
   }
 
   if ($missing.Count -gt 0) {
@@ -463,29 +463,29 @@ function Test-SevenNativeToolchainSurface {
 
 function Test-SevenRuntimeCommandSurface {
   $requiredSources = @(
-    "runtime\svbc\runner.sv",
-    "runtime\svbc\decoder.sv",
-    "runtime\svbc\vm.sv",
-    "runtime\svbc\verifier.sv",
-    "runtime\svbc\value.sv",
-    "runtime\svbc\command_runner.sv",
-    "runtime\platform\intrinsic.sv",
-    "runtime\platform\svbc\toolchain.sv",
-    "runtime\host\seven.sv",
-    "runtime\launcher\seven.sv"
+    "runtime\svbc\runner.sev",
+    "runtime\svbc\decoder.sev",
+    "runtime\svbc\vm.sev",
+    "runtime\svbc\verifier.sev",
+    "runtime\svbc\value.sev",
+    "runtime\svbc\command_runner.sev",
+    "runtime\platform\intrinsic.sev",
+    "runtime\platform\svbc\toolchain.sev",
+    "runtime\host\seven.sev",
+    "runtime\launcher\seven.sev"
   )
 
   $requiredTerms = @{
-    "runtime\svbc\runner.sv" = @("roda_svbc_com_args", "roda_seven_svbc_verify_foundation", "roda_seven_svbc_verify_bootstrap", "roda_seven_svbc_verify_production", "formato_svbc_produtivo", "bytes_pega(dados, 5)", "bytes_pega(dados, 6)", "bytes_pega(dados, 7)", "build/seven.svbc", "verify", "foundation", "bootstrap", "production")
-    "runtime\svbc\decoder.sv" = @("decodifica_nomes", "decodifica_constantes", "decodifica_campos", "decodifica_codigo", "le_u64", "opcode_ou_pare")
-    "runtime\svbc\vm.sv" = @("vm_executa_com_args", "vm_nova_com_args", "argumentos", "VmArgs", "locais", "vm_carrega", "vm_guarda", "vm_chama", "QuadroVm", "Carrega", "Guarda", "Chama")
-    "runtime\svbc\verifier.sv" = @("verifica_saltos", "verifica_constantes", "verifica_locais", "verifica_pilha", "verifica_efeitos", "efeito_binario_pilha")
-    "runtime\svbc\value.sv" = @("VmArgs")
-    "runtime\svbc\command_runner.sv" = @("executa_verify_foundation_de_seven_svbc", "executa_verify_bootstrap_de_seven_svbc", "executa_verify_production_de_seven_svbc", "comando_verify_foundation", "comando_verify_bootstrap", "comando_verify_production", "executa_comando_svbc")
-    "runtime\platform\intrinsic.sv" = @("seven_args_verify_foundation", "seven_args_verify_bootstrap", "seven_args_verify_production", "seven_verify_foundation", "seven_verify_bootstrap", "seven_verify_production")
-    "runtime\platform\svbc\toolchain.sv" = @("intr_cmd_args_verify_foundation", "intr_cmd_args_verify_bootstrap", "intr_cmd_args_verify_production", "intr_cmd_verify_foundation", "intr_cmd_verify_bootstrap", "intr_cmd_verify_production", "svbc_produtivo", "svbc_arquivos_iguais", "bytes_tem_svbc_v1", "seven <check|build|run", "build/seven.svbc SVBC-v1", "build/seven.host.svbc", "build/seven.launcher.svbc")
-    "runtime\host\seven.sv" = @("seven_host", "roda_svbc_com_args", "build/seven.launcher.svbc")
-    "runtime\launcher\seven.sv" = @("seven_launcher", "roda_svbc_com_args", "build/seven.svbc")
+    "runtime\svbc\runner.sev" = @("roda_svbc_com_args", "roda_seven_svbc_verify_foundation", "roda_seven_svbc_verify_bootstrap", "roda_seven_svbc_verify_production", "formato_svbc_produtivo", "bytes_pega(dados, 5)", "bytes_pega(dados, 6)", "bytes_pega(dados, 7)", "build/seven.svbc", "verify", "foundation", "bootstrap", "production")
+    "runtime\svbc\decoder.sev" = @("decodifica_nomes", "decodifica_constantes", "decodifica_campos", "decodifica_codigo", "le_u64", "opcode_ou_pare")
+    "runtime\svbc\vm.sev" = @("vm_executa_com_args", "vm_nova_com_args", "argumentos", "VmArgs", "locais", "vm_carrega", "vm_guarda", "vm_chama", "QuadroVm", "Carrega", "Guarda", "Chama")
+    "runtime\svbc\verifier.sev" = @("verifica_saltos", "verifica_constantes", "verifica_locais", "verifica_pilha", "verifica_efeitos", "efeito_binario_pilha")
+    "runtime\svbc\value.sev" = @("VmArgs")
+    "runtime\svbc\command_runner.sev" = @("executa_verify_foundation_de_seven_svbc", "executa_verify_bootstrap_de_seven_svbc", "executa_verify_production_de_seven_svbc", "comando_verify_foundation", "comando_verify_bootstrap", "comando_verify_production", "executa_comando_svbc")
+    "runtime\platform\intrinsic.sev" = @("seven_args_verify_foundation", "seven_args_verify_bootstrap", "seven_args_verify_production", "seven_verify_foundation", "seven_verify_bootstrap", "seven_verify_production")
+    "runtime\platform\svbc\toolchain.sev" = @("intr_cmd_args_verify_foundation", "intr_cmd_args_verify_bootstrap", "intr_cmd_args_verify_production", "intr_cmd_verify_foundation", "intr_cmd_verify_bootstrap", "intr_cmd_verify_production", "svbc_produtivo", "svbc_arquivos_iguais", "bytes_tem_svbc_v1", "seven <check|build|run", "build/seven.svbc SVBC-v1", "build/seven.host.svbc", "build/seven.launcher.svbc")
+    "runtime\host\seven.sev" = @("seven_host", "roda_svbc_com_args", "build/seven.launcher.svbc")
+    "runtime\launcher\seven.sev" = @("seven_launcher", "roda_svbc_com_args", "build/seven.svbc")
   }
 
   $missing = New-Object System.Collections.Generic.List[string]
@@ -504,12 +504,12 @@ function Test-SevenRuntimeCommandSurface {
       }
     }
 
-    if ($relative -eq "runtime\svbc\verifier.sv" -and $text.Contains("sys_svbc_verifica_")) {
-      [void]$missing.Add("runtime\svbc\verifier.sv nao deve chamar sys_svbc_verifica_*")
+    if ($relative -eq "runtime\svbc\verifier.sev" -and $text.Contains("sys_svbc_verifica_")) {
+      [void]$missing.Add("runtime\svbc\verifier.sev nao deve chamar sys_svbc_verifica_*")
     }
 
-    if ($relative -eq "runtime\svbc\decoder.sv" -and $text.Contains("sys_svbc_decodifica_")) {
-      [void]$missing.Add("runtime\svbc\decoder.sv nao deve chamar sys_svbc_decodifica_*")
+    if ($relative -eq "runtime\svbc\decoder.sev" -and $text.Contains("sys_svbc_decodifica_")) {
+      [void]$missing.Add("runtime\svbc\decoder.sev nao deve chamar sys_svbc_decodifica_*")
     }
   }
 
@@ -546,8 +546,8 @@ function Test-SevenCiTransitionSurface {
     "build\seven.self.svbc",
     "build\seven.host.svbc",
     "build\seven.launcher.svbc",
-    "seven-dev.ps1 build .\runtime\host\seven.sv .\build\seven.host.svbc",
-    "seven-dev.ps1 build .\runtime\launcher\seven.sv .\build\seven.launcher.svbc",
+    "seven-dev.ps1 build .\runtime\host\seven.sev .\build\seven.host.svbc",
+    "seven-dev.ps1 build .\runtime\launcher\seven.sev .\build\seven.launcher.svbc",
     "Run Seven foundation contract from seven.svbc",
     "seven-dev.ps1 run .\build\seven.svbc verify foundation",
     "Run Seven bootstrap contract from seven.svbc",
@@ -585,65 +585,65 @@ function Test-SevenCiTransitionSurface {
 
 function Test-SevenStdLibrarySurface {
   $requiredStd = @(
-    "std\base\prelude.sv",
-    "std\base\resultado.sv",
-    "std\base\talvez.sv",
-    "std\base\lista.sv",
-    "std\base\mapa.sv",
-    "std\base\texto.sv",
-    "std\mem\bytes.sv",
-    "std\mem\alloc.sv",
-    "std\mem\ptr.sv",
-    "std\ffi\c.sv",
-    "std\io\console.sv",
-    "std\fs\file.sv",
-    "std\env\runtime.sv",
-    "std\os\process.sv",
-    "std\time\clock.sv",
-    "std\async\task.sv",
-    "std\sync\atomic.sv",
-    "std\runtime\event_loop.sv",
-    "std\net\tcp.sv",
-    "std\net\udp.sv",
-    "std\net\tls.sv",
-    "std\net\dns.sv",
-    "std\net\websocket.sv",
-    "std\net\mqtt.sv",
-    "std\web\http.sv",
-    "std\web\router.sv",
-    "std\web\json.sv",
-    "std\web\server.sv",
-    "std\web\security.sv",
-    "std\db\client.sv",
-    "std\db\query.sv",
-    "std\db\migrate.sv",
-    "std\serial\csv.sv",
-    "std\serial\xml.sv",
-    "std\serial\yaml.sv",
-    "std\serial\toml.sv",
-    "std\serial\protobuf.sv",
-    "std\data\object.sv",
-    "std\system\bits.sv",
-    "std\crypto\hash.sv",
-    "std\crypto\random.sv",
-    "std\auth\jwt.sv",
-    "std\frontend\dom.sv",
-    "std\frontend\css.sv",
-    "std\frontend\bundle.sv",
-    "std\log\logger.sv",
-    "std\observability\metrics.sv",
-    "std\observability\trace.sv",
-    "std\test\spec.sv",
-    "std\ai\model.sv"
+    "std\base\prelude.sev",
+    "std\base\resultado.sev",
+    "std\base\talvez.sev",
+    "std\base\lista.sev",
+    "std\base\mapa.sev",
+    "std\base\texto.sev",
+    "std\mem\bytes.sev",
+    "std\mem\alloc.sev",
+    "std\mem\ptr.sev",
+    "std\ffi\c.sev",
+    "std\io\console.sev",
+    "std\fs\file.sev",
+    "std\env\runtime.sev",
+    "std\os\process.sev",
+    "std\time\clock.sev",
+    "std\async\task.sev",
+    "std\sync\atomic.sev",
+    "std\runtime\event_loop.sev",
+    "std\net\tcp.sev",
+    "std\net\udp.sev",
+    "std\net\tls.sev",
+    "std\net\dns.sev",
+    "std\net\websocket.sev",
+    "std\net\mqtt.sev",
+    "std\web\http.sev",
+    "std\web\router.sev",
+    "std\web\json.sev",
+    "std\web\server.sev",
+    "std\web\security.sev",
+    "std\db\client.sev",
+    "std\db\query.sev",
+    "std\db\migrate.sev",
+    "std\serial\csv.sev",
+    "std\serial\xml.sev",
+    "std\serial\yaml.sev",
+    "std\serial\toml.sev",
+    "std\serial\protobuf.sev",
+    "std\data\object.sev",
+    "std\system\bits.sev",
+    "std\crypto\hash.sev",
+    "std\crypto\random.sev",
+    "std\auth\jwt.sev",
+    "std\frontend\dom.sev",
+    "std\frontend\css.sev",
+    "std\frontend\bundle.sev",
+    "std\log\logger.sev",
+    "std\observability\metrics.sev",
+    "std\observability\trace.sev",
+    "std\test\spec.sev",
+    "std\ai\model.sev"
   )
 
   $requiredLibConformance = @(
-    "conformance\libs\valid\language_intelligence.sv",
-    "conformance\libs\valid\serialization.sv",
-    "conformance\libs\valid\smtp.sv",
-    "conformance\libs\valid\snmp.sv",
-    "conformance\libs\valid\system_level.sv",
-    "conformance\libs\valid\dynamic_runtime.sv"
+    "conformance\libs\valid\language_intelligence.sev",
+    "conformance\libs\valid\serialization.sev",
+    "conformance\libs\valid\smtp.sev",
+    "conformance\libs\valid\snmp.sev",
+    "conformance\libs\valid\system_level.sev",
+    "conformance\libs\valid\dynamic_runtime.sev"
   )
 
   $missing = New-Object System.Collections.Generic.List[string]
@@ -655,8 +655,8 @@ function Test-SevenStdLibrarySurface {
   }
 
   $requiredStdTerms = @{
-    "std\base\lista.sv" = @("lista_define", "sys_lista_define")
-    "std\mem\bytes.sv" = @("bytes_coloca_byte", "bytes_coloca_u32", "bytes_coloca_u64", "bytes_coloca_texto", "bytes_coloca_texto_com_tamanho")
+    "std\base\lista.sev" = @("lista_define", "sys_lista_define")
+    "std\mem\bytes.sev" = @("bytes_coloca_byte", "bytes_coloca_u32", "bytes_coloca_u64", "bytes_coloca_texto", "bytes_coloca_texto_com_tamanho")
   }
 
   foreach ($relative in $requiredStdTerms.Keys) {
@@ -748,32 +748,32 @@ Write-Step "Cadeia bootstrap fisica"
 
 $bootstrapMaterialization = @(
   @{
-    Name = "check compiler0/seven0.sv"
-    Args = @("check", (Join-Path $Root "compiler0\seven0.sv"))
+    Name = "check compiler0/seven0.sev"
+    Args = @("check", (Join-Path $Root "compiler0\seven0.sev"))
   },
   @{
-    Name = "build compiler0/seven0.sv -> build/seven0.svbc"
-    Args = @("build", (Join-Path $Root "compiler0\seven0.sv"), (Join-Path $Root "build\seven0.svbc"))
+    Name = "build compiler0/seven0.sev -> build/seven0.svbc"
+    Args = @("build", (Join-Path $Root "compiler0\seven0.sev"), (Join-Path $Root "build\seven0.svbc"))
   },
   @{
-    Name = "check compiler/seven.sv"
-    Args = @("check", (Join-Path $Root "compiler\seven.sv"))
+    Name = "check compiler/seven.sev"
+    Args = @("check", (Join-Path $Root "compiler\seven.sev"))
   },
   @{
-    Name = "build compiler/seven.sv -> build/seven.svbc"
-    Args = @("build", (Join-Path $Root "compiler\seven.sv"), (Join-Path $Root "build\seven.svbc"))
+    Name = "build compiler/seven.sev -> build/seven.svbc"
+    Args = @("build", (Join-Path $Root "compiler\seven.sev"), (Join-Path $Root "build\seven.svbc"))
   },
   @{
-    Name = "build compiler/seven.sv -> build/seven.self.svbc"
-    Args = @("build", (Join-Path $Root "compiler\seven.sv"), (Join-Path $Root "build\seven.self.svbc"))
+    Name = "build compiler/seven.sev -> build/seven.self.svbc"
+    Args = @("build", (Join-Path $Root "compiler\seven.sev"), (Join-Path $Root "build\seven.self.svbc"))
   },
   @{
-    Name = "build runtime/host/seven.sv -> build/seven.host.svbc"
-    Args = @("build", (Join-Path $Root "runtime\host\seven.sv"), (Join-Path $Root "build\seven.host.svbc"))
+    Name = "build runtime/host/seven.sev -> build/seven.host.svbc"
+    Args = @("build", (Join-Path $Root "runtime\host\seven.sev"), (Join-Path $Root "build\seven.host.svbc"))
   },
   @{
-    Name = "build runtime/launcher/seven.sv -> build/seven.launcher.svbc"
-    Args = @("build", (Join-Path $Root "runtime\launcher\seven.sv"), (Join-Path $Root "build\seven.launcher.svbc"))
+    Name = "build runtime/launcher/seven.sev -> build/seven.launcher.svbc"
+    Args = @("build", (Join-Path $Root "runtime\launcher\seven.sev"), (Join-Path $Root "build\seven.launcher.svbc"))
   }
 )
 
@@ -911,7 +911,7 @@ if ($version.ExitCode -eq 0 -and (Test-OutputContains -Result $version -Expected
 }
 
 $help = Invoke-Seven -SevenArgs @("--help")
-if ($help.ExitCode -eq 0 -and (Test-OutputContains -Result $help -Expected "seven check <file.sv>")) {
+if ($help.ExitCode -eq 0 -and (Test-OutputContains -Result $help -Expected "seven check <filesev>")) {
   Add-Pass "seven --help"
 } else {
   Add-Failure "seven --help nao publicou os comandos esperados" $help.Output
@@ -919,7 +919,7 @@ if ($help.ExitCode -eq 0 -and (Test-OutputContains -Result $help -Expected "seve
 
 Write-Step "Conformidade valida"
 
-$validFiles = Get-ChildItem -Path (Join-Path $Root "conformance") -Recurse -Filter "*.sv" |
+$validFiles = Get-ChildItem -Path (Join-Path $Root "conformance") -Recurse -Filter "*.sev" |
   Where-Object { $_.FullName -match "[\\/]valid[\\/]" } |
   Sort-Object FullName
 
@@ -936,7 +936,7 @@ foreach ($file in $validFiles) {
 
 Write-Step "Biblioteca padrao"
 
-$stdFiles = Get-ChildItem -Path (Join-Path $Root "std") -Recurse -Filter "*.sv" |
+$stdFiles = Get-ChildItem -Path (Join-Path $Root "std") -Recurse -Filter "*.sev" |
   Sort-Object FullName
 
 foreach ($file in $stdFiles) {
@@ -957,14 +957,14 @@ New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
 
 try {
   $buildInputs = @(
-    (Join-Path $Root "examples\hello.sv"),
-    (Join-Path $Root "examples\control.sv"),
-    (Join-Path $Root "conformance\valid\hello.sv"),
-    (Join-Path $Root "conformance\runtime\valid\svbc_arithmetic.sv"),
-    (Join-Path $Root "conformance\runtime\valid\svbc_branch.sv"),
-    (Join-Path $Root "conformance\runtime\valid\svbc_compare.sv"),
-    (Join-Path $Root "conformance\runtime\valid\svbc_loop.sv"),
-    (Join-Path $Root "conformance\runtime\valid\svbc_call.sv")
+    (Join-Path $Root "examples\hello.sev"),
+    (Join-Path $Root "examples\control.sev"),
+    (Join-Path $Root "conformance\valid\hello.sev"),
+    (Join-Path $Root "conformance\runtime\valid\svbc_arithmetic.sev"),
+    (Join-Path $Root "conformance\runtime\valid\svbc_branch.sev"),
+    (Join-Path $Root "conformance\runtime\valid\svbc_compare.sev"),
+    (Join-Path $Root "conformance\runtime\valid\svbc_loop.sev"),
+    (Join-Path $Root "conformance\runtime\valid\svbc_call.sev")
   )
 
   foreach ($inputPath in $buildInputs) {
@@ -990,25 +990,25 @@ try {
 
     Add-Pass "build $relative -> SVBC-v1 binario"
 
-    if ($relative -eq "examples/hello.sv") {
+    if ($relative -eq "examples/hello.sev") {
       $runBuilt = Invoke-SevenDev -DevArgs @("run", $outputPath)
       if ($runBuilt.ExitCode -eq 0 -and (Test-OutputContains -Result $runBuilt -Expected "Seven nasceu.")) {
-        Add-Pass "run SVBC-v1 gerado de examples/hello.sv"
+        Add-Pass "run SVBC-v1 gerado de examples/hello.sev"
       } else {
-        Add-Failure "run SVBC-v1 gerado de examples/hello.sv deveria passar" $runBuilt.Output
+        Add-Failure "run SVBC-v1 gerado de examples/hello.sev deveria passar" $runBuilt.Output
       }
     }
 
-    if ($relative -eq "examples/control.sv") {
+    if ($relative -eq "examples/control.sev") {
       $runBuiltControl = Invoke-SevenDev -DevArgs @("run", $outputPath)
       if ($runBuiltControl.ExitCode -eq 0 -and (Test-OutputContains -Result $runBuiltControl -Expected "ciclo completo")) {
-        Add-Pass "run SVBC-v1 gerado de examples/control.sv"
+        Add-Pass "run SVBC-v1 gerado de examples/control.sev"
       } else {
-        Add-Failure "run SVBC-v1 gerado de examples/control.sv deveria completar ciclo" $runBuiltControl.Output
+        Add-Failure "run SVBC-v1 gerado de examples/control.sev deveria completar ciclo" $runBuiltControl.Output
       }
     }
 
-    if ($relative -eq "conformance/runtime/valid/svbc_call.sv") {
+    if ($relative -eq "conformance/runtime/valid/svbc_call.sev") {
       $runCall = Invoke-SevenDev -DevArgs @("run", $outputPath)
       if ($runCall.ExitCode -eq 7) {
         Add-Pass "run SVBC-v1 com CHAMA retorna 7"
@@ -1017,7 +1017,7 @@ try {
       }
     }
 
-    if ($relative -eq "conformance/runtime/valid/svbc_arithmetic.sv") {
+    if ($relative -eq "conformance/runtime/valid/svbc_arithmetic.sev") {
       $runArithmetic = Invoke-SevenDev -DevArgs @("run", $outputPath)
       if ($runArithmetic.ExitCode -eq 7) {
         Add-Pass "run SVBC-v1 com GUARDA/SOMA retorna 7"
@@ -1026,7 +1026,7 @@ try {
       }
     }
 
-    if ($relative -eq "conformance/runtime/valid/svbc_branch.sv") {
+    if ($relative -eq "conformance/runtime/valid/svbc_branch.sev") {
       $runBranch = Invoke-SevenDev -DevArgs @("run", $outputPath)
       if ($runBranch.ExitCode -eq 7) {
         Add-Pass "run SVBC-v1 com veja/outro retorna 7"
@@ -1035,7 +1035,7 @@ try {
       }
     }
 
-    if ($relative -eq "conformance/runtime/valid/svbc_compare.sv") {
+    if ($relative -eq "conformance/runtime/valid/svbc_compare.sev") {
       $runCompare = Invoke-SevenDev -DevArgs @("run", $outputPath)
       if ($runCompare.ExitCode -eq 1) {
         Add-Pass "run SVBC-v1 com comparacao retorna 1"
@@ -1044,7 +1044,7 @@ try {
       }
     }
 
-    if ($relative -eq "conformance/runtime/valid/svbc_loop.sv") {
+    if ($relative -eq "conformance/runtime/valid/svbc_loop.sev") {
       $runLoop = Invoke-SevenDev -DevArgs @("run", $outputPath)
       if ($runLoop.ExitCode -eq 7) {
         Add-Pass "run SVBC-v1 com gira retorna 7"
@@ -1059,39 +1059,39 @@ try {
 
 Write-Step "Run smoke"
 
-$runInput = Join-Path $Root "examples\hello.sv"
+$runInput = Join-Path $Root "examples\hello.sev"
 $run = Invoke-SevenDev -DevArgs @("run", $runInput)
 if ($run.ExitCode -ne 0) {
-  Add-Failure "run examples/hello.sv deveria passar" $run.Output
+  Add-Failure "run examples/hello.sev deveria passar" $run.Output
 } elseif (-not (Test-OutputContains -Result $run -Expected "Seven nasceu.")) {
-  Add-Failure "run examples/hello.sv nao executou saida esperada" $run.Output
+  Add-Failure "run examples/hello.sev nao executou saida esperada" $run.Output
 } else {
-  Add-Pass "run examples/hello.sv executa na VM de desenvolvimento"
+  Add-Pass "run examples/hello.sev executa na VM de desenvolvimento"
 }
 
-$runControl = Invoke-SevenDev -DevArgs @("run", (Join-Path $Root "examples\control.sv"))
+$runControl = Invoke-SevenDev -DevArgs @("run", (Join-Path $Root "examples\control.sev"))
 if ($runControl.ExitCode -ne 0) {
-  Add-Failure "run examples/control.sv deveria passar" $runControl.Output
+  Add-Failure "run examples/control.sev deveria passar" $runControl.Output
 } elseif (-not (Test-OutputContains -Result $runControl -Expected "ciclo completo")) {
-  Add-Failure "run examples/control.sv nao executou controle de fluxo" $runControl.Output
+  Add-Failure "run examples/control.sev nao executou controle de fluxo" $runControl.Output
 } else {
-  Add-Pass "run examples/control.sv executa controle de fluxo"
+  Add-Pass "run examples/control.sev executa controle de fluxo"
 }
 
-$debugControl = Invoke-SevenDev -DevArgs @("debug", (Join-Path $Root "examples\control.sv"), "--break", "8", "--locals")
+$debugControl = Invoke-SevenDev -DevArgs @("debug", (Join-Path $Root "examples\control.sev"), "--break", "8", "--locals")
 if ($debugControl.ExitCode -ne 0) {
-  Add-Failure "debug examples/control.sv deveria passar" $debugControl.Output
+  Add-Failure "debug examples/control.sev deveria passar" $debugControl.Output
 } elseif (-not (Test-OutputContains -Result $debugControl -Expected "breakpoint: line 8")) {
-  Add-Failure "debug examples/control.sv nao parou no breakpoint" $debugControl.Output
+  Add-Failure "debug examples/control.sev nao parou no breakpoint" $debugControl.Output
 } elseif (-not (Test-OutputContains -Result $debugControl -Expected "local: energia = 3")) {
-  Add-Failure "debug examples/control.sv nao mostrou locals" $debugControl.Output
+  Add-Failure "debug examples/control.sev nao mostrou locals" $debugControl.Output
 } else {
-  Add-Pass "debug examples/control.sv emite breakpoint e locals"
+  Add-Pass "debug examples/control.sev emite breakpoint e locals"
 }
 
 Write-Step "Conformidade invalida"
 
-$invalidFiles = Get-ChildItem -Path (Join-Path $Root "conformance") -Recurse -Filter "*.sv" |
+$invalidFiles = Get-ChildItem -Path (Join-Path $Root "conformance") -Recurse -Filter "*.sev" |
   Where-Object { $_.FullName -match "[\\/]invalid[\\/]" } |
   Sort-Object FullName
 
@@ -1165,7 +1165,7 @@ try {
     Add-Failure "pkg remove deveria remover dependencia" ($pkgRemove.Output + [Environment]::NewLine + $pkgVerifyAfterRemove.Output)
   }
 
-  $lsp = Invoke-SevenLspSelfTest -File (Join-Path $Root "examples\hello.sv")
+  $lsp = Invoke-SevenLspSelfTest -File (Join-Path $Root "examples\hello.sev")
   $lspPayload = ConvertFrom-SevenJsonOutput -Text $lsp.Output
   $hasInicioCompletion = $false
   $hasInicioSymbol = $false
@@ -1180,7 +1180,7 @@ try {
     Add-Failure "LSP self-test deveria retornar completion e symbol inicio" $lsp.Output
   }
 
-  $lspInvalid = Invoke-SevenLspSelfTest -File (Join-Path $Root "conformance\invalid\immutable_assign.sv")
+  $lspInvalid = Invoke-SevenLspSelfTest -File (Join-Path $Root "conformance\invalid\immutable_assign.sev")
   $lspInvalidPayload = ConvertFrom-SevenJsonOutput -Text $lspInvalid.Output
   $hasImmutableDiagnostic = $false
   if ($null -ne $lspInvalidPayload) {
@@ -1195,8 +1195,8 @@ try {
 
   $headerPath = Join-Path $toolTemp "interop.h"
   $manifestPath = Join-Path $toolTemp "interop.json"
-  $ffi = Invoke-SevenDev -DevArgs @("ffi", "header", (Join-Path $Root "examples\interop-c\main.sv"), $headerPath)
-  $ffiManifest = Invoke-SevenDev -DevArgs @("ffi", "manifest", (Join-Path $Root "examples\interop-c\main.sv"), $manifestPath)
+  $ffi = Invoke-SevenDev -DevArgs @("ffi", "header", (Join-Path $Root "examples\interop-c\main.sev"), $headerPath)
+  $ffiManifest = Invoke-SevenDev -DevArgs @("ffi", "manifest", (Join-Path $Root "examples\interop-c\main.sev"), $manifestPath)
   if ($ffi.ExitCode -eq 0 -and (Test-Path -LiteralPath $headerPath)) {
     $header = Get-Content -LiteralPath $headerPath -Raw
     if ($header.Contains('extern "C"') -and $header.Contains("puts(") -and $header.Contains("seven_cpp_version(")) {

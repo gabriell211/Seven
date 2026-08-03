@@ -17,7 +17,7 @@ language are outside the official Seven core. For editor intelligence issues,
 run the Seven LSP smoke test instead:
 
 ```powershell
-.\tools\seven-lsp.ps1 -SelfTest -File .\examples\hello.sv
+.\tools\seven-lsp.ps1 -SelfTest -File .\examples\hello.sev
 ```
 
 ## Issue Template
@@ -29,7 +29,7 @@ Include:
 - PowerShell version from `$PSVersionTable.PSVersion`;
 - command executed;
 - full verifier output when relevant;
-- minimal `.sv` input when relevant;
+- minimal `.sev` input when relevant;
 - whether the report blocks evaluation, a pilot, documentation or tooling.
 
 ## Support Boundaries

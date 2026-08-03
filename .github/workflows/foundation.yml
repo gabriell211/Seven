@@ -45,13 +45,13 @@ jobs:
       - name: Materialize Seven bootstrap artifacts
         shell: pwsh
         run: |
-          .\tools\seven-dev.ps1 check .\compiler0\seven0.sv
-          .\tools\seven-dev.ps1 build .\compiler0\seven0.sv .\build\seven0.svbc
-          .\tools\seven-dev.ps1 check .\compiler\seven.sv
-          .\tools\seven-dev.ps1 build .\compiler\seven.sv .\build\seven.svbc
-          .\tools\seven-dev.ps1 build .\compiler\seven.sv .\build\seven.self.svbc
-          .\tools\seven-dev.ps1 build .\runtime\host\seven.sv .\build\seven.host.svbc
-          .\tools\seven-dev.ps1 build .\runtime\launcher\seven.sv .\build\seven.launcher.svbc
+          .\tools\seven-dev.ps1 check .\compiler0\seven0.sev
+          .\tools\seven-dev.ps1 build .\compiler0\seven0.sev .\build\seven0.svbc
+          .\tools\seven-dev.ps1 check .\compiler\seven.sev
+          .\tools\seven-dev.ps1 build .\compiler\seven.sev .\build\seven.svbc
+          .\tools\seven-dev.ps1 build .\compiler\seven.sev .\build\seven.self.svbc
+          .\tools\seven-dev.ps1 build .\runtime\host\seven.sev .\build\seven.host.svbc
+          .\tools\seven-dev.ps1 build .\runtime\launcher\seven.sev .\build\seven.launcher.svbc
 
       - name: Run Seven foundation contract from seven.svbc
         shell: pwsh

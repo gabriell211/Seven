@@ -79,10 +79,10 @@ fecha
 
 campo intr_cmd_verify_foundation(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco, terminal, ambiente ::
   solta falhas := 0
-  vira falhas := falhas + verifica_cmd_item("fonte Seven-native", svbc_arquivo_existe("compiler/seven.sv"))
+  vira falhas := falhas + verifica_cmd_item("fonte Seven-native", svbc_arquivo_existe("compiler/seven.sev"))
   vira falhas := falhas + verifica_cmd_item("build/seven.svbc SVBC-v1", svbc_produtivo("build/seven.svbc"))
-  vira falhas := falhas + verifica_cmd_item("toolchain Seven-native", svbc_arquivo_existe("compiler/toolchain/verify.sv"))
-  vira falhas := falhas + verifica_cmd_item("biblioteca padrao", svbc_arquivo_existe("std/base/prelude.sv"))
+  vira falhas := falhas + verifica_cmd_item("toolchain Seven-native", svbc_arquivo_existe("compiler/toolchain/verify.sev"))
+  vira falhas := falhas + verifica_cmd_item("biblioteca padrao", svbc_arquivo_existe("std/base/prelude.sev"))
 
   svbc_terminal_escreve("passaram: " + texto(4 - falhas))
   svbc_terminal_escreve("falhas: " + texto(falhas))
@@ -106,15 +106,15 @@ fecha
 campo intr_cmd_verify_production(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco, terminal, ambiente ::
   solta falhas := 0
   vira falhas := falhas + verifica_cmd_item("P01 gerar build/seven0.svbc", svbc_arquivo_existe("build/seven0.svbc"))
-  vira falhas := falhas + verifica_cmd_item("P02 seven0 compila compiler/seven.sv", svbc_arquivo_existe("build/seven.svbc"))
+  vira falhas := falhas + verifica_cmd_item("P02 seven0 compila compiler/seven.sev", svbc_arquivo_existe("build/seven.svbc"))
   vira falhas := falhas + verifica_cmd_item("P03 runtime executa build/seven.svbc verify foundation", svbc_produtivo("build/seven.svbc"))
   vira falhas := falhas + verifica_cmd_item("P04 self-hosting fecha seven == seven.self", svbc_produtivo("build/seven.self.svbc") e svbc_arquivos_iguais("build/seven.svbc", "build/seven.self.svbc"))
   vira falhas := falhas + verifica_cmd_item("P05 CI usa caminho Seven", svbc_arquivo_existe(".github/workflows/foundation.yml"))
   vira falhas := falhas + verifica_cmd_item("P06 PowerShell fora do caminho oficial", svbc_arquivo_existe("tools/LEGACY.md"))
-  vira falhas := falhas + verifica_cmd_item("P07 host e launcher Seven substituem bin/seven.exe", svbc_arquivo_existe("compiler/toolchain/native_host.sv") e svbc_arquivo_existe("compiler/toolchain/launcher.sv") e svbc_arquivo_existe("runtime/host/seven.sv") e svbc_arquivo_existe("runtime/launcher/seven.sv") e svbc_produtivo("build/seven.host.svbc") e svbc_produtivo("build/seven.launcher.svbc") e svbc_arquivo_existe("runtime/svbc/runner.sv") e svbc_arquivo_existe("runtime/svbc/command_runner.sv"))
-  vira falhas := falhas + verifica_cmd_item("P08 compilador endurecido", svbc_arquivo_existe("compiler/semantic.sv") e svbc_arquivo_existe("compiler/effects.sv") e svbc_arquivo_existe("compiler/memory.sv"))
-  vira falhas := falhas + verifica_cmd_item("P09 runtime endurecido", svbc_arquivo_existe("runtime/svbc/verifier.sv") e svbc_arquivo_existe("runtime/svbc/command_runner.sv"))
-  vira falhas := falhas + verifica_cmd_item("P10 release, instalador, biblioteca e libs reais", svbc_arquivo_existe("compiler/toolchain/release.sv") e svbc_arquivo_existe("compiler/toolchain/installer.sv") e svbc_arquivo_existe("compiler/toolchain/native_host.sv") e svbc_arquivo_existe("compiler/toolchain/launcher.sv") e svbc_produtivo("build/seven.host.svbc") e svbc_produtivo("build/seven.launcher.svbc") e svbc_arquivo_existe("compiler/toolchain/library_audit.sv") e svbc_arquivo_existe("conformance/libs/valid/dynamic_runtime.sv"))
+  vira falhas := falhas + verifica_cmd_item("P07 host e launcher Seven substituem bin/seven.exe", svbc_arquivo_existe("compiler/toolchain/native_host.sev") e svbc_arquivo_existe("compiler/toolchain/launcher.sev") e svbc_arquivo_existe("runtime/host/seven.sev") e svbc_arquivo_existe("runtime/launcher/seven.sev") e svbc_produtivo("build/seven.host.svbc") e svbc_produtivo("build/seven.launcher.svbc") e svbc_arquivo_existe("runtime/svbc/runner.sev") e svbc_arquivo_existe("runtime/svbc/command_runner.sev"))
+  vira falhas := falhas + verifica_cmd_item("P08 compilador endurecido", svbc_arquivo_existe("compiler/semantic.sev") e svbc_arquivo_existe("compiler/effects.sev") e svbc_arquivo_existe("compiler/memory.sev"))
+  vira falhas := falhas + verifica_cmd_item("P09 runtime endurecido", svbc_arquivo_existe("runtime/svbc/verifier.sev") e svbc_arquivo_existe("runtime/svbc/command_runner.sev"))
+  vira falhas := falhas + verifica_cmd_item("P10 release, instalador, biblioteca e libs reais", svbc_arquivo_existe("compiler/toolchain/release.sev") e svbc_arquivo_existe("compiler/toolchain/installer.sev") e svbc_arquivo_existe("compiler/toolchain/native_host.sev") e svbc_arquivo_existe("compiler/toolchain/launcher.sev") e svbc_produtivo("build/seven.host.svbc") e svbc_produtivo("build/seven.launcher.svbc") e svbc_arquivo_existe("compiler/toolchain/library_audit.sev") e svbc_arquivo_existe("conformance/libs/valid/dynamic_runtime.sev"))
 
   svbc_terminal_escreve("passaram: " + texto(10 - falhas))
   svbc_terminal_escreve("falhas: " + texto(falhas))

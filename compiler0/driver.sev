@@ -22,7 +22,7 @@ fecha
 campo pedido_ler(argumentos: ListaTexto) -> Pedido toca ambiente ::
   veja lista_texto_tamanho(argumentos) == 0 ::
     devolve Pedido {
-      entrada: "compiler0/seven0.sv",
+      entrada: "compiler0/seven0.sev",
       saida: "build/seven0.svbc"
     }
   fecha

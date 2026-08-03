@@ -55,7 +55,7 @@ Recursos estaticos de editor podem viver em:
 editors/vscode/seven-language
 ```
 
-Esses arquivos descrevem `.sv`, realce de sintaxe e configuracao textual. Eles
+Esses arquivos descrevem `.sev`, realce de sintaxe e configuracao textual. Eles
 nao iniciam processos, nao baixam pacotes npm e nao substituem o LSP oficial.
 
 Enquanto o LSP self-hosted nao estiver completo, o smoke test de fundacao ainda
@@ -68,7 +68,7 @@ usa a ponte historica:
 Smoke test:
 
 ```powershell
-.\tools\seven-lsp.ps1 -SelfTest -File .\examples\hello.sv
+.\tools\seven-lsp.ps1 -SelfTest -File .\examples\hello.sev
 ```
 
 O MVP cobre:

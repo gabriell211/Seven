@@ -7,9 +7,9 @@ O seed nao e o compilador oficial. Ele e um artefato pequeno e auditavel que ent
 ## Cadeia
 
 ```text
-seed/SVS0 -> compiler0/*.sv -> build/seven0.svbc
-build/seven0.svbc -> compiler/*.sv -> build/seven.svbc
-build/seven.svbc -> compiler/*.sv -> build/seven.self.svbc
+seed/SVS0 -> compiler0/*.sev -> build/seven0.svbc
+build/seven0.svbc -> compiler/*.sev -> build/seven.svbc
+build/seven.svbc -> compiler/*.sev -> build/seven.self.svbc
 ```
 
 O marco de self-hosting acontece quando `seven.svbc` e `seven.self.svbc` forem equivalentes.
@@ -25,4 +25,4 @@ O marco de self-hosting acontece quando `seven.svbc` e `seven.self.svbc` forem e
 
 ## Regra
 
-Nenhum compilador hospedado vira autoridade. A autoridade e a especificacao Seven e a fonte `.sv`.
+Nenhum compilador hospedado vira autoridade. A autoridade e a especificacao Seven e a fonte `.sev`.

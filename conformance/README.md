@@ -5,7 +5,7 @@ Esta pasta define comportamentos que todo compilador Seven precisa respeitar.
 - `valid/`: programas que devem compilar.
 - `invalid/`: programas que devem falhar com diagnostico estavel.
 
-Os testes tambem sao escritos em `.sv` para manter a linguagem como centro do projeto.
+Os testes tambem sao escritos em `.sev` para manter a linguagem como centro do projeto.
 
 ## Verificacao atual
 

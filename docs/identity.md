@@ -33,6 +33,6 @@ Seven deve ser completa e genial sem perder clareza. A linguagem precisa servir 
 Seven Programming Language
 Creator: Gabriel Barcelos
 Handle: gabriell211
-Extension: .sv
+Extension: .sev
 Compiler: seven
 ```

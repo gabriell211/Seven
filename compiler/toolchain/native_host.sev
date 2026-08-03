@@ -18,20 +18,20 @@ fecha
 campo host_executavel_padrao() -> PlanoHostExecutavel ::
   solta runtime := lista<Texto>()
 
-  lista_coloca(runtime, "runtime/host/seven.sv")
-  lista_coloca(runtime, "runtime/launcher/seven.sv")
-  lista_coloca(runtime, "runtime/svbc/runner.sv")
-  lista_coloca(runtime, "runtime/svbc/decoder.sv")
-  lista_coloca(runtime, "runtime/svbc/verifier.sv")
-  lista_coloca(runtime, "runtime/svbc/vm.sv")
-  lista_coloca(runtime, "runtime/svbc/syscall.sv")
-  lista_coloca(runtime, "runtime/platform/abi.sv")
-  lista_coloca(runtime, "runtime/platform/native/target.sv")
-  lista_coloca(runtime, "runtime/platform/native/linker.sv")
+  lista_coloca(runtime, "runtime/host/seven.sev")
+  lista_coloca(runtime, "runtime/launcher/seven.sev")
+  lista_coloca(runtime, "runtime/svbc/runner.sev")
+  lista_coloca(runtime, "runtime/svbc/decoder.sev")
+  lista_coloca(runtime, "runtime/svbc/verifier.sev")
+  lista_coloca(runtime, "runtime/svbc/vm.sev")
+  lista_coloca(runtime, "runtime/svbc/syscall.sev")
+  lista_coloca(runtime, "runtime/platform/abi.sev")
+  lista_coloca(runtime, "runtime/platform/native/target.sev")
+  lista_coloca(runtime, "runtime/platform/native/linker.sev")
 
   devolve PlanoHostExecutavel {
     nome: "seven-host",
-    entrada: "runtime/host/seven.sv",
+    entrada: "runtime/host/seven.sev",
     bytecode: "build/seven.host.svbc",
     launcher: "build/seven.launcher.svbc",
     imagem: "build/seven.svbc",

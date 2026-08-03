@@ -9,10 +9,10 @@ It includes:
 - official identity and creator metadata;
 - official logo, mark and Windows icon;
 - language specification;
-- compiler source in `.sv`;
+- compiler source in `.sev`;
 - Seven-0 bootstrap source;
 - bytecode and seed specifications;
-- runtime and VM source in `.sv`;
+- runtime and VM source in `.sev`;
 - platform ABI and target contracts;
 - Seven-native toolchain source for CLI, installer, formatter, test runner,
   LSP server, release preparation, foundation verification and bootstrap
@@ -30,9 +30,9 @@ It includes:
 
 ```text
 seven --version
-seven check <file.sv>
-seven build <file.sv> [out.svbc]
-seven run <file.sv>
+seven check <file.sev>
+seven build <file.sev> [out.svbc]
+seven run <file.sev>
 ```
 
 ## Foundation Verification
@@ -54,21 +54,21 @@ runtime in the official source tree and invalid conformance diagnostics.
 The development CLI exposes the current operational gates:
 
 ```powershell
-.\tools\seven-dev.ps1 check .\examples\hello.sv
-.\tools\seven-dev.ps1 run .\examples\hello.sv
-.\tools\seven-dev.ps1 debug .\examples\control.sv --break 8 --locals
+.\tools\seven-dev.ps1 check .\examples\hello.sev
+.\tools\seven-dev.ps1 run .\examples\hello.sev
+.\tools\seven-dev.ps1 debug .\examples\control.sev --break 8 --locals
 .\tools\seven-dev.ps1 pkg add std.http 1.0.0 registry
 .\tools\seven-dev.ps1 pkg verify
 .\tools\seven-dev.ps1 pkg install
-.\tools\seven-dev.ps1 ffi header .\examples\interop-c\main.sv .\build\interop-c.h
-.\tools\seven-dev.ps1 ffi manifest .\examples\interop-c\main.sv .\build\interop-c.json
+.\tools\seven-dev.ps1 ffi header .\examples\interop-c\main.sev .\build\interop-c.h
+.\tools\seven-dev.ps1 ffi manifest .\examples\interop-c\main.sev .\build\interop-c.json
 ```
 
 The Windows bootstrap executable and PowerShell verifier remain foundation
 bridges. The production compiler should absorb these development gates into the
 self-hosted `seven`.
 
-The launcher contract now lives in `compiler/toolchain/launcher.sv`; release and
+The launcher contract now lives in `compiler/toolchain/launcher.sev`; release and
 install plans carry a `seven.launcher` manifest and `seven.launcher.svbc`
 bytecode. This is the verified handoff point before replacing the transitional
 host with a real self-hosted executable.

@@ -1,6 +1,6 @@
 # Runtime Seven
 
-Este diretorio contem o runtime oficial da Seven escrito em `.sv`.
+Este diretorio contem o runtime oficial da Seven escrito em `.sev`.
 
 ## Camadas
 

@@ -16,17 +16,17 @@ fecha
 campo launcher_padrao() -> PlanoLauncher ::
   solta runtime := lista<Texto>()
 
-  lista_coloca(runtime, "runtime/svbc/runner.sv")
-  lista_coloca(runtime, "runtime/svbc/decoder.sv")
-  lista_coloca(runtime, "runtime/svbc/verifier.sv")
-  lista_coloca(runtime, "runtime/svbc/vm.sv")
-  lista_coloca(runtime, "runtime/svbc/command_runner.sv")
-  lista_coloca(runtime, "runtime/platform/svbc/toolchain.sv")
-  lista_coloca(runtime, "runtime/platform/intrinsic.sv")
+  lista_coloca(runtime, "runtime/svbc/runner.sev")
+  lista_coloca(runtime, "runtime/svbc/decoder.sev")
+  lista_coloca(runtime, "runtime/svbc/verifier.sev")
+  lista_coloca(runtime, "runtime/svbc/vm.sev")
+  lista_coloca(runtime, "runtime/svbc/command_runner.sev")
+  lista_coloca(runtime, "runtime/platform/svbc/toolchain.sev")
+  lista_coloca(runtime, "runtime/platform/intrinsic.sev")
 
   devolve PlanoLauncher {
     nome: "seven",
-    entrada: "runtime/launcher/seven.sv",
+    entrada: "runtime/launcher/seven.sev",
     imagem: "build/seven.svbc",
     bytecode: "build/seven.launcher.svbc",
     manifesto: "build/seven.launcher",

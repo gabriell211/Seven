@@ -6,14 +6,14 @@
 
 ```text
 seven --version
-seven check <file.sv>
-seven build <file.sv> [out.svbc]
-seven run <file.sv>
+seven check <file.sev>
+seven build <file.sev> [out.svbc]
+seven run <file.sev>
 ```
 
 ## Status
 
-This executable is a bootstrap artifact for the 0.1.0 foundation release. It validates `.sv` inputs and emits an initial `SVBC` envelope with source metadata and SHA-256.
+This executable is a bootstrap artifact for the 0.1.0 foundation release. It validates `.sev` inputs and emits an initial `SVBC` envelope with source metadata and SHA-256.
 
 The full self-hosting chain remains:
 

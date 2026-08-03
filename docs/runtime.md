@@ -19,10 +19,10 @@ O runtime Seven executa imagens `SVBC` e valida imagens `SVBC0` do bootstrap.
 ```text
 seed/genesis.svhex
   -> runtime/seed
-  -> compiler0/*.sv
+  -> compiler0/*.sev
   -> build/seven0.svbc
   -> runtime/svbc0
-  -> compiler/*.sv
+  -> compiler/*.sev
   -> build/seven.svbc
   -> runtime/svbc
 ```
@@ -41,12 +41,12 @@ Toda imagem passa por:
 
 ## Runner de fundacao
 
-O runner oficial em Seven fica em `runtime/svbc/runner.sv`.
+O runner oficial em Seven fica em `runtime/svbc/runner.sev`.
 Enquanto o bootstrap Windows ainda emite apenas o envelope inicial, o runner de
 desenvolvimento executa imagens `SVBC` de fundacao:
 
 ```powershell
-.\tools\seven-dev.ps1 build .\examples\hello.sv .\build\hello.svbc
+.\tools\seven-dev.ps1 build .\examples\hello.sev .\build\hello.svbc
 .\tools\seven-dev.ps1 run .\build\hello.svbc
 ```
 

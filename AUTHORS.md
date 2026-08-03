@@ -10,6 +10,6 @@ Handle: `gabriell211`
 
 Seven Programming Language
 
-Official extension: `.sv`
+Official extension: `.sev`
 
 Official compiler: `seven`

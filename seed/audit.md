@@ -7,14 +7,14 @@
 - `svbc0.md`
 - `seven-0.md`
 - `seven-0.grammar.svbnf`
-- `compiler0/*.sv`
+- `compiler0/*.sev`
 
 ## Regras
 
 1. O seed nao pode crescer sem justificativa.
 2. Cada instrucao nova precisa aparecer em `svs0.md`.
 3. Cada emissao nova precisa aparecer em `svbc0.md`.
-4. O compilador Seven-0 precisa ser escrito em `.sv`.
+4. O compilador Seven-0 precisa ser escrito em `.sev`.
 5. O resultado deve ser deterministico.
 
 ## Hash normalizado
