@@ -13,6 +13,12 @@ campo intr_diretorio_cria(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toc
   devolve resultado_nada_vm(resultado)
 fecha
 
+campo intr_diretorio_copia(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco ::
+  guarda origem := valor_texto(lista_pega(args, 0))
+  guarda destino := valor_texto(lista_pega(args, 1))
+  devolve resultado_nada_vm(sys_host_diretorio_copia(origem, destino))
+fecha
+
 campo intr_diretorio_remove_arvore(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco ::
   guarda resultado := sys_host_diretorio_remove_arvore(valor_texto(lista_pega(args, 0)))
   devolve resultado_nada_vm(resultado)
