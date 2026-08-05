@@ -1,0 +1,210 @@
+modulo seven.compiler.toolchain.installer_builder
+
+usa seven.compiler.toolchain.command
+usa seven.compiler.toolchain.installer
+usa seven.runtime.platform.native.target
+usa seven.runtime.platform.native.linker
+usa seven.runtime.svbc.decoder
+usa std.base.resultado
+usa std.mem.bytes
+usa std.os.install
+
+molde PacoteInstalador ::
+  sistema: SistemaInstalacao
+  versao: Texto
+  diretorio: Texto
+  instalador: Texto
+  manifesto: Texto
+  checksum: Texto
+  icone: Texto
+fecha
+
+campo gera_instalador(
+  contexto: ContextoToolchain,
+  sistema_nome: Texto,
+  saida: Texto
+) -> Resultado<PacoteInstalador, Falha> toca disco ::
+  guarda sistema := sistema_instalacao_por_nome(sistema_nome)
+  guarda diretorio := diretorio_pacote(contexto, sistema, saida)
+  guarda payload := diretorio + "/payload"
+  guarda imagem_caminho := contexto.destino + "/seven.installer.svbc"
+
+  veja caminho_existe(imagem_caminho) == nao ::
+    devolve Falha(nova_falha(
+      "SV-INSTALLER-IMAGEM",
+      "compile runtime/installer/seven.sev para " + imagem_caminho + " antes de gerar o instalador"
+    ))
+  fecha
+
+  guarda layout := prepara_diretorios_pacote(diretorio, payload)
+  veja layout e Falha ::
+    devolve Falha(layout.valor)
+  fecha
+
+  guarda carga := sys_arquivo_ler_bytes(imagem_caminho)
+  veja carga e Falha ::
+    devolve Falha(carga.valor)
+  fecha
+
+  guarda imagem := svbc_decodifica(carga.valor)
+  veja imagem e Falha ::
+    devolve Falha(imagem.valor)
+  fecha
+
+  guarda alvo := alvo_instalador(sistema)
+  guarda nativo := baixa_nativo(imagem.valor, alvo)
+  veja nativo e Falha ::
+    devolve Falha(nativo.valor)
+  fecha
+
+  guarda instalador := caminho_instalador(diretorio, sistema)
+  guarda gravacao := grava_nativo(nativo.valor, instalador)
+  veja gravacao e Falha ::
+    devolve Falha(gravacao.valor)
+  fecha
+
+  guarda copia := prepara_payload(sistema, payload)
+  veja copia e Falha ::
+    devolve Falha(copia.valor)
+  fecha
+
+  guarda manifesto := diretorio + "/seven-installer.manifest"
+  guarda checksum := instalador + ".sha256"
+  guarda icone := payload + "/seven.ico"
+
+  guarda manifesto_resultado := sys_arquivo_grava_texto(
+    manifesto,
+    manifesto_pacote(sistema, diretorio, instalador, payload)
+  )
+  veja manifesto_resultado e Falha ::
+    devolve Falha(manifesto_resultado.valor)
+  fecha
+
+  guarda checksum_resultado := sys_arquivo_grava_texto(
+    checksum,
+    sha256_arquivo(instalador) + "  " + nome_arquivo(instalador) + "\n"
+  )
+  veja checksum_resultado e Falha ::
+    devolve Falha(checksum_resultado.valor)
+  fecha
+
+  devolve Valor(PacoteInstalador {
+    sistema: sistema,
+    versao: SevenVersao,
+    diretorio: diretorio,
+    instalador: instalador,
+    manifesto: manifesto,
+    checksum: checksum,
+    icone: icone
+  })
+fecha
+
+campo sistema_instalacao_por_nome(nome: Texto) -> SistemaInstalacao ::
+  veja nome == "windows" ou nome == "windows-x64" ou nome == "win-x64" ::
+    devolve WindowsX64
+  fecha
+
+  devolve LinuxX64
+fecha
+
+campo alvo_instalador(sistema: SistemaInstalacao) -> AlvoNativo ::
+  veja sistema e WindowsX64 ::
+    devolve alvo_instalador_win_x64("brand/seven.ico")
+  fecha
+
+  devolve alvo_instalador_linux_x64("brand/seven-mark.svg")
+fecha
+
+campo diretorio_pacote(
+  contexto: ContextoToolchain,
+  sistema: SistemaInstalacao,
+  saida: Texto
+) -> Texto ::
+  veja saida != "" ::
+    devolve saida
+  fecha
+
+  devolve contexto.destino + "/installers/seven-" + SevenVersao + "-" + sistema_instalacao_nome(sistema)
+fecha
+
+campo caminho_instalador(diretorio: Texto, sistema: SistemaInstalacao) -> Texto ::
+  veja sistema e WindowsX64 ::
+    devolve diretorio + "/seven-installer.exe"
+  fecha
+
+  devolve diretorio + "/seven-installer"
+fecha
+
+campo prepara_diretorios_pacote(diretorio: Texto, payload: Texto) -> Resultado<Nada, Falha> toca disco ::
+  guarda d1 := diretorio_cria(diretorio)
+  veja d1 e Falha :: devolve d1 fecha
+  guarda d2 := diretorio_cria(payload)
+  veja d2 e Falha :: devolve d2 fecha
+  devolve Valor(nulo)
+fecha
+
+campo prepara_payload(sistema: SistemaInstalacao, payload: Texto) -> Resultado<Nada, Falha> toca disco ::
+  guarda compilador := compilador_nativo_origem(sistema)
+
+  veja caminho_existe(compilador) == nao ::
+    devolve Falha(nova_falha("SV-INSTALLER-COMPILADOR", "compilador nativo ausente: " + compilador))
+  fecha
+
+  guarda destino_compilador := payload + "/seven"
+  veja sistema e WindowsX64 ::
+    vira destino_compilador := payload + "/seven.exe"
+  fecha
+
+  guarda c1 := arquivo_copia(compilador, destino_compilador)
+  veja c1 e Falha :: devolve c1 fecha
+  guarda c2 := arquivo_copia("build/seven.svbc", payload + "/seven.svbc")
+  veja c2 e Falha :: devolve c2 fecha
+  guarda c3 := arquivo_copia("build/seven.host.svbc", payload + "/seven.host.svbc")
+  veja c3 e Falha :: devolve c3 fecha
+  guarda c4 := arquivo_copia("build/seven.launcher.svbc", payload + "/seven.launcher.svbc")
+  veja c4 e Falha :: devolve c4 fecha
+  guarda c5 := arquivo_copia("brand/seven.ico", payload + "/seven.ico")
+  veja c5 e Falha :: devolve c5 fecha
+  guarda c6 := arquivo_copia("brand/seven-mark.svg", payload + "/seven-mark.svg")
+  veja c6 e Falha :: devolve c6 fecha
+  guarda c7 := diretorio_copia("std", payload + "/std")
+  veja c7 e Falha :: devolve c7 fecha
+  guarda c8 := arquivo_copia("LICENSE", payload + "/LICENSE")
+  veja c8 e Falha :: devolve c8 fecha
+  guarda c9 := arquivo_copia("NOTICE", payload + "/NOTICE")
+  veja c9 e Falha :: devolve c9 fecha
+
+  devolve Valor(nulo)
+fecha
+
+campo compilador_nativo_origem(sistema: SistemaInstalacao) -> Texto ::
+  veja sistema e WindowsX64 ::
+    devolve "build/native/windows/seven.exe"
+  fecha
+
+  devolve "build/native/linux/seven"
+fecha
+
+campo manifesto_pacote(
+  sistema: SistemaInstalacao,
+  diretorio: Texto,
+  instalador: Texto,
+  payload: Texto
+) -> Texto ::
+  devolve "seven-installer 2\n" +
+    "nome " + SevenNome + "\n" +
+    "versao " + SevenVersao + "\n" +
+    "criador Gabriel Barcelos\n" +
+    "sistema " + sistema_instalacao_nome(sistema) + "\n" +
+    "diretorio " + diretorio + "\n" +
+    "instalador " + instalador + "\n" +
+    "payload " + payload + "\n" +
+    "icone_ico " + payload + "/seven.ico\n" +
+    "icone_svg " + payload + "/seven-mark.svg\n" +
+    "fonte Seven\n" +
+    "powershell nao\n"
+fecha
+
+campo nome_arquivo(caminho: Texto) -> Texto ::
+  devolve sys_caminho_nome(caminho)
+fecha
