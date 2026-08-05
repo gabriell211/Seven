@@ -83,11 +83,24 @@ campo path_usuario_remove(caminho: Texto) -> Resultado<Nada, Falha> toca ambient
 fecha
 
 campo windows_atalho_cria(atalho: AtalhoAplicacao) -> Resultado<Nada, Falha> toca disco, ambiente ::
-  devolve sys_windows_atalho_cria(atalho)
+  devolve sys_windows_atalho_cria(
+    atalho.nome,
+    atalho.executavel,
+    atalho.argumentos,
+    atalho.icone,
+    atalho.destino,
+    atalho.descricao
+  )
 fecha
 
 campo windows_associacao_registra(associacao: AssociacaoArquivo) -> Resultado<Nada, Falha> toca disco, ambiente ::
-  devolve sys_windows_associacao_registra(associacao)
+  devolve sys_windows_associacao_registra(
+    associacao.extensao,
+    associacao.identificador,
+    associacao.descricao,
+    associacao.executavel,
+    associacao.icone
+  )
 fecha
 
 campo windows_associacao_remove(identificador: Texto, extensao: Texto) -> Resultado<Nada, Falha> toca disco, ambiente ::
@@ -95,7 +108,15 @@ campo windows_associacao_remove(identificador: Texto, extensao: Texto) -> Result
 fecha
 
 campo windows_desinstalador_registra(registro: RegistroDesinstalador) -> Resultado<Nada, Falha> toca disco, ambiente ::
-  devolve sys_windows_desinstalador_registra(registro)
+  devolve sys_windows_desinstalador_registra(
+    registro.identificador,
+    registro.nome,
+    registro.versao,
+    registro.publicador,
+    registro.icone,
+    registro.comando,
+    registro.diretorio
+  )
 fecha
 
 campo windows_desinstalador_remove(identificador: Texto) -> Resultado<Nada, Falha> toca disco, ambiente ::
