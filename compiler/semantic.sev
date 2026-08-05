@@ -6,6 +6,7 @@ usa seven.compiler.types
 usa seven.compiler.effects
 usa seven.compiler.memory
 usa seven.compiler.ffi
+usa seven.compiler.package
 
 molde UnidadeSemantica ::
   programas: Lista<Programa>
