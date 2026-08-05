@@ -1,104 +1,411 @@
 modulo seven.compiler.toolchain.installer
 
-usa seven.compiler.toolchain.launcher
-usa seven.compiler.toolchain.native_host
 usa std.base.resultado
-usa std.fs.file
+usa std.env.runtime
+usa std.os.install
+
+const SevenAppId: Texto := "Seven.Language"
+const SevenNome: Texto := "Seven Programming Language"
+const SevenPublicador: Texto := "Gabriel Barcelos"
+const SevenVersao: Texto := "0.1.0"
+
+selo SistemaInstalacao ::
+  WindowsX64
+  LinuxX64
+fecha
 
 molde PlanoInstalacao ::
+  sistema: SistemaInstalacao
+  versao: Texto
+  pacote_raiz: Texto
+  payload: Texto
   prefixo: Texto
-  binario: Texto
-  host: Texto
-  host_bytecode: Texto
-  launcher: Texto
-  launcher_bytecode: Texto
+  bin_dir: Texto
+  share_dir: Texto
   stdlib: Texto
   cache: Texto
+  binario_origem: Texto
+  binario: Texto
+  compilador_bytecode_origem: Texto
+  compilador_bytecode: Texto
+  host_bytecode_origem: Texto
+  host_bytecode: Texto
+  launcher_bytecode_origem: Texto
+  launcher_bytecode: Texto
+  icone_ico_origem: Texto
+  icone_ico: Texto
+  icone_svg_origem: Texto
+  icone_svg: Texto
+  atalho: Texto
+  desktop: Texto
+  mime: Texto
+  link: Texto
   registrar_path: Bit
+  associar_sev: Bit
 fecha
 
 molde InstalacaoSeven ::
+  sistema: SistemaInstalacao
+  versao: Texto
   prefixo: Texto
   binario: Texto
-  host: Texto
+  compilador_bytecode: Texto
   host_bytecode: Texto
-  launcher: Texto
   launcher_bytecode: Texto
   stdlib: Texto
   cache: Texto
+  icone: Texto
 fecha
 
-campo plano_instalacao_padrao(prefixo: Texto) -> PlanoInstalacao ::
-  guarda destino := prefixo_ou_padrao(prefixo)
+campo plano_instalacao_padrao(prefixo: Texto) -> PlanoInstalacao toca ambiente ::
+  guarda raiz := sys_executavel_diretorio()
+  guarda plataforma := plataforma_atual()
+
+  veja plataforma e Windows ::
+    devolve plano_instalacao_windows(raiz, prefixo)
+  fecha
+
+  veja plataforma e Linux ::
+    devolve plano_instalacao_linux(raiz, prefixo)
+  fecha
+
+  devolve plano_instalacao_linux(raiz, prefixo)
+fecha
+
+campo plano_instalacao_sistema(sistema: SistemaInstalacao, pacote_raiz: Texto, prefixo: Texto) -> PlanoInstalacao toca ambiente ::
+  veja sistema e WindowsX64 ::
+    devolve plano_instalacao_windows(pacote_raiz, prefixo)
+  fecha
+
+  devolve plano_instalacao_linux(pacote_raiz, prefixo)
+fecha
+
+campo plano_instalacao_windows(pacote_raiz: Texto, prefixo: Texto) -> PlanoInstalacao toca ambiente ::
+  guarda destino := prefixo_windows(prefixo)
+  guarda payload := pacote_raiz + "/payload"
+  guarda appdata := env_ou("APPDATA", destino)
 
   devolve PlanoInstalacao {
+    sistema: WindowsX64,
+    versao: SevenVersao,
+    pacote_raiz: pacote_raiz,
+    payload: payload,
     prefixo: destino,
-    binario: destino + "/bin/seven",
-    host: destino + "/bin/seven.host",
-    host_bytecode: destino + "/bin/seven.host.svbc",
-    launcher: destino + "/bin/seven.launcher",
-    launcher_bytecode: destino + "/bin/seven.launcher.svbc",
+    bin_dir: destino + "/bin",
+    share_dir: destino + "/share",
     stdlib: destino + "/std",
     cache: destino + "/cache",
-    registrar_path: sim
+    binario_origem: payload + "/seven.exe",
+    binario: destino + "/bin/seven.exe",
+    compilador_bytecode_origem: payload + "/seven.svbc",
+    compilador_bytecode: destino + "/bin/seven.svbc",
+    host_bytecode_origem: payload + "/seven.host.svbc",
+    host_bytecode: destino + "/bin/seven.host.svbc",
+    launcher_bytecode_origem: payload + "/seven.launcher.svbc",
+    launcher_bytecode: destino + "/bin/seven.launcher.svbc",
+    icone_ico_origem: payload + "/seven.ico",
+    icone_ico: destino + "/share/seven.ico",
+    icone_svg_origem: payload + "/seven-mark.svg",
+    icone_svg: destino + "/share/seven-mark.svg",
+    atalho: appdata + "/Microsoft/Windows/Start Menu/Programs/Seven.lnk",
+    desktop: "",
+    mime: "",
+    link: "",
+    registrar_path: sim,
+    associar_sev: sim
   }
 fecha
 
-campo prefixo_ou_padrao(prefixo: Texto) -> Texto ::
-  veja prefixo == "" ::
-    devolve "~/.seven"
+campo plano_instalacao_linux(pacote_raiz: Texto, prefixo: Texto) -> PlanoInstalacao toca ambiente ::
+  guarda home := env_ou("HOME", ".")
+  guarda destino := prefixo_linux(prefixo, home)
+  guarda payload := pacote_raiz + "/payload"
+
+  devolve PlanoInstalacao {
+    sistema: LinuxX64,
+    versao: SevenVersao,
+    pacote_raiz: pacote_raiz,
+    payload: payload,
+    prefixo: destino,
+    bin_dir: destino + "/bin",
+    share_dir: destino + "/share",
+    stdlib: destino + "/std",
+    cache: destino + "/cache",
+    binario_origem: payload + "/seven",
+    binario: destino + "/bin/seven",
+    compilador_bytecode_origem: payload + "/seven.svbc",
+    compilador_bytecode: destino + "/bin/seven.svbc",
+    host_bytecode_origem: payload + "/seven.host.svbc",
+    host_bytecode: destino + "/bin/seven.host.svbc",
+    launcher_bytecode_origem: payload + "/seven.launcher.svbc",
+    launcher_bytecode: destino + "/bin/seven.launcher.svbc",
+    icone_ico_origem: payload + "/seven.ico",
+    icone_ico: destino + "/share/seven.ico",
+    icone_svg_origem: payload + "/seven-mark.svg",
+    icone_svg: home + "/.local/share/icons/hicolor/scalable/apps/seven.svg",
+    atalho: "",
+    desktop: home + "/.local/share/applications/seven.desktop",
+    mime: home + "/.local/share/mime/packages/seven.xml",
+    link: home + "/.local/bin/seven",
+    registrar_path: sim,
+    associar_sev: sim
+  }
+fecha
+
+campo prefixo_windows(prefixo: Texto) -> Texto toca ambiente ::
+  veja prefixo != "" ::
+    devolve prefixo
   fecha
 
-  devolve prefixo
+  devolve env_ou("LOCALAPPDATA", ".") + "/Programs/Seven"
+fecha
+
+campo prefixo_linux(prefixo: Texto, home: Texto) -> Texto ::
+  veja prefixo != "" ::
+    devolve prefixo
+  fecha
+
+  devolve home + "/.local/share/seven"
 fecha
 
 campo instala_seven(plano: PlanoInstalacao) -> Resultado<InstalacaoSeven, Falha> toca disco, ambiente ::
-  diretorio_cria(plano.prefixo)
-  diretorio_cria(plano.prefixo + "/bin")
-  diretorio_cria(plano.stdlib)
-  diretorio_cria(plano.cache)
+  guarda validacao := valida_payload(plano)
+  veja validacao e Falha ::
+    devolve Falha(validacao.valor)
+  fecha
 
-  arquivo_salva_texto(plano.prefixo + "/install.txt", manifesto_instalacao(plano))
-  arquivo_salva_texto(plano.prefixo + "/env.seven", ambiente_instalacao(plano))
-  arquivo_salva_texto(plano.host, host_executavel_manifesto(host_executavel_padrao()))
-  arquivo_salva_texto(plano.launcher, launcher_manifesto(launcher_padrao()))
+  guarda layout := instala_layout(plano)
+  veja layout e Falha ::
+    devolve Falha(layout.valor)
+  fecha
 
-  devolve Valor(InstalacaoSeven {
-    prefixo: plano.prefixo,
-    binario: plano.binario,
-    host: plano.host,
-    host_bytecode: plano.host_bytecode,
-    launcher: plano.launcher,
-    launcher_bytecode: plano.launcher_bytecode,
-    stdlib: plano.stdlib,
-    cache: plano.cache
+  guarda integracao := integra_sistema(plano)
+  veja integracao e Falha ::
+    devolve Falha(integracao.valor)
+  fecha
+
+  sys_arquivo_grava_texto(plano.prefixo + "/install.seven", manifesto_instalacao(plano))
+  sys_arquivo_grava_texto(plano.prefixo + "/env.seven", ambiente_instalacao(plano))
+
+  devolve Valor(instalacao_de_plano(plano))
+fecha
+
+campo valida_payload(plano: PlanoInstalacao) -> Resultado<Nada, Falha> toca disco ::
+  guarda obrigatorios := lista<Texto>()
+  lista_coloca(obrigatorios, plano.binario_origem)
+  lista_coloca(obrigatorios, plano.compilador_bytecode_origem)
+  lista_coloca(obrigatorios, plano.host_bytecode_origem)
+  lista_coloca(obrigatorios, plano.launcher_bytecode_origem)
+  lista_coloca(obrigatorios, plano.icone_ico_origem)
+  lista_coloca(obrigatorios, plano.icone_svg_origem)
+  lista_coloca(obrigatorios, plano.payload + "/std")
+
+  para cada caminho em obrigatorios ::
+    veja caminho_existe(caminho) == nao ::
+      devolve Falha(nova_falha("SV-INSTALL-PAYLOAD", "arquivo do instalador ausente: " + caminho))
+    fecha
+  fecha
+
+  devolve Valor(nulo)
+fecha
+
+campo instala_layout(plano: PlanoInstalacao) -> Resultado<Nada, Falha> toca disco ::
+  guarda r1 := diretorio_cria(plano.prefixo)
+  veja r1 e Falha :: devolve r1 fecha
+  guarda r2 := diretorio_cria(plano.bin_dir)
+  veja r2 e Falha :: devolve r2 fecha
+  guarda r3 := diretorio_cria(plano.share_dir)
+  veja r3 e Falha :: devolve r3 fecha
+  guarda r4 := diretorio_cria(plano.cache)
+  veja r4 e Falha :: devolve r4 fecha
+
+  guarda c1 := arquivo_copia(plano.binario_origem, plano.binario)
+  veja c1 e Falha :: devolve c1 fecha
+  guarda c2 := arquivo_copia(plano.compilador_bytecode_origem, plano.compilador_bytecode)
+  veja c2 e Falha :: devolve c2 fecha
+  guarda c3 := arquivo_copia(plano.host_bytecode_origem, plano.host_bytecode)
+  veja c3 e Falha :: devolve c3 fecha
+  guarda c4 := arquivo_copia(plano.launcher_bytecode_origem, plano.launcher_bytecode)
+  veja c4 e Falha :: devolve c4 fecha
+  guarda c5 := arquivo_copia(plano.icone_ico_origem, plano.icone_ico)
+  veja c5 e Falha :: devolve c5 fecha
+  guarda c6 := arquivo_copia(plano.icone_svg_origem, plano.share_dir + "/seven-mark.svg")
+  veja c6 e Falha :: devolve c6 fecha
+  guarda c7 := diretorio_copia(plano.payload + "/std", plano.stdlib)
+  veja c7 e Falha :: devolve c7 fecha
+
+  guarda exec := arquivo_permissao_executavel(plano.binario)
+  veja exec e Falha :: devolve exec fecha
+
+  devolve Valor(nulo)
+fecha
+
+campo integra_sistema(plano: PlanoInstalacao) -> Resultado<Nada, Falha> toca disco, ambiente ::
+  veja plano.sistema e WindowsX64 ::
+    devolve integra_windows(plano)
+  fecha
+
+  devolve integra_linux(plano)
+fecha
+
+campo integra_windows(plano: PlanoInstalacao) -> Resultado<Nada, Falha> toca disco, ambiente ::
+  veja plano.registrar_path ::
+    guarda path := path_usuario_adiciona(plano.bin_dir)
+    veja path e Falha :: devolve path fecha
+  fecha
+
+  guarda atalho := windows_atalho_cria(AtalhoAplicacao {
+    nome: "Seven",
+    executavel: plano.binario,
+    argumentos: "--help",
+    icone: plano.icone_ico,
+    destino: plano.atalho,
+    descricao: SevenNome
+  })
+  veja atalho e Falha :: devolve atalho fecha
+
+  veja plano.associar_sev ::
+    guarda associacao := windows_associacao_registra(AssociacaoArquivo {
+      extensao: ".sev",
+      identificador: SevenAppId + ".Source",
+      descricao: "Seven Source File",
+      executavel: plano.binario,
+      icone: plano.icone_ico
+    })
+    veja associacao e Falha :: devolve associacao fecha
+  fecha
+
+  devolve windows_desinstalador_registra(RegistroDesinstalador {
+    identificador: SevenAppId,
+    nome: SevenNome,
+    versao: plano.versao,
+    publicador: SevenPublicador,
+    icone: plano.icone_ico,
+    comando: "\"" + plano.binario + "\" uninstall --prefix \"" + plano.prefixo + "\"",
+    diretorio: plano.prefixo
   })
 fecha
 
-campo remove_instalacao(prefixo: Texto) -> Resultado<InstalacaoSeven, Falha> toca disco ::
-  guarda plano := plano_instalacao_padrao(prefixo)
-  arquivo_salva_texto(plano.prefixo + "/uninstall.request", "remove " + plano.prefixo + "\n")
+campo integra_linux(plano: PlanoInstalacao) -> Resultado<Nada, Falha> toca disco, ambiente ::
+  guarda home := env_ou("HOME", ".")
+  guarda d1 := diretorio_cria(home + "/.local/bin")
+  veja d1 e Falha :: devolve d1 fecha
+  guarda d2 := diretorio_cria(home + "/.local/share/applications")
+  veja d2 e Falha :: devolve d2 fecha
+  guarda d3 := diretorio_cria(home + "/.local/share/mime/packages")
+  veja d3 e Falha :: devolve d3 fecha
+  guarda d4 := diretorio_cria(home + "/.local/share/icons/hicolor/scalable/apps")
+  veja d4 e Falha :: devolve d4 fecha
 
-  devolve Valor(InstalacaoSeven {
+  arquivo_remove(plano.link)
+  guarda link := arquivo_link_simbolico(plano.binario, plano.link)
+  veja link e Falha :: devolve link fecha
+
+  guarda icone := arquivo_copia(plano.icone_svg_origem, plano.icone_svg)
+  veja icone e Falha :: devolve icone fecha
+
+  guarda desktop := sys_arquivo_grava_texto(plano.desktop, desktop_linux(plano))
+  veja desktop e Falha :: devolve desktop fecha
+  guarda mime := sys_arquivo_grava_texto(plano.mime, mime_linux())
+  veja mime e Falha :: devolve mime fecha
+
+  veja plano.registrar_path ::
+    guarda path := path_usuario_adiciona(home + "/.local/bin")
+    veja path e Falha :: devolve path fecha
+  fecha
+
+  guarda atualiza_desktop := linux_desktop_atualiza()
+  veja atualiza_desktop e Falha :: devolve atualiza_desktop fecha
+  devolve linux_mime_atualiza()
+fecha
+
+campo remove_instalacao(prefixo: Texto) -> Resultado<InstalacaoSeven, Falha> toca disco, ambiente ::
+  guarda plano := plano_instalacao_padrao(prefixo)
+
+  veja plano.sistema e WindowsX64 ::
+    windows_associacao_remove(SevenAppId + ".Source", ".sev")
+    windows_desinstalador_remove(SevenAppId)
+    path_usuario_remove(plano.bin_dir)
+    arquivo_remove(plano.atalho)
+  outro ::
+    path_usuario_remove(env_ou("HOME", ".") + "/.local/bin")
+    arquivo_remove(plano.link)
+    arquivo_remove(plano.desktop)
+    arquivo_remove(plano.mime)
+    arquivo_remove(plano.icone_svg)
+    linux_desktop_atualiza()
+    linux_mime_atualiza()
+  fecha
+
+  guarda remocao := diretorio_remove_arvore(plano.prefixo)
+  veja remocao e Falha ::
+    devolve Falha(remocao.valor)
+  fecha
+
+  devolve Valor(instalacao_de_plano(plano))
+fecha
+
+campo instalacao_de_plano(plano: PlanoInstalacao) -> InstalacaoSeven ::
+  devolve InstalacaoSeven {
+    sistema: plano.sistema,
+    versao: plano.versao,
     prefixo: plano.prefixo,
     binario: plano.binario,
-    host: plano.host,
+    compilador_bytecode: plano.compilador_bytecode,
     host_bytecode: plano.host_bytecode,
-    launcher: plano.launcher,
     launcher_bytecode: plano.launcher_bytecode,
     stdlib: plano.stdlib,
-    cache: plano.cache
-  })
+    cache: plano.cache,
+    icone: plano.icone_ico
+  }
+fecha
+
+campo desktop_linux(plano: PlanoInstalacao) -> Texto ::
+  devolve "[Desktop Entry]\n" +
+    "Type=Application\n" +
+    "Name=Seven\n" +
+    "Comment=Seven Programming Language\n" +
+    "Exec=" + plano.binario + " run %f\n" +
+    "Icon=seven\n" +
+    "Terminal=true\n" +
+    "Categories=Development;IDE;\n" +
+    "MimeType=text/x-seven;\n"
+fecha
+
+campo mime_linux() -> Texto ::
+  devolve "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+    "<mime-info xmlns=\"http://www.freedesktop.org/standards/shared-mime-info\">\n" +
+    "  <mime-type type=\"text/x-seven\">\n" +
+    "    <comment>Seven source file</comment>\n" +
+    "    <glob pattern=\"*.sev\"/>\n" +
+    "  </mime-type>\n" +
+    "</mime-info>\n"
 fecha
 
 campo manifesto_instalacao(plano: PlanoInstalacao) -> Texto ::
-  devolve "seven-install 1\nprefixo " + plano.prefixo + "\nbinario " + plano.binario + "\nhost " + plano.host + "\nhost_bytecode " + plano.host_bytecode + "\nlauncher " + plano.launcher + "\nlauncher_bytecode " + plano.launcher_bytecode + "\nstdlib " + plano.stdlib + "\ncache " + plano.cache + "\n"
+  devolve "seven-install 2\n" +
+    "versao " + plano.versao + "\n" +
+    "sistema " + sistema_instalacao_nome(plano.sistema) + "\n" +
+    "prefixo " + plano.prefixo + "\n" +
+    "binario " + plano.binario + "\n" +
+    "compilador_bytecode " + plano.compilador_bytecode + "\n" +
+    "host_bytecode " + plano.host_bytecode + "\n" +
+    "launcher_bytecode " + plano.launcher_bytecode + "\n" +
+    "stdlib " + plano.stdlib + "\n" +
+    "cache " + plano.cache + "\n" +
+    "icone " + plano.icone_ico + "\n"
 fecha
 
 campo ambiente_instalacao(plano: PlanoInstalacao) -> Texto ::
-  veja plano.registrar_path ::
-    devolve "SEVEN_HOME=" + plano.prefixo + "\nPATH+=" + plano.prefixo + "/bin\n"
+  devolve "SEVEN_HOME=" + plano.prefixo + "\n" +
+    "SEVEN_STDLIB=" + plano.stdlib + "\n" +
+    "PATH+=" + plano.bin_dir + "\n"
+fecha
+
+campo sistema_instalacao_nome(sistema: SistemaInstalacao) -> Texto ::
+  veja sistema e WindowsX64 ::
+    devolve "windows-x64"
   fecha
 
-  devolve "SEVEN_HOME=" + plano.prefixo + "\n"
+  devolve "linux-x64"
 fecha
