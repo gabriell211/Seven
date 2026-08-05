@@ -2,11 +2,13 @@ modulo seven.runtime.platform.intrinsic_installer
 
 usa seven.runtime.platform.intrinsic
 usa seven.runtime.platform.svbc.install
+usa seven.runtime.platform.svbc.pure
 usa seven.runtime.svbc.value
 
 campo intrinsecos_instalador() -> Lista<Intrinseco> ::
   solta itens := lista<Intrinseco>()
 
+  lista_coloca(itens, intrinseco("sys_texto_contem", "puro", intr_texto_contem))
   lista_coloca(itens, intrinseco("sys_plataforma_atual", "ambiente", intr_plataforma_atual))
   lista_coloca(itens, intrinseco("sys_executavel_diretorio", "ambiente", intr_executavel_diretorio))
   lista_coloca(itens, intrinseco("sys_diretorio_cria", "disco", intr_diretorio_cria))
