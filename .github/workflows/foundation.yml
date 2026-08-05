@@ -42,6 +42,14 @@ jobs:
           bin\seven.exe check runtime\host\seven.sev
           bin\seven.exe check runtime\launcher\seven.sev
           bin\seven.exe check runtime\installer\seven.sev
+          bin\seven.exe check bootstrap\native-release.sev
+          bin\seven.exe check compiler\toolchain\verify.sev
+          bin\seven.exe check compiler\toolchain\bootstrap_chain.sev
+          bin\seven.exe check compiler\toolchain\production_audit.sev
+
+      - name: Run Seven bootstrap smoke test
+        shell: cmd
+        run: bin\seven.exe run examples\hello.sev
 
       - name: Materialize compiler images
         shell: cmd
@@ -53,18 +61,13 @@ jobs:
           bin\seven.exe build runtime\launcher\seven.sev build\seven.launcher.svbc
           bin\seven.exe build runtime\installer\seven.sev build\seven.installer.svbc
 
-      - name: Verify native contracts
+      - name: Verify deterministic compiler image
         shell: cmd
-        run: |
-          bin\seven.exe verify foundation
-          bin\seven.exe verify bootstrap
-          bin\seven.exe verify production
+        run: fc /b build\seven.svbc build\seven.self.svbc
 
-      - name: Build native compiler and installers
+      - name: Build native compiler and installers from Seven
         shell: cmd
-        run: |
-          bin\seven.exe installer windows-x64
-          bin\seven.exe installer linux-x64
+        run: bin\seven.exe run bootstrap\native-release.sev
 
       - name: Verify Windows installer bundle
         shell: cmd
