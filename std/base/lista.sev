@@ -20,6 +20,18 @@ campo lista_coloca<T>(itens: Lista<T>, valor: T) -> Lista<T> ::
   devolve sys_lista_coloca(itens, valor)
 fecha
 
+campo lista_insere<T>(itens: Lista<T>, indice: U64, valor: T) -> Lista<T> ::
+  devolve sys_lista_insere(itens, indice, valor)
+fecha
+
+campo lista_remove<T>(itens: Lista<T>, indice: U64) -> T ::
+  devolve sys_lista_remove(itens, indice)
+fecha
+
+campo lista_pop<T>(itens: Lista<T>) -> T ::
+  devolve sys_lista_pop(itens)
+fecha
+
 campo lista_pega<T>(itens: Lista<T>, indice: U64) -> T ::
   devolve sys_lista_pega(itens, indice)
 fecha
@@ -30,6 +42,10 @@ fecha
 
 campo lista_tamanho<T>(itens: Lista<T>) -> U64 ::
   devolve itens.tamanho
+fecha
+
+campo lista_vazia<T>(itens: Lista<T>) -> Bit ::
+  devolve itens.tamanho == 0
 fecha
 
 campo reverso<T>(itens: Lista<T>) -> Lista<T> ::
