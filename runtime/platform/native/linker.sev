@@ -2,6 +2,9 @@ modulo seven.runtime.platform.native.linker
 
 usa seven.runtime.platform.native.target
 usa seven.runtime.svbc.image
+usa std.base.resultado
+usa std.fs.file
+usa std.mem.bytes
 
 molde ArtefatoNativo ::
   alvo: AlvoNativo
@@ -9,10 +12,39 @@ molde ArtefatoNativo ::
   simbolos: Lista<Texto>
 fecha
 
-campo baixa_nativo(imagem: ImagemSvbc, alvo: AlvoNativo) -> Resultado<ArtefatoNativo, Falha> ::
+campo baixa_nativo(imagem: ImagemSvbc, alvo: AlvoNativo) -> Resultado<ArtefatoNativo, Falha> toca disco ::
+  guarda recursos := valida_recursos(alvo)
+
+  veja recursos e Falha ::
+    devolve Falha(recursos.valor)
+  fecha
+
   devolve sys_native_baixa(imagem, alvo)
 fecha
 
 campo grava_nativo(artefato: ArtefatoNativo, caminho: Texto) -> Resultado<Nada, Falha> toca disco ::
-  devolve sys_arquivo_grava_texto(caminho, bytes_texto(artefato.bytes))
+  guarda gravacao := arquivo_salva_bytes(caminho, artefato.bytes)
+
+  veja gravacao e Falha ::
+    devolve gravacao
+  fecha
+
+  veja artefato.alvo.formato == "elf" ::
+    devolve sys_arquivo_permissao(caminho, 493)
+  fecha
+
+  devolve Valor(nulo)
+fecha
+
+campo valida_recursos(alvo: AlvoNativo) -> Resultado<Nada, Falha> toca disco ::
+  para cada recurso em alvo.recursos ::
+    veja arquivo_existe(recurso.caminho) == nao ::
+      devolve Falha(nova_falha(
+        "SV-NATIVE-RECURSO",
+        "recurso nativo ausente: " + recurso.caminho
+      ))
+    fecha
+  fecha
+
+  devolve Valor(nulo)
 fecha
