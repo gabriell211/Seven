@@ -50,8 +50,16 @@ campo plataforma_atual() -> Plataforma toca ambiente ::
   devolve PlataformaDesconhecida
 fecha
 
+campo caminho_existe(caminho: Texto) -> Bit toca disco ::
+  devolve sys_arquivo_existe(caminho)
+fecha
+
 campo diretorio_cria(caminho: Texto) -> Resultado<Nada, Falha> toca disco ::
   devolve sys_diretorio_cria(caminho)
+fecha
+
+campo diretorio_copia(origem: Texto, destino: Texto) -> Resultado<Nada, Falha> toca disco ::
+  devolve sys_diretorio_copia(origem, destino)
 fecha
 
 campo diretorio_remove_arvore(caminho: Texto) -> Resultado<Nada, Falha> toca disco ::
