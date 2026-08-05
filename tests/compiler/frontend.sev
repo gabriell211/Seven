@@ -2,6 +2,7 @@ modulo tests.compiler.frontend
 
 usa std.test.spec
 usa seven.compiler.source
+usa seven.compiler.token
 usa seven.compiler.lexer
 usa seven.compiler.parser
 usa seven.compiler.diagnostic
