@@ -197,6 +197,7 @@ selo Expressao ::
   ExprAcesso(AcessoExpr)
   ExprIndice(IndiceExpr)
   ExprChamada(ChamadaExpr)
+  ExprEspecializa(EspecializaExpr)
   ExprBinaria(BinariaExpr)
   ExprUnaria(UnariaExpr)
   ExprConstrucao(ConstrucaoExpr)
@@ -230,6 +231,12 @@ fecha
 molde ChamadaExpr ::
   alvo: Expressao
   argumentos: Lista<Expressao>
+  span: Span
+fecha
+
+molde EspecializaExpr ::
+  alvo: Expressao
+  argumentos: Lista<TipoSintaxe>
   span: Span
 fecha
 
