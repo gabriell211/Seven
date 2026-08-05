@@ -10,7 +10,7 @@ molde EstadoVarredura ::
   linha: U32
   coluna: U32
   tokens: Lista<Token>
-  diagnosticos: Lista<Diagnostico>
+  diagnosticos: BolsaDiagnosticos
 fecha
 
 campo varre_unidade(unidade: UnidadeFonte) -> Lista<FluxoTokens> ::
@@ -30,35 +30,412 @@ campo varre(fonte: Fonte) -> FluxoTokens ::
     linha: 1,
     coluna: 1,
     tokens: lista<Token>(),
-    diagnosticos: lista<Diagnostico>()
+    diagnosticos: bolsa_diagnosticos(100)
   }
 
-  gira nao varredura_fim(estado) ::
+  gira nao varredura_fim(estado) e nao estado.diagnosticos.interrompida ::
     guarda c := atual(estado)
 
     veja branco(c) ::
-      avanca(estado)
+      le_branco(estado)
     outro ::
-      veja letra(c) ::
-        le_nome(estado)
+      veja c == "/" e olha(estado, 1) == "/" ::
+        le_comentario_linha(estado)
       outro ::
-        veja digito(c) ::
-          le_numero(estado)
+        veja c == "/" e olha(estado, 1) == "*" ::
+          le_comentario_bloco(estado)
         outro ::
-          veja c == "\"" ::
-            le_texto(estado)
+          veja letra(c) ou c == "_" ::
+            le_nome(estado)
           outro ::
-            le_sinal(estado)
+            veja digito(c) ::
+              le_numero(estado)
+            outro ::
+              veja c == "\"" ::
+                le_texto(estado)
+              outro ::
+                le_sinal(estado)
+              fecha
+            fecha
           fecha
         fecha
       fecha
     fecha
   fecha
 
-  adiciona_fim(estado)
+  guarda fim := span(estado.fonte.caminho, estado.cursor, estado.cursor, estado.linha, estado.coluna)
+  lista_coloca(estado.tokens, token_fim(fim))
 
   devolve FluxoTokens {
     fonte: fonte,
-    tokens: estado.tokens
+    tokens: estado.tokens,
+    diagnosticos: estado.diagnosticos.itens
   }
+fecha
+
+campo varredura_fim(estado: EstadoVarredura) -> Bit ::
+  devolve estado.cursor >= sys_texto_tamanho(estado.fonte.texto)
+fecha
+
+campo atual(estado: EstadoVarredura) -> Texto ::
+  devolve olha(estado, 0)
+fecha
+
+campo olha(estado: EstadoVarredura, deslocamento: U64) -> Texto ::
+  guarda pos := estado.cursor + deslocamento
+
+  veja pos >= sys_texto_tamanho(estado.fonte.texto) ::
+    devolve "\0"
+  fecha
+
+  devolve sys_texto_caractere(estado.fonte.texto, pos)
+fecha
+
+campo avanca(estado: EstadoVarredura) -> Texto ::
+  veja varredura_fim(estado) ::
+    devolve "\0"
+  fecha
+
+  guarda c := atual(estado)
+  vira estado.cursor := estado.cursor + 1
+
+  veja c == "\n" ::
+    vira estado.linha := estado.linha + 1
+    vira estado.coluna := 1
+  outro ::
+    vira estado.coluna := estado.coluna + 1
+  fecha
+
+  devolve c
+fecha
+
+campo span(arquivo: Texto, inicio: U64, fim: U64, linha: U32, coluna: U32) -> Span ::
+  devolve Span {
+    arquivo: arquivo,
+    inicio: inicio,
+    fim: fim,
+    linha: linha,
+    coluna: coluna
+  }
+fecha
+
+campo fatia(estado: EstadoVarredura, inicio: U64, fim: U64) -> Texto ::
+  devolve sys_texto_fatia(estado.fonte.texto, inicio, fim)
+fecha
+
+campo adiciona_token(
+  estado: EstadoVarredura,
+  tipo: TokenTipo,
+  marca: Texto,
+  literal: Texto,
+  inicio: U64,
+  linha: U32,
+  coluna: U32
+) -> Nada ::
+  lista_coloca(estado.tokens, token(
+    tipo,
+    marca,
+    literal,
+    span(estado.fonte.caminho, inicio, estado.cursor, linha, coluna)
+  ))
+fecha
+
+campo le_branco(estado: EstadoVarredura) -> Nada ::
+  gira branco(atual(estado)) ::
+    avanca(estado)
+  fecha
+fecha
+
+campo le_comentario_linha(estado: EstadoVarredura) -> Nada ::
+  avanca(estado)
+  avanca(estado)
+
+  gira nao varredura_fim(estado) e atual(estado) != "\n" ::
+    avanca(estado)
+  fecha
+fecha
+
+campo le_comentario_bloco(estado: EstadoVarredura) -> Nada ::
+  guarda inicio := estado.cursor
+  guarda linha := estado.linha
+  guarda coluna := estado.coluna
+  solta profundidade: U32 := 1
+
+  avanca(estado)
+  avanca(estado)
+
+  gira nao varredura_fim(estado) e profundidade > 0 ::
+    veja atual(estado) == "/" e olha(estado, 1) == "*" ::
+      vira profundidade := profundidade + 1
+      avanca(estado)
+      avanca(estado)
+    outro ::
+      veja atual(estado) == "*" e olha(estado, 1) == "/" ::
+        vira profundidade := profundidade - 1
+        avanca(estado)
+        avanca(estado)
+      outro ::
+        avanca(estado)
+      fecha
+    fecha
+  fecha
+
+  veja profundidade > 0 ::
+    diagnosticos_adiciona(estado.diagnosticos, erro_com_ajuda(
+      "SV-LEX-COMENTARIO",
+      "comentario de bloco nao foi fechado",
+      estado.fonte.caminho,
+      linha,
+      coluna,
+      "adicione */ antes do fim do arquivo"
+    ))
+    adiciona_token(estado, Invalido, fatia(estado, inicio, estado.cursor), "", inicio, linha, coluna)
+  fecha
+fecha
+
+campo le_nome(estado: EstadoVarredura) -> Nada ::
+  guarda inicio := estado.cursor
+  guarda linha := estado.linha
+  guarda coluna := estado.coluna
+
+  gira letra(atual(estado)) ou digito(atual(estado)) ou atual(estado) == "_" ::
+    avanca(estado)
+  fecha
+
+  guarda marca := fatia(estado, inicio, estado.cursor)
+  guarda tipo := Nome
+
+  veja palavra_reservada(marca) ::
+    vira tipo := Palavra
+  fecha
+
+  adiciona_token(estado, tipo, marca, marca, inicio, linha, coluna)
+fecha
+
+campo le_numero(estado: EstadoVarredura) -> Nada ::
+  guarda inicio := estado.cursor
+  guarda linha := estado.linha
+  guarda coluna := estado.coluna
+
+  veja atual(estado) == "0" e (olha(estado, 1) == "x" ou olha(estado, 1) == "X") ::
+    avanca(estado)
+    avanca(estado)
+    guarda digitos_inicio := estado.cursor
+
+    gira hexadecimal(atual(estado)) ou atual(estado) == "_" ::
+      avanca(estado)
+    fecha
+
+    veja estado.cursor == digitos_inicio ::
+      diagnosticos_adiciona(estado.diagnosticos, erro(
+        "SV-LEX-HEX",
+        "literal hexadecimal precisa de pelo menos um digito",
+        estado.fonte.caminho,
+        linha,
+        coluna
+      ))
+    fecha
+
+    guarda marca_hex := fatia(estado, inicio, estado.cursor)
+    adiciona_token(estado, Numero, marca_hex, marca_hex, inicio, linha, coluna)
+    devolve nulo
+  fecha
+
+  veja atual(estado) == "0" e (olha(estado, 1) == "b" ou olha(estado, 1) == "B") ::
+    avanca(estado)
+    avanca(estado)
+    guarda digitos_inicio := estado.cursor
+
+    gira binario(atual(estado)) ou atual(estado) == "_" ::
+      avanca(estado)
+    fecha
+
+    veja estado.cursor == digitos_inicio ::
+      diagnosticos_adiciona(estado.diagnosticos, erro(
+        "SV-LEX-BINARIO",
+        "literal binario precisa de pelo menos um digito",
+        estado.fonte.caminho,
+        linha,
+        coluna
+      ))
+    fecha
+
+    guarda marca_binaria := fatia(estado, inicio, estado.cursor)
+    adiciona_token(estado, Numero, marca_binaria, marca_binaria, inicio, linha, coluna)
+    devolve nulo
+  fecha
+
+  gira digito(atual(estado)) ou atual(estado) == "_" ::
+    avanca(estado)
+  fecha
+
+  veja atual(estado) == "." e digito(olha(estado, 1)) ::
+    avanca(estado)
+    gira digito(atual(estado)) ou atual(estado) == "_" ::
+      avanca(estado)
+    fecha
+  fecha
+
+  veja atual(estado) == "e" ou atual(estado) == "E" ::
+    guarda expoente_inicio := estado.cursor
+    avanca(estado)
+
+    veja atual(estado) == "+" ou atual(estado) == "-" ::
+      avanca(estado)
+    fecha
+
+    veja nao digito(atual(estado)) ::
+      diagnosticos_adiciona(estado.diagnosticos, erro(
+        "SV-LEX-EXPOENTE",
+        "expoente numerico incompleto",
+        estado.fonte.caminho,
+        linha,
+        coluna + U32(expoente_inicio - inicio)
+      ))
+    fecha
+
+    gira digito(atual(estado)) ou atual(estado) == "_" ::
+      avanca(estado)
+    fecha
+  fecha
+
+  guarda marca := fatia(estado, inicio, estado.cursor)
+  adiciona_token(estado, Numero, marca, marca, inicio, linha, coluna)
+fecha
+
+campo le_texto(estado: EstadoVarredura) -> Nada ::
+  guarda inicio := estado.cursor
+  guarda linha := estado.linha
+  guarda coluna := estado.coluna
+  solta fechado := nao
+
+  avanca(estado)
+
+  gira nao varredura_fim(estado) e nao fechado ::
+    veja atual(estado) == "\"" ::
+      avanca(estado)
+      vira fechado := sim
+    outro ::
+      veja atual(estado) == "\\" ::
+        avanca(estado)
+        veja varredura_fim(estado) ::
+          diagnosticos_adiciona(estado.diagnosticos, erro(
+            "SV-LEX-ESCAPE",
+            "sequencia de escape incompleta",
+            estado.fonte.caminho,
+            estado.linha,
+            estado.coluna
+          ))
+        outro ::
+          veja nao escape_valido(atual(estado)) ::
+            diagnosticos_adiciona(estado.diagnosticos, aviso(
+              "SV-LEX-ESCAPE-DESCONHECIDO",
+              "sequencia de escape desconhecida",
+              estado.fonte.caminho,
+              estado.linha,
+              estado.coluna
+            ))
+          fecha
+          avanca(estado)
+        fecha
+      outro ::
+        veja atual(estado) == "\n" ::
+          diagnosticos_adiciona(estado.diagnosticos, erro_com_ajuda(
+            "SV-LEX-TEXTO-LINHA",
+            "texto foi quebrado antes de fechar aspas",
+            estado.fonte.caminho,
+            linha,
+            coluna,
+            "use \\n dentro do texto ou feche as aspas na mesma linha"
+          ))
+          vira fechado := sim
+        outro ::
+          avanca(estado)
+        fecha
+      fecha
+    fecha
+  fecha
+
+  guarda marca := fatia(estado, inicio, estado.cursor)
+
+  veja nao fechado ou marca == "\"" ::
+    diagnosticos_adiciona(estado.diagnosticos, erro_com_ajuda(
+      "SV-LEX-TEXTO",
+      "literal de texto nao foi fechado",
+      estado.fonte.caminho,
+      linha,
+      coluna,
+      "adicione uma aspa dupla antes do fim do arquivo"
+    ))
+    adiciona_token(estado, Invalido, marca, "", inicio, linha, coluna)
+  outro ::
+    guarda literal := sys_texto_fatia(marca, 1, sys_texto_tamanho(marca) - 1)
+    adiciona_token(estado, TextoLit, marca, literal, inicio, linha, coluna)
+  fecha
+fecha
+
+campo le_sinal(estado: EstadoVarredura) -> Nada ::
+  guarda inicio := estado.cursor
+  guarda linha := estado.linha
+  guarda coluna := estado.coluna
+  guarda primeiro := avanca(estado)
+  guarda segundo := atual(estado)
+  guarda duplo := primeiro + segundo
+
+  veja sinal_duplo(duplo) ::
+    avanca(estado)
+    adiciona_token(estado, Sinal, duplo, duplo, inicio, linha, coluna)
+    devolve nulo
+  fecha
+
+  veja sinal_simples(primeiro) ::
+    adiciona_token(estado, Sinal, primeiro, primeiro, inicio, linha, coluna)
+    devolve nulo
+  fecha
+
+  diagnosticos_adiciona(estado.diagnosticos, erro_com_ajuda(
+    "SV-LEX-CARACTERE",
+    "caractere nao pertence a linguagem Seven",
+    estado.fonte.caminho,
+    linha,
+    coluna,
+    "remova o caractere ou substitua por um operador valido"
+  ))
+  adiciona_token(estado, Invalido, primeiro, primeiro, inicio, linha, coluna)
+fecha
+
+campo branco(c: Texto) -> Bit ::
+  devolve c == " " ou c == "\t" ou c == "\n" ou c == "\r"
+fecha
+
+campo letra(c: Texto) -> Bit ::
+  devolve (c >= "a" e c <= "z") ou (c >= "A" e c <= "Z")
+fecha
+
+campo digito(c: Texto) -> Bit ::
+  devolve c >= "0" e c <= "9"
+fecha
+
+campo hexadecimal(c: Texto) -> Bit ::
+  devolve digito(c) ou (c >= "a" e c <= "f") ou (c >= "A" e c <= "F")
+fecha
+
+campo binario(c: Texto) -> Bit ::
+  devolve c == "0" ou c == "1"
+fecha
+
+campo escape_valido(c: Texto) -> Bit ::
+  devolve c == "n" ou c == "r" ou c == "t" ou c == "0" ou c == "\\" ou c == "\"" ou c == "u"
+fecha
+
+campo sinal_duplo(valor: Texto) -> Bit ::
+  devolve valor == ":=" ou valor == "::" ou valor == "->" ou valor == "==" ou valor == "!=" ou valor == "<=" ou valor == ">="
+fecha
+
+campo sinal_simples(valor: Texto) -> Bit ::
+  devolve valor == "+" ou valor == "-" ou valor == "*" ou valor == "/" ou valor == "%" ou valor == "<" ou valor == ">" ou valor == "=" ou valor == "@" ou valor == "." ou valor == "," ou valor == ":" ou valor == "(" ou valor == ")" ou valor == "[" ou valor == "]" ou valor == "{" ou valor == "}"
+fecha
+
+campo palavra_reservada(valor: Texto) -> Bit ::
+  devolve valor == "modulo" ou valor == "usa" ou valor == "como" ou valor == "campo" ou valor == "extern" ou valor == "molde" ou valor == "selo" ou valor == "const" ou valor == "guarda" ou valor == "solta" ou valor == "vira" ou valor == "diga" ou valor == "veja" ou valor == "outro" ou valor == "gira" ou valor == "para" ou valor == "cada" ou valor == "em" ou valor == "devolve" ou valor == "caixa" ou valor == "marca" ou valor == "pega" ou valor == "zona" ou valor == "falha" ou valor == "fecha" ou valor == "toca" ou valor == "requer" ou valor == "liga" ou valor == "sim" ou valor == "nao" ou valor == "nulo" ou valor == "e" ou valor == "ou"
 fecha
