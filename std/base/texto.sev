@@ -33,3 +33,7 @@ fecha
 campo texto_comeca(valor: Texto, prefixo: Texto) -> Bit ::
   devolve sys_texto_comeca(valor, prefixo)
 fecha
+
+campo texto_contem(valor: Texto, trecho: Texto) -> Bit ::
+  devolve sys_texto_contem(valor, trecho)
+fecha
