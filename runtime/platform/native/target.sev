@@ -17,6 +17,7 @@ fecha
 molde AlvoNativo ::
   sistema: SistemaNativo
   arquitetura: Texto
+  entrada: Texto
   imports: Lista<ContratoIntrinseco>
   recursos: Lista<RecursoNativo>
   formato: Texto
@@ -24,15 +25,15 @@ molde AlvoNativo ::
 fecha
 
 campo alvo_win_x64() -> AlvoNativo ::
-  devolve alvo_nativo(WinX64, "x86_64", "exe", "console")
+  devolve alvo_nativo(WinX64, "x86_64", "inicio", "exe", "console")
 fecha
 
 campo alvo_linux_x64() -> AlvoNativo ::
-  devolve alvo_nativo(LinuxX64, "x86_64", "elf", "console")
+  devolve alvo_nativo(LinuxX64, "x86_64", "inicio", "elf", "console")
 fecha
 
 campo alvo_instalador_win_x64(icone: Texto) -> AlvoNativo ::
-  guarda alvo := alvo_nativo(WinX64, "x86_64", "exe", "windows")
+  guarda alvo := alvo_nativo(WinX64, "x86_64", "instalador_inicio", "exe", "windows")
   lista_coloca(alvo.recursos, RecursoNativo {
     tipo: "icon",
     nome: "SEVEN_ICON",
@@ -42,7 +43,7 @@ campo alvo_instalador_win_x64(icone: Texto) -> AlvoNativo ::
 fecha
 
 campo alvo_instalador_linux_x64(icone: Texto) -> AlvoNativo ::
-  guarda alvo := alvo_nativo(LinuxX64, "x86_64", "elf", "console")
+  guarda alvo := alvo_nativo(LinuxX64, "x86_64", "instalador_inicio", "elf", "console")
   lista_coloca(alvo.recursos, RecursoNativo {
     tipo: "desktop-icon",
     nome: "seven",
@@ -51,12 +52,19 @@ campo alvo_instalador_linux_x64(icone: Texto) -> AlvoNativo ::
   devolve alvo
 fecha
 
-campo alvo_nativo(sistema: SistemaNativo, arquitetura: Texto, formato: Texto, subsistema: Texto) -> AlvoNativo ::
+campo alvo_nativo(
+  sistema: SistemaNativo,
+  arquitetura: Texto,
+  entrada: Texto,
+  formato: Texto,
+  subsistema: Texto
+) -> AlvoNativo ::
   solta imports := imports_nativos_padrao()
 
   devolve AlvoNativo {
     sistema: sistema,
     arquitetura: arquitetura,
+    entrada: entrada,
     imports: imports,
     recursos: lista<RecursoNativo>(),
     formato: formato,
@@ -74,12 +82,14 @@ campo imports_nativos_padrao() -> Lista<ContratoIntrinseco> ::
   lista_coloca(imports, contrato_intrinseco("sys_arquivo_copia", CapDisco, "Resultado<Nada, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_arquivo_remove", CapDisco, "Resultado<Nada, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_diretorio_cria", CapDisco, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_diretorio_copia", CapDisco, "Resultado<Nada, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_diretorio_remove_arvore", CapDisco, "Resultado<Nada, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_arquivo_permissao", CapDisco, "Resultado<Nada, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_arquivo_link_simbolico", CapDisco, "Resultado<Nada, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_path_usuario_adiciona", CapAmbiente, "Resultado<Nada, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_path_usuario_remove", CapAmbiente, "Resultado<Nada, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_plataforma_atual", CapAmbiente, "Texto"))
+  lista_coloca(imports, contrato_intrinseco("sys_executavel_diretorio", CapAmbiente, "Texto"))
   lista_coloca(imports, contrato_intrinseco("sys_windows_atalho_cria", CapAmbiente, "Resultado<Nada, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_windows_associacao_registra", CapAmbiente, "Resultado<Nada, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_windows_associacao_remove", CapAmbiente, "Resultado<Nada, Falha>"))
