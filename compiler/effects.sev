@@ -155,7 +155,7 @@ campo confere_efeitos_expressao(expressao: Expressao, atual: AssinaturaEfeitos, 
     veja nome != "" ::
       guarda assinatura := mapa_pega(tabela.assinaturas, nome)
       veja assinatura e Algo ::
-        para cada efeito in assinatura.valor.efeitos ::
+        para cada efeito em assinatura.valor.efeitos ::
           exige_efeito(atual, efeito, "chamada de " + nome + " propaga efeito", expressao.valor.span, tabela)
         fecha
       outro ::
@@ -190,7 +190,7 @@ campo confere_efeitos_expressao(expressao: Expressao, atual: AssinaturaEfeitos, 
   fecha
 
   veja expressao e ExprConstrucao ::
-    para cada campo in expressao.valor.campos ::
+    para cada campo em expressao.valor.campos ::
       confere_efeitos_expressao(campo.valor, atual, tabela)
     fecha
   fecha
@@ -201,7 +201,7 @@ campo confere_efeitos_expressao(expressao: Expressao, atual: AssinaturaEfeitos, 
       efeitos: nomes_para_efeitos(expressao.valor.efeitos, expressao.valor.span, tabela),
       span: expressao.valor.span
     }
-    para cada comando in expressao.valor.corpo ::
+    para cada comando em expressao.valor.corpo ::
       confere_efeitos_comando(comando, anonima, tabela)
     fecha
   fecha
@@ -255,14 +255,30 @@ campo efeito_de_nome(nome: Texto, local: Span, tabela: TabelaEfeitos) -> Talvez<
 fecha
 
 campo efeito_por_texto(nome: Texto) -> Talvez<Efeito> ::
-  veja nome == "terminal" :: devolve Algo(Terminal) fecha
-  veja nome == "disco" :: devolve Algo(Disco) fecha
-  veja nome == "rede" :: devolve Algo(Rede) fecha
-  veja nome == "tempo" :: devolve Algo(Tempo) fecha
-  veja nome == "ambiente" :: devolve Algo(Ambiente) fecha
-  veja nome == "cru" :: devolve Algo(Cru) fecha
-  veja nome == "frontend" :: devolve Algo(Frontend) fecha
-  veja nome == "teste" :: devolve Algo(Teste) fecha
+  veja nome == "terminal" ::
+    devolve Algo(Terminal)
+  fecha
+  veja nome == "disco" ::
+    devolve Algo(Disco)
+  fecha
+  veja nome == "rede" ::
+    devolve Algo(Rede)
+  fecha
+  veja nome == "tempo" ::
+    devolve Algo(Tempo)
+  fecha
+  veja nome == "ambiente" ::
+    devolve Algo(Ambiente)
+  fecha
+  veja nome == "cru" ::
+    devolve Algo(Cru)
+  fecha
+  veja nome == "frontend" ::
+    devolve Algo(Frontend)
+  fecha
+  veja nome == "teste" ::
+    devolve Algo(Teste)
+  fecha
   devolve Nada
 fecha
 
@@ -314,12 +330,26 @@ campo nome_chamada(expressao: Expressao) -> Texto ::
 fecha
 
 campo efeito_nome(efeito: Efeito) -> Texto ::
-  veja efeito == Terminal :: devolve "terminal" fecha
-  veja efeito == Disco :: devolve "disco" fecha
-  veja efeito == Rede :: devolve "rede" fecha
-  veja efeito == Tempo :: devolve "tempo" fecha
-  veja efeito == Ambiente :: devolve "ambiente" fecha
-  veja efeito == Cru :: devolve "cru" fecha
-  veja efeito == Frontend :: devolve "frontend" fecha
+  veja efeito == Terminal ::
+    devolve "terminal"
+  fecha
+  veja efeito == Disco ::
+    devolve "disco"
+  fecha
+  veja efeito == Rede ::
+    devolve "rede"
+  fecha
+  veja efeito == Tempo ::
+    devolve "tempo"
+  fecha
+  veja efeito == Ambiente ::
+    devolve "ambiente"
+  fecha
+  veja efeito == Cru ::
+    devolve "cru"
+  fecha
+  veja efeito == Frontend ::
+    devolve "frontend"
+  fecha
   devolve "teste"
 fecha
