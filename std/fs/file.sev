@@ -1,6 +1,7 @@
 modulo std.fs.file
 
 usa std.base.resultado
+usa std.mem.bytes
 
 campo arquivo_texto(caminho: Texto) -> Resultado<Texto, Falha> toca disco ::
   devolve sys_arquivo_ler_texto(caminho)
@@ -12,6 +13,18 @@ fecha
 
 campo arquivo_salva_texto(caminho: Texto, conteudo: Texto) -> Resultado<Nada, Falha> toca disco ::
   devolve sys_arquivo_grava_texto(caminho, conteudo)
+fecha
+
+campo arquivo_salva_bytes(caminho: Texto, conteudo: Bytes) -> Resultado<Nada, Falha> toca disco ::
+  devolve sys_arquivo_grava_bytes(caminho, conteudo)
+fecha
+
+campo arquivo_copia(origem: Texto, destino: Texto) -> Resultado<Nada, Falha> toca disco ::
+  devolve sys_arquivo_copia(origem, destino)
+fecha
+
+campo arquivo_remove(caminho: Texto) -> Resultado<Nada, Falha> toca disco ::
+  devolve sys_arquivo_remove(caminho)
 fecha
 
 campo arquivo_existe(caminho: Texto) -> Bit toca disco ::
