@@ -42,6 +42,10 @@ campo intr_texto_comeca(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
   devolve Valor(VmBit(sys_texto_comeca(valor_texto(lista_pega(args, 0)), valor_texto(lista_pega(args, 1)))))
 fecha
 
+campo intr_texto_contem(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(VmBit(sys_texto_contem(valor_texto(lista_pega(args, 0)), valor_texto(lista_pega(args, 1)))))
+fecha
+
 campo intr_numero(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
   devolve Valor(VmNum(numero(valor_texto(lista_pega(args, 0)))))
 fecha
