@@ -4,6 +4,7 @@ usa std.base.resultado
 usa seven.runtime.svbc.image
 usa seven.runtime.svbc.opcode
 usa seven.runtime.svbc.value
+usa seven.runtime.svbc.memory
 usa seven.runtime.svbc.syscall
 
 molde QuadroVm ::
@@ -14,6 +15,7 @@ fecha
 
 molde EstadoVm ::
   imagem: ImagemSvbc
+  campo_atual: U32
   ip: U64
   pilha: Lista<ValorVm>
   locais: Lista<ValorVm>
@@ -30,8 +32,8 @@ campo vm_nova(imagem: ImagemSvbc) -> EstadoVm ::
 fecha
 
 campo vm_nova_com_args(imagem: ImagemSvbc, argumentos: Lista<Texto>) -> EstadoVm ::
-  guarda entrada := campo_entrada_info(imagem, "inicio")
-  solta pilha := lista<ValorVm>()
+  guarda indice_entrada := campo_indice(imagem, "inicio")
+  guarda entrada := lista_pega(imagem.campos, indice_entrada)
   solta locais := lista<ValorVm>()
 
   veja entrada.parametros > 0 ::
@@ -44,8 +46,9 @@ campo vm_nova_com_args(imagem: ImagemSvbc, argumentos: Lista<Texto>) -> EstadoVm
 
   devolve EstadoVm {
     imagem: imagem,
+    campo_atual: indice_entrada,
     ip: entrada.entrada,
-    pilha: pilha,
+    pilha: lista<ValorVm>(),
     locais: locais,
     quadros: lista<QuadroVm>(),
     memoria: lista<BlocoMemoria>(),
@@ -60,12 +63,18 @@ campo vm_executa(imagem: ImagemSvbc) -> Resultado<Num, Falha> toca rede, disco, 
   devolve vm_executa_com_args(imagem, lista<Texto>())
 fecha
 
-campo vm_executa_com_args(imagem: ImagemSvbc, argumentos: Lista<Texto>) -> Resultado<Num, Falha> toca rede, disco, terminal, tempo, ambiente, frontend ::
-  solta vm := vm_nova_com_args(imagem, argumentos)
+campo vm_executa_com_args(
+  imagem: ImagemSvbc,
+  argumentos: Lista<Texto>
+) -> Resultado<Num, Falha> toca rede, disco, terminal, tempo, ambiente, frontend ::
+  guarda verificacao := vm_valida_imagem(imagem)
+  veja verificacao e Falha ::
+    devolve verificacao
+  fecha
 
+  solta vm := vm_nova_com_args(imagem, argumentos)
   gira vm.rodando ::
     guarda passo := vm_passo(vm)
-
     veja passo e Falha ::
       devolve passo
     fecha
@@ -74,7 +83,25 @@ campo vm_executa_com_args(imagem: ImagemSvbc, argumentos: Lista<Texto>) -> Resul
   devolve Valor(vm.codigo_saida)
 fecha
 
+campo vm_valida_imagem(imagem: ImagemSvbc) -> Resultado<Nada, Falha> ::
+  veja lista_tamanho(imagem.campos) == 0 ::
+    devolve Falha(nova_falha("SVBC-ENTRADA", "imagem nao possui campos"))
+  fecha
+  veja lista_tamanho(imagem.codigo) == 0 ::
+    devolve Falha(nova_falha("SVBC-CODIGO", "imagem nao possui instrucoes"))
+  fecha
+  guarda indice := campo_indice_opcional(imagem, "inicio")
+  veja indice e Nada ::
+    devolve Falha(nova_falha("SVBC-ENTRADA", "campo inicio ausente"))
+  fecha
+  devolve Valor(nulo)
+fecha
+
 campo vm_passo(vm: EstadoVm) -> Resultado<Nada, Falha> toca rede, disco, terminal, tempo, ambiente, frontend ::
+  veja vm.ip >= lista_tamanho(vm.imagem.codigo) ::
+    devolve Falha(nova_falha("SVBC-IP", "ponteiro de instrucao fora do codigo"))
+  fecha
+
   guarda instr := lista_pega(vm.imagem.codigo, vm.ip)
   vira vm.ip := vm.ip + 1
 
@@ -82,117 +109,88 @@ campo vm_passo(vm: EstadoVm) -> Resultado<Nada, Falha> toca rede, disco, termina
     vira vm.rodando := nao
     devolve Valor(nulo)
   fecha
-
   veja instr.opcode e Const ::
-    lista_coloca(vm.pilha, lista_pega(vm.imagem.constantes, instr.a))
-    devolve Valor(nulo)
+    devolve vm_constante(vm, instr.a)
   fecha
-
   veja instr.opcode e Carrega ::
     devolve vm_carrega(vm, instr.a)
   fecha
-
   veja instr.opcode e Guarda ::
     devolve vm_guarda(vm, instr.a)
   fecha
-
   veja instr.opcode e Soma ::
     devolve vm_binaria(vm, "+")
   fecha
-
   veja instr.opcode e Sub ::
     devolve vm_binaria(vm, "-")
   fecha
-
   veja instr.opcode e Mul ::
     devolve vm_binaria(vm, "*")
   fecha
-
   veja instr.opcode e Div ::
     devolve vm_binaria(vm, "/")
   fecha
-
   veja instr.opcode e Igual ::
     devolve vm_binaria(vm, "==")
   fecha
-
   veja instr.opcode e Diferente ::
     devolve vm_binaria(vm, "!=")
   fecha
-
   veja instr.opcode e Menor ::
     devolve vm_binaria(vm, "<")
   fecha
-
   veja instr.opcode e MenorIgual ::
     devolve vm_binaria(vm, "<=")
   fecha
-
   veja instr.opcode e Maior ::
     devolve vm_binaria(vm, ">")
   fecha
-
   veja instr.opcode e MaiorIgual ::
     devolve vm_binaria(vm, ">=")
   fecha
-
   veja instr.opcode e Salta ::
-    vira vm.ip := instr.a
-    devolve Valor(nulo)
+    devolve vm_salta(vm, instr.a)
   fecha
-
   veja instr.opcode e SaltaSeNao ::
-    guarda cond := pilha_pop(vm)
-    veja valor_verdadeiro(cond) == nao ::
-      vira vm.ip := instr.a
-    fecha
-    devolve Valor(nulo)
+    devolve vm_salta_se_nao(vm, instr.a)
   fecha
-
-  veja instr.opcode e Syscall ::
-    devolve vm_syscall(vm, instr)
-  fecha
-
   veja instr.opcode e Chama ::
     devolve vm_chama(vm, instr)
   fecha
-
   veja instr.opcode e Volta ::
     devolve vm_retorna(vm)
+  fecha
+  veja instr.opcode e Caixa ::
+    devolve vm_caixa(vm)
+  fecha
+  veja instr.opcode e MarcaByte ::
+    devolve vm_marca_byte(vm)
+  fecha
+  veja instr.opcode e PegaByte ::
+    devolve vm_pega_byte(vm)
+  fecha
+  veja instr.opcode e Efeito ::
+    devolve vm_confere_efeito(vm, instr.a)
+  fecha
+  veja instr.opcode e Syscall ::
+    devolve vm_syscall(vm, instr)
   fecha
 
   devolve Falha(nova_falha("SVBC-VM-OP", "instrucao ainda nao implementada"))
 fecha
 
-campo campo_entrada(imagem: ImagemSvbc, nome: Texto) -> U64 ::
-  devolve campo_entrada_info(imagem, nome).entrada
-fecha
-
-campo campo_entrada_info(imagem: ImagemSvbc, nome: Texto) -> CampoImagem ::
-  para cada item em imagem.campos ::
-    veja item.nome == nome ::
-      devolve item
-    fecha
+campo vm_constante(vm: EstadoVm, indice: U32) -> Resultado<Nada, Falha> ::
+  veja indice >= lista_tamanho(vm.imagem.constantes) ::
+    devolve Falha(nova_falha("SVBC-CONSTANTE", "constante fora do limite"))
   fecha
-
-  devolve CampoImagem {
-    nome: nome,
-    entrada: 0,
-    locais: 0,
-    parametros: 0,
-    efeitos: lista<Texto>()
-  }
-fecha
-
-campo pilha_pop(vm: EstadoVm) -> ValorVm ::
-  devolve sys_lista_pop(vm.pilha)
+  lista_coloca(vm.pilha, lista_pega(vm.imagem.constantes, indice))
+  devolve Valor(nulo)
 fecha
 
 campo vm_carrega(vm: EstadoVm, indice: U32) -> Resultado<Nada, Falha> ::
   veja indice >= lista_tamanho(vm.locais) ::
     devolve Falha(nova_falha("SVBC-LOCAL", "local fora do limite"))
   fecha
-
   lista_coloca(vm.pilha, lista_pega(vm.locais, indice))
   devolve Valor(nulo)
 fecha
@@ -201,9 +199,49 @@ campo vm_guarda(vm: EstadoVm, indice: U32) -> Resultado<Nada, Falha> ::
   veja indice >= lista_tamanho(vm.locais) ::
     devolve Falha(nova_falha("SVBC-LOCAL", "local fora do limite"))
   fecha
+  guarda valor := pilha_pop_segura(vm)
+  veja valor e Falha ::
+    devolve valor
+  fecha
+  sys_lista_define(vm.locais, indice, valor.valor)
+  devolve Valor(nulo)
+fecha
 
-  guarda valor := pilha_pop(vm)
-  sys_lista_define(vm.locais, indice, valor)
+campo vm_binaria(vm: EstadoVm, operador: Texto) -> Resultado<Nada, Falha> ::
+  guarda direita := pilha_pop_segura(vm)
+  veja direita e Falha ::
+    devolve direita
+  fecha
+  guarda esquerda := pilha_pop_segura(vm)
+  veja esquerda e Falha ::
+    devolve esquerda
+  fecha
+
+  guarda resultado := sys_vm_binaria(esquerda.valor, operador, direita.valor)
+  veja resultado e Falha ::
+    devolve resultado
+  fecha
+
+  lista_coloca(vm.pilha, resultado.valor)
+  devolve Valor(nulo)
+fecha
+
+campo vm_salta(vm: EstadoVm, destino: U32) -> Resultado<Nada, Falha> ::
+  veja destino >= lista_tamanho(vm.imagem.codigo) ::
+    devolve Falha(nova_falha("SVBC-SALTO", "destino de salto fora do codigo"))
+  fecha
+  vira vm.ip := destino
+  devolve Valor(nulo)
+fecha
+
+campo vm_salta_se_nao(vm: EstadoVm, destino: U32) -> Resultado<Nada, Falha> ::
+  guarda condicao := pilha_pop_segura(vm)
+  veja condicao e Falha ::
+    devolve condicao
+  fecha
+  veja nao valor_verdadeiro(condicao.valor) ::
+    devolve vm_salta(vm, destino)
+  fecha
   devolve Valor(nulo)
 fecha
 
@@ -213,39 +251,136 @@ campo vm_chama(vm: EstadoVm, instr: Instrucao) -> Resultado<Nada, Falha> ::
   fecha
 
   guarda alvo := lista_pega(vm.imagem.campos, instr.a)
-  guarda args := sys_vm_coleta_args(vm.pilha, instr.b)
-  gira lista_tamanho(args) < alvo.locais ::
-    lista_coloca(args, VmNada)
+  veja instr.b != alvo.parametros ::
+    devolve Falha(nova_falha("SVBC-ARIDADE", "quantidade de argumentos invalida"))
+  fecha
+
+  guarda args := coleta_argumentos(vm, instr.b)
+  veja args e Falha ::
+    devolve args
+  fecha
+
+  gira lista_tamanho(args.valor) < alvo.locais ::
+    lista_coloca(args.valor, VmNada)
   fecha
 
   lista_coloca(vm.quadros, QuadroVm {
-    campo: instr.a,
+    campo: vm.campo_atual,
     ip_retorno: vm.ip,
     locais: vm.locais
   })
-  vira vm.locais := args
+  vira vm.campo_atual := instr.a
+  vira vm.locais := args.valor
   vira vm.ip := alvo.entrada
   devolve Valor(nulo)
 fecha
 
-campo vm_binaria(vm: EstadoVm, operador: Texto) -> Resultado<Nada, Falha> ::
-  guarda direita := pilha_pop(vm)
-  guarda esquerda := pilha_pop(vm)
-  guarda resultado := sys_vm_binaria(esquerda, operador, direita)
-
-  veja resultado e Falha ::
-    devolve resultado
+campo vm_retorna(vm: EstadoVm) -> Resultado<Nada, Falha> ::
+  guarda retorno := pilha_pop_segura(vm)
+  veja retorno e Falha ::
+    devolve retorno
   fecha
 
-  lista_coloca(vm.pilha, resultado.valor)
+  veja lista_tamanho(vm.quadros) == 0 ::
+    vira vm.codigo_saida := valor_para_num(retorno.valor)
+    vira vm.rodando := nao
+    devolve Valor(nulo)
+  fecha
+
+  guarda quadro := sys_lista_pop(vm.quadros)
+  vira vm.campo_atual := quadro.campo
+  vira vm.ip := quadro.ip_retorno
+  vira vm.locais := quadro.locais
+  lista_coloca(vm.pilha, retorno.valor)
   devolve Valor(nulo)
 fecha
 
-campo vm_syscall(vm: EstadoVm, instr: Instrucao) -> Resultado<Nada, Falha> toca rede, disco, terminal, tempo, ambiente, frontend ::
-  guarda nome := lista_pega(vm.imagem.nomes, instr.a)
-  guarda args := sys_vm_coleta_args(vm.pilha, instr.b)
-  guarda saida := syscall_chama(vm.syscalls, nome, args)
+campo vm_caixa(vm: EstadoVm) -> Resultado<Nada, Falha> ::
+  guarda tamanho_valor := pilha_pop_segura(vm)
+  veja tamanho_valor e Falha ::
+    devolve tamanho_valor
+  fecha
 
+  guarda tamanho := valor_u64(tamanho_valor.valor)
+  veja tamanho e Falha ::
+    devolve tamanho
+  fecha
+
+  guarda criada := memoria_cria(vm.memoria, tamanho.valor)
+  veja criada e Falha ::
+    devolve criada
+  fecha
+
+  lista_coloca(vm.pilha, criada.valor)
+  devolve Valor(nulo)
+fecha
+
+campo vm_marca_byte(vm: EstadoVm) -> Resultado<Nada, Falha> ::
+  guarda valor := pilha_pop_segura(vm)
+  veja valor e Falha ::
+    devolve valor
+  fecha
+  guarda indice := pilha_pop_segura(vm)
+  veja indice e Falha ::
+    devolve indice
+  fecha
+  guarda bloco := pilha_pop_segura(vm)
+  veja bloco e Falha ::
+    devolve bloco
+  fecha
+
+  devolve memoria_marca(vm.memoria, bloco.valor, indice.valor, valor.valor)
+fecha
+
+campo vm_pega_byte(vm: EstadoVm) -> Resultado<Nada, Falha> ::
+  guarda indice := pilha_pop_segura(vm)
+  veja indice e Falha ::
+    devolve indice
+  fecha
+  guarda bloco := pilha_pop_segura(vm)
+  veja bloco e Falha ::
+    devolve bloco
+  fecha
+
+  guarda valor := memoria_pega(vm.memoria, bloco.valor, indice.valor)
+  veja valor e Falha ::
+    devolve valor
+  fecha
+  lista_coloca(vm.pilha, valor.valor)
+  devolve Valor(nulo)
+fecha
+
+campo vm_confere_efeito(vm: EstadoVm, nome_indice: U32) -> Resultado<Nada, Falha> ::
+  veja nome_indice >= lista_tamanho(vm.imagem.nomes) ::
+    devolve Falha(nova_falha("SVBC-EFEITO", "nome de efeito fora do limite"))
+  fecha
+
+  guarda nome := lista_pega(vm.imagem.nomes, nome_indice)
+  guarda campo := lista_pega(vm.imagem.campos, vm.campo_atual)
+  para cada declarado em campo.efeitos ::
+    veja declarado == nome ::
+      devolve Valor(nulo)
+    fecha
+  fecha
+
+  devolve Falha(nova_falha("SVBC-EFEITO", "efeito nao autorizado: " + nome))
+fecha
+
+campo vm_syscall(
+  vm: EstadoVm,
+  instr: Instrucao
+) -> Resultado<Nada, Falha> toca rede, disco, terminal, tempo, ambiente, frontend ::
+  veja instr.a >= lista_tamanho(vm.imagem.nomes) ::
+    devolve Falha(nova_falha("SVBC-SYSCALL", "nome de syscall fora do limite"))
+  fecha
+
+  guarda args := coleta_argumentos(vm, instr.b)
+  veja args e Falha ::
+    devolve args
+  fecha
+
+  guarda nome := lista_pega(vm.imagem.nomes, instr.a)
+  guarda saida := syscall_chama(vm.syscalls, nome, args.valor)
   veja saida e Falha ::
     devolve saida
   fecha
@@ -254,18 +389,58 @@ campo vm_syscall(vm: EstadoVm, instr: Instrucao) -> Resultado<Nada, Falha> toca 
   devolve Valor(nulo)
 fecha
 
-campo vm_retorna(vm: EstadoVm) -> Resultado<Nada, Falha> ::
-  veja lista_tamanho(vm.quadros) == 0 ::
-    guarda valor := pilha_pop(vm)
-    vira vm.codigo_saida := valor_para_num(valor)
-    vira vm.rodando := nao
-    devolve Valor(nulo)
+campo coleta_argumentos(vm: EstadoVm, quantidade: U32) -> Resultado<Lista<ValorVm>, Falha> ::
+  veja quantidade > lista_tamanho(vm.pilha) ::
+    devolve Falha(nova_falha("SVBC-PILHA", "argumentos insuficientes na pilha"))
   fecha
 
-  guarda quadro := sys_lista_pop(vm.quadros)
-  vira vm.ip := quadro.ip_retorno
-  vira vm.locais := quadro.locais
-  devolve Valor(nulo)
+  solta args := lista<ValorVm>()
+  solta indice: U32 := 0
+  gira indice < quantidade ::
+    guarda valor := sys_lista_pop(vm.pilha)
+    lista_insere(args, 0, valor)
+    vira indice := indice + 1
+  fecha
+  devolve Valor(args)
+fecha
+
+campo pilha_pop_segura(vm: EstadoVm) -> Resultado<ValorVm, Falha> ::
+  veja lista_tamanho(vm.pilha) == 0 ::
+    devolve Falha(nova_falha("SVBC-PILHA", "pilha vazia"))
+  fecha
+  devolve Valor(sys_lista_pop(vm.pilha))
+fecha
+
+campo valor_u64(valor: ValorVm) -> Resultado<U64, Falha> ::
+  veja valor e VmU64 ::
+    devolve Valor(valor.valor)
+  fecha
+  veja valor e VmNum ::
+    veja valor.valor < 0 ::
+      devolve Falha(nova_falha("SVBC-TIPO", "numero negativo nao pode ser U64"))
+    fecha
+    devolve Valor(U64(valor.valor))
+  fecha
+  devolve Falha(nova_falha("SVBC-TIPO", "esperado numero inteiro"))
+fecha
+
+campo campo_indice(imagem: ImagemSvbc, nome: Texto) -> U32 ::
+  guarda encontrado := campo_indice_opcional(imagem, nome)
+  veja encontrado e Algo ::
+    devolve encontrado.valor
+  fecha
+  devolve 0
+fecha
+
+campo campo_indice_opcional(imagem: ImagemSvbc, nome: Texto) -> Talvez<U32> ::
+  solta indice: U32 := 0
+  para cada campo em imagem.campos ::
+    veja campo.nome == nome ::
+      devolve Algo(indice)
+    fecha
+    vira indice := indice + 1
+  fecha
+  devolve Nada
 fecha
 
 campo valor_para_num(valor: ValorVm) -> Num ::
@@ -273,7 +448,7 @@ campo valor_para_num(valor: ValorVm) -> Num ::
     devolve valor.valor
   fecha
   veja valor e VmU64 ::
-    devolve valor.valor
+    devolve Num(valor.valor)
   fecha
   veja valor e VmBit ::
     veja valor.valor ::
@@ -282,6 +457,5 @@ campo valor_para_num(valor: ValorVm) -> Num ::
       devolve 0
     fecha
   fecha
-
   devolve 0
 fecha
