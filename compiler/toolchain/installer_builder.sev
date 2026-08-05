@@ -24,7 +24,13 @@ campo gera_instalador(
   sistema_nome: Texto,
   saida: Texto
 ) -> Resultado<PacoteInstalador, Falha> toca disco ::
-  guarda sistema := sistema_instalacao_por_nome(sistema_nome)
+  guarda sistema_resultado := sistema_instalacao_por_nome(sistema_nome)
+
+  veja sistema_resultado e Falha ::
+    devolve Falha(sistema_resultado.valor)
+  fecha
+
+  guarda sistema := sistema_resultado.valor
   guarda diretorio := diretorio_pacote(contexto, sistema, saida)
   guarda payload := diretorio + "/payload"
   guarda imagem_caminho := contexto.destino + "/seven.installer.svbc"
@@ -32,7 +38,7 @@ campo gera_instalador(
   veja caminho_existe(imagem_caminho) == nao ::
     devolve Falha(nova_falha(
       "SV-INSTALLER-IMAGEM",
-      "compile runtime/installer/seven.sev para " + imagem_caminho + " antes de gerar o instalador"
+      "compile seven.pkg para " + imagem_caminho + " antes de gerar o instalador"
     ))
   fecha
 
@@ -82,7 +88,7 @@ campo gera_instalador(
 
   guarda checksum_resultado := sys_arquivo_grava_texto(
     checksum,
-    sha256_arquivo(instalador) + "  " + nome_arquivo(instalador) + "\n"
+    sha256_arquivo(instalador) + "  " + nome_instalador(sistema) + "\n"
   )
   veja checksum_resultado e Falha ::
     devolve Falha(checksum_resultado.valor)
@@ -99,12 +105,19 @@ campo gera_instalador(
   })
 fecha
 
-campo sistema_instalacao_por_nome(nome: Texto) -> SistemaInstalacao ::
+campo sistema_instalacao_por_nome(nome: Texto) -> Resultado<SistemaInstalacao, Falha> ::
   veja nome == "windows" ou nome == "windows-x64" ou nome == "win-x64" ::
-    devolve WindowsX64
+    devolve Valor(WindowsX64)
   fecha
 
-  devolve LinuxX64
+  veja nome == "linux" ou nome == "linux-x64" ::
+    devolve Valor(LinuxX64)
+  fecha
+
+  devolve Falha(nova_falha(
+    "SV-INSTALLER-ALVO",
+    "alvo de instalador desconhecido: " + nome + "; use windows-x64 ou linux-x64"
+  ))
 fecha
 
 campo alvo_instalador(sistema: SistemaInstalacao) -> AlvoNativo ::
@@ -128,11 +141,15 @@ campo diretorio_pacote(
 fecha
 
 campo caminho_instalador(diretorio: Texto, sistema: SistemaInstalacao) -> Texto ::
+  devolve diretorio + "/" + nome_instalador(sistema)
+fecha
+
+campo nome_instalador(sistema: SistemaInstalacao) -> Texto ::
   veja sistema e WindowsX64 ::
-    devolve diretorio + "/seven-installer.exe"
+    devolve "seven-installer.exe"
   fecha
 
-  devolve diretorio + "/seven-installer"
+  devolve "seven-installer"
 fecha
 
 campo prepara_diretorios_pacote(diretorio: Texto, payload: Texto) -> Resultado<Nada, Falha> toca disco ::
@@ -203,8 +220,4 @@ campo manifesto_pacote(
     "icone_svg " + payload + "/seven-mark.svg\n" +
     "fonte Seven\n" +
     "powershell nao\n"
-fecha
-
-campo nome_arquivo(caminho: Texto) -> Texto ::
-  devolve sys_caminho_nome(caminho)
 fecha
