@@ -2,6 +2,7 @@ modulo seven.compiler.toolchain.release
 
 usa seven.compiler.toolchain.command
 usa seven.compiler.toolchain.installer_builder
+usa seven.compiler.toolchain.native_build
 usa seven.compiler.toolchain.launcher
 usa seven.compiler.toolchain.native_host
 usa std.base.resultado
@@ -23,6 +24,11 @@ fecha
 campo prepara_release(contexto: ContextoToolchain) -> Resultado<PlanoRelease, Falha> toca disco ::
   solta artefatos := lista<ArtefatoRelease>()
 
+  guarda compiladores := gera_compiladores_nativos(contexto)
+  veja compiladores e Falha ::
+    devolve Falha(compiladores.valor)
+  fecha
+
   guarda windows := gera_instalador(contexto, "windows-x64", "")
   veja windows e Falha ::
     devolve Falha(windows.valor)
@@ -38,6 +44,10 @@ campo prepara_release(contexto: ContextoToolchain) -> Resultado<PlanoRelease, Fa
   adiciona_artefato(artefatos, launcher_bytecode_release_caminho(contexto.destino), "launcher-svbc")
   adiciona_artefato(artefatos, host_manifesto_release_caminho(contexto.destino), "host-manifest")
   adiciona_artefato(artefatos, host_executavel_release_caminho(contexto.destino), "host-svbc")
+  adiciona_artefato(artefatos, compiladores.valor.windows, "compiler-windows-x64")
+  adiciona_artefato(artefatos, compiladores.valor.windows_hash, "compiler-windows-checksum")
+  adiciona_artefato(artefatos, compiladores.valor.linux, "compiler-linux-x64")
+  adiciona_artefato(artefatos, compiladores.valor.linux_hash, "compiler-linux-checksum")
   adiciona_pacote_instalador(artefatos, windows.valor)
   adiciona_pacote_instalador(artefatos, linux.valor)
   adiciona_artefato(artefatos, "brand/seven.ico", "windows-icon")
@@ -46,8 +56,8 @@ campo prepara_release(contexto: ContextoToolchain) -> Resultado<PlanoRelease, Fa
   devolve Valor(PlanoRelease {
     versao: SevenVersao,
     artefatos: artefatos,
-    sbom: sbom_gera(contexto, windows.valor, linux.valor),
-    assinado: sys_release_assinado()
+    sbom: sbom_gera(contexto, compiladores.valor, windows.valor, linux.valor),
+    assinado: nao
   })
 fecha
 
@@ -68,6 +78,7 @@ fecha
 
 campo sbom_gera(
   contexto: ContextoToolchain,
+  compiladores: CompiladoresNativos,
   windows: PacoteInstalador,
   linux: PacoteInstalador
 ) -> Texto toca disco ::
@@ -78,6 +89,8 @@ campo sbom_gera(
     "launcher_bytecode " + launcher_bytecode_release_caminho(contexto.destino) + "\n" +
     "host " + host_manifesto_release_caminho(contexto.destino) + "\n" +
     "host_bytecode " + host_executavel_release_caminho(contexto.destino) + "\n" +
+    "compiler_windows " + compiladores.windows + "\n" +
+    "compiler_linux " + compiladores.linux + "\n" +
     "installer_windows " + windows.instalador + "\n" +
     "installer_linux " + linux.instalador + "\n" +
     "icone_windows brand/seven.ico\n" +
