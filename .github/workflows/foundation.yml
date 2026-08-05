@@ -65,6 +65,13 @@ jobs:
         shell: cmd
         run: fc /b build\seven.svbc build\seven.self.svbc
 
+      - name: Upload bootstrap images
+        uses: actions/upload-artifact@v4
+        with:
+          name: seven-svbc-images
+          path: build/*.svbc
+          if-no-files-found: error
+
       - name: Build native compiler and installers from Seven
         shell: cmd
         run: bin\seven.exe run bootstrap\native-release.sev
