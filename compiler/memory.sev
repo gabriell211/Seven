@@ -5,6 +5,7 @@ usa seven.compiler.diagnostic
 
 molde CaixaMemoria ::
   nome: Texto
+  campo: Texto
   tamanho: U64
   span: Span
 fecha
@@ -33,45 +34,122 @@ fecha
 
 campo confere_memoria_campo(campo: Campo, tabela: TabelaMemoria) -> Nada ::
   para cada cmd em campo.corpo ::
-    confere_memoria_comando(cmd, tabela)
+    confere_memoria_comando(campo.nome, cmd, tabela)
   fecha
 fecha
 
-campo confere_memoria_comando(cmd: Comando, tabela: TabelaMemoria) -> Nada ::
+campo confere_memoria_comando(campo: Texto, cmd: Comando, tabela: TabelaMemoria) -> Nada ::
   veja cmd e CmdCaixa ::
-    guarda tamanho := literal_num(cmd.valor.tamanho)
-    mapa_define(tabela.caixas, cmd.valor.nome, CaixaMemoria {
-      nome: cmd.valor.nome,
-      tamanho: tamanho,
-      span: cmd.valor.span
-    })
+    guarda conhecido := literal_num(cmd.valor.tamanho)
+    veja conhecido e Algo ::
+      guarda chave := campo + "::" + cmd.valor.nome
+      veja mapa_tem(tabela.caixas, chave) ::
+        lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+          "SV-MEM-CAIXA-DUPLICADA",
+          "caixa '" + cmd.valor.nome + "' ja existe neste campo",
+          cmd.valor.span.arquivo,
+          cmd.valor.span.linha,
+          cmd.valor.span.coluna,
+          "use outro nome para manter o limite de memoria inequivoco"
+        ))
+      outro ::
+        mapa_coloca(tabela.caixas, chave, CaixaMemoria {
+          nome: cmd.valor.nome,
+          campo: campo,
+          tamanho: conhecido.valor,
+          span: cmd.valor.span
+        })
+      fecha
+    outro ::
+      lista_coloca(tabela.diagnosticos, aviso(
+        "SV-MEM-LIMITE-DINAMICO",
+        "tamanho dinamico da caixa sera validado em tempo de execucao",
+        cmd.valor.span.arquivo,
+        cmd.valor.span.linha,
+        cmd.valor.span.coluna
+      ))
+    fecha
   fecha
 
   veja cmd e CmdMarca ::
-    confere_acesso_caixa(tabela, cmd.valor.bloco, literal_num(cmd.valor.indice), cmd.valor.span)
+    confere_acesso_caixa(campo, tabela, cmd.valor.bloco, literal_num(cmd.valor.indice), cmd.valor.span)
   fecha
 
   veja cmd e CmdPega ::
-    confere_acesso_caixa(tabela, cmd.valor.bloco, literal_num(cmd.valor.indice), cmd.valor.span)
+    confere_acesso_caixa(campo, tabela, cmd.valor.bloco, literal_num(cmd.valor.indice), cmd.valor.span)
   fecha
-fecha
 
-campo confere_acesso_caixa(tabela: TabelaMemoria, nome: Texto, indice: U64, span: Span) -> Nada ::
-  guarda caixa := mapa_pega(tabela.caixas, nome)
+  veja cmd e CmdVeja ::
+    para cada interno em cmd.valor.entao ::
+      confere_memoria_comando(campo, interno, tabela)
+    fecha
+    para cada interno em cmd.valor.senao ::
+      confere_memoria_comando(campo, interno, tabela)
+    fecha
+  fecha
 
-  veja caixa e Algo ::
-    veja indice >= caixa.valor.tamanho ::
-      lista_coloca(tabela.diagnosticos, erro("SV-MEM-LIMITE", "indice fora do limite conhecido", span.arquivo, span.linha, span.coluna))
+  veja cmd e CmdGira ::
+    para cada interno em cmd.valor.corpo ::
+      confere_memoria_comando(campo, interno, tabela)
+    fecha
+  fecha
+
+  veja cmd e CmdParaCada ::
+    para cada interno em cmd.valor.corpo ::
+      confere_memoria_comando(campo, interno, tabela)
+    fecha
+  fecha
+
+  veja cmd e CmdZona ::
+    para cada interno em cmd.valor.corpo ::
+      confere_memoria_comando(campo, interno, tabela)
     fecha
   fecha
 fecha
 
-campo literal_num(expr: Expressao) -> U64 ::
+campo confere_acesso_caixa(
+  campo: Texto,
+  tabela: TabelaMemoria,
+  nome: Texto,
+  indice: Talvez<U64>,
+  local: Span
+) -> Nada ::
+  guarda caixa := mapa_pega(tabela.caixas, campo + "::" + nome)
+
+  veja caixa e Nada ::
+    lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+      "SV-MEM-CAIXA-INEXISTENTE",
+      "caixa '" + nome + "' nao foi declarada neste campo",
+      local.arquivo,
+      local.linha,
+      local.coluna,
+      "declare caixa " + nome + ": Byte[tamanho] antes do acesso"
+    ))
+    devolve nulo
+  fecha
+
+  veja indice e Algo ::
+    veja indice.valor >= caixa.valor.tamanho ::
+      lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+        "SV-MEM-LIMITE",
+        "indice " + texto(indice.valor) + " ultrapassa caixa de tamanho " + texto(caixa.valor.tamanho),
+        local.arquivo,
+        local.linha,
+        local.coluna,
+        "indices validos vao de 0 ate " + texto(caixa.valor.tamanho - 1)
+      ))
+    fecha
+  fecha
+fecha
+
+campo literal_num(expr: Expressao) -> Talvez<U64> ::
   veja expr e ExprLiteral ::
     veja expr.valor e LitNum ::
-      devolve expr.valor.valor
+      veja expr.valor.valor >= 0 ::
+        devolve Algo(U64(expr.valor.valor))
+      fecha
     fecha
   fecha
 
-  devolve 0
+  devolve Nada
 fecha
