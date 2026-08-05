@@ -8,25 +8,85 @@ selo SistemaNativo ::
   Arm64
 fecha
 
+molde RecursoNativo ::
+  tipo: Texto
+  nome: Texto
+  caminho: Texto
+fecha
+
 molde AlvoNativo ::
   sistema: SistemaNativo
+  arquitetura: Texto
   imports: Lista<ContratoIntrinseco>
+  recursos: Lista<RecursoNativo>
   formato: Texto
+  subsistema: Texto
 fecha
 
 campo alvo_win_x64() -> AlvoNativo ::
-  devolve alvo_nativo(WinX64, "exe")
+  devolve alvo_nativo(WinX64, "x86_64", "exe", "console")
 fecha
 
 campo alvo_linux_x64() -> AlvoNativo ::
-  devolve alvo_nativo(LinuxX64, "elf")
+  devolve alvo_nativo(LinuxX64, "x86_64", "elf", "console")
 fecha
 
-campo alvo_nativo(sistema: SistemaNativo, formato: Texto) -> AlvoNativo ::
+campo alvo_instalador_win_x64(icone: Texto) -> AlvoNativo ::
+  guarda alvo := alvo_nativo(WinX64, "x86_64", "exe", "windows")
+  lista_coloca(alvo.recursos, RecursoNativo {
+    tipo: "icon",
+    nome: "SEVEN_ICON",
+    caminho: icone
+  })
+  devolve alvo
+fecha
+
+campo alvo_instalador_linux_x64(icone: Texto) -> AlvoNativo ::
+  guarda alvo := alvo_nativo(LinuxX64, "x86_64", "elf", "console")
+  lista_coloca(alvo.recursos, RecursoNativo {
+    tipo: "desktop-icon",
+    nome: "seven",
+    caminho: icone
+  })
+  devolve alvo
+fecha
+
+campo alvo_nativo(sistema: SistemaNativo, arquitetura: Texto, formato: Texto, subsistema: Texto) -> AlvoNativo ::
+  solta imports := imports_nativos_padrao()
+
+  devolve AlvoNativo {
+    sistema: sistema,
+    arquitetura: arquitetura,
+    imports: imports,
+    recursos: lista<RecursoNativo>(),
+    formato: formato,
+    subsistema: subsistema
+  }
+fecha
+
+campo imports_nativos_padrao() -> Lista<ContratoIntrinseco> ::
   solta imports := lista<ContratoIntrinseco>()
 
   lista_coloca(imports, contrato_intrinseco("sys_arquivo_ler_texto", CapDisco, "Resultado<Texto, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_arquivo_ler_bytes", CapDisco, "Resultado<Bytes, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_arquivo_grava_texto", CapDisco, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_arquivo_grava_bytes", CapDisco, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_arquivo_copia", CapDisco, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_arquivo_remove", CapDisco, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_diretorio_cria", CapDisco, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_diretorio_remove_arvore", CapDisco, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_arquivo_permissao", CapDisco, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_arquivo_link_simbolico", CapDisco, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_path_usuario_adiciona", CapAmbiente, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_path_usuario_remove", CapAmbiente, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_plataforma_atual", CapAmbiente, "Texto"))
+  lista_coloca(imports, contrato_intrinseco("sys_windows_atalho_cria", CapAmbiente, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_windows_associacao_registra", CapAmbiente, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_windows_associacao_remove", CapAmbiente, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_windows_desinstalador_registra", CapAmbiente, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_windows_desinstalador_remove", CapAmbiente, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_linux_desktop_atualiza", CapAmbiente, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_linux_mime_atualiza", CapAmbiente, "Resultado<Nada, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_tcp_escuta", CapRede, "Resultado<ListenerTcp, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_tcp_aceita", CapRede, "Resultado<ConexaoTcp, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_tcp_le", CapRede, "Resultado<Bytes, Falha>"))
@@ -34,9 +94,5 @@ campo alvo_nativo(sistema: SistemaNativo, formato: Texto) -> AlvoNativo ::
   lista_coloca(imports, contrato_intrinseco("sys_tempo_agora", CapTempo, "U64"))
   lista_coloca(imports, contrato_intrinseco("sys_env", CapAmbiente, "Resultado<Texto, Falha>"))
 
-  devolve AlvoNativo {
-    sistema: sistema,
-    imports: imports,
-    formato: formato
-  }
+  devolve imports
 fecha
