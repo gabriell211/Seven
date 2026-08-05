@@ -8,6 +8,7 @@ campo intrinsecos_instalador() -> Lista<Intrinseco> ::
   solta itens := lista<Intrinseco>()
 
   lista_coloca(itens, intrinseco("sys_plataforma_atual", "ambiente", intr_plataforma_atual))
+  lista_coloca(itens, intrinseco("sys_executavel_diretorio", "ambiente", intr_executavel_diretorio))
   lista_coloca(itens, intrinseco("sys_diretorio_cria", "disco", intr_diretorio_cria))
   lista_coloca(itens, intrinseco("sys_diretorio_copia", "disco", intr_diretorio_copia))
   lista_coloca(itens, intrinseco("sys_diretorio_remove_arvore", "disco", intr_diretorio_remove_arvore))
@@ -27,4 +28,8 @@ campo intrinsecos_instalador() -> Lista<Intrinseco> ::
   lista_coloca(itens, intrinseco("sys_linux_mime_atualiza", "ambiente", intr_linux_mime_atualiza))
 
   devolve itens
+fecha
+
+campo intr_executavel_diretorio(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca ambiente ::
+  devolve Valor(VmTexto(sys_host_executavel_diretorio()))
 fecha
