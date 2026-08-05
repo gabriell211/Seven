@@ -37,77 +37,24 @@ campo parseia_comando(argumentos: Lista<Texto>) -> ComandoSeven ::
 
   guarda nome := lista_pega(argumentos, 0)
 
-  veja nome == "--help" ou nome == "-h" ::
-    devolve CmdAjuda
-  fecha
-
-  veja nome == "--version" ::
-    devolve CmdVersao
-  fecha
-
-  veja nome == "new" ::
-    devolve CmdNovo(arg_ou(argumentos, 1, "app"))
-  fecha
-
-  veja nome == "init" ::
-    devolve CmdInit
-  fecha
-
-  veja nome == "check" ::
-    devolve CmdCheck(arg_ou(argumentos, 1, "seven.pkg"))
-  fecha
-
-  veja nome == "build" ::
-    devolve CmdBuild(arg_ou(argumentos, 1, "seven.pkg"), arg_ou(argumentos, 2, "build/out.svbc"))
-  fecha
-
-  veja nome == "run" ::
-    devolve CmdRun(arg_ou(argumentos, 1, "seven.pkg"))
-  fecha
-
-  veja nome == "test" ::
-    devolve CmdTest(arg_ou(argumentos, 1, ""))
-  fecha
-
-  veja nome == "bench" ::
-    devolve CmdBench(arg_ou(argumentos, 1, ""))
-  fecha
-
-  veja nome == "fmt" ::
-    devolve CmdFmt(arg_ou(argumentos, 1, "."), sim)
-  fecha
-
-  veja nome == "lint" ::
-    devolve CmdLint(arg_ou(argumentos, 1, "."))
-  fecha
-
-  veja nome == "doc" ::
-    devolve CmdDoc
-  fecha
-
-  veja nome == "repl" ::
-    devolve CmdRepl
-  fecha
-
-  veja nome == "debug" ::
-    devolve CmdDebug(arg_ou(argumentos, 1, "seven.pkg"))
-  fecha
-
-  veja nome == "profile" ::
-    devolve CmdProfile(arg_ou(argumentos, 1, "seven.pkg"))
-  fecha
-
-  veja nome == "doctor" ::
-    devolve CmdDoctor
-  fecha
-
-  veja nome == "install" ::
-    devolve CmdInstall(arg_ou(argumentos, 1, ""))
-  fecha
-
-  veja nome == "uninstall" ::
-    devolve CmdUninstall(arg_ou(argumentos, 1, ""))
-  fecha
+  veja nome == "--help" ou nome == "-h" :: devolve CmdAjuda fecha
+  veja nome == "--version" :: devolve CmdVersao fecha
+  veja nome == "new" :: devolve CmdNovo(arg_ou(argumentos, 1, "app")) fecha
+  veja nome == "init" :: devolve CmdInit fecha
+  veja nome == "check" :: devolve CmdCheck(arg_ou(argumentos, 1, "seven.pkg")) fecha
+  veja nome == "build" :: devolve CmdBuild(arg_ou(argumentos, 1, "seven.pkg"), arg_ou(argumentos, 2, "build/out.svbc")) fecha
+  veja nome == "run" :: devolve CmdRun(arg_ou(argumentos, 1, "seven.pkg")) fecha
+  veja nome == "test" :: devolve CmdTest(arg_ou(argumentos, 1, "")) fecha
+  veja nome == "bench" :: devolve CmdBench(arg_ou(argumentos, 1, "")) fecha
+  veja nome == "fmt" :: devolve CmdFmt(arg_ou(argumentos, 1, "."), sim) fecha
+  veja nome == "lint" :: devolve CmdLint(arg_ou(argumentos, 1, ".")) fecha
+  veja nome == "doc" :: devolve CmdDoc fecha
+  veja nome == "repl" :: devolve CmdRepl fecha
+  veja nome == "debug" :: devolve CmdDebug(arg_ou(argumentos, 1, "seven.pkg")) fecha
+  veja nome == "profile" :: devolve CmdProfile(arg_ou(argumentos, 1, "seven.pkg")) fecha
+  veja nome == "doctor" :: devolve CmdDoctor fecha
+  veja nome == "install" :: devolve CmdInstall(arg_ou(argumentos, 1, "")) fecha
+  veja nome == "uninstall" :: devolve CmdUninstall(arg_ou(argumentos, 1, "")) fecha
 
   veja nome == "installer" ::
     devolve CmdInstaller(
@@ -116,21 +63,10 @@ campo parseia_comando(argumentos: Lista<Texto>) -> ComandoSeven ::
     )
   fecha
 
-  veja nome == "lsp" ::
-    devolve CmdLsp
-  fecha
-
-  veja nome == "release" ::
-    devolve CmdRelease
-  fecha
-
-  veja nome == "verify" ::
-    devolve parseia_verify(argumentos)
-  fecha
-
-  veja nome == "pkg" ::
-    devolve parseia_pkg(argumentos)
-  fecha
+  veja nome == "lsp" :: devolve CmdLsp fecha
+  veja nome == "release" :: devolve CmdRelease fecha
+  veja nome == "verify" :: devolve parseia_verify(argumentos) fecha
+  veja nome == "pkg" :: devolve parseia_pkg(argumentos) fecha
 
   veja nome == "target" ::
     veja arg_ou(argumentos, 1, "") == "list" ::
@@ -144,9 +80,7 @@ campo parseia_comando(argumentos: Lista<Texto>) -> ComandoSeven ::
     fecha
   fecha
 
-  veja nome == "serve" ::
-    devolve CmdServe(arg_ou(argumentos, 1, "."))
-  fecha
+  veja nome == "serve" :: devolve CmdServe(arg_ou(argumentos, 1, ".")) fecha
 
   devolve CmdInvalido("comando desconhecido: " + nome)
 fecha
@@ -198,15 +132,15 @@ campo executa_comando(contexto: ContextoToolchain, comando: ComandoSeven) -> Sai
   fecha
 
   veja comando e CmdCheck ::
-    devolve executa_build_like(contexto, "check")
+    devolve executa_build_like(contexto, "check", comando.entrada, "")
   fecha
 
   veja comando e CmdBuild ::
-    devolve executa_build_like(contexto, "build")
+    devolve executa_build_like(contexto, "build", comando.entrada, comando.saida)
   fecha
 
   veja comando e CmdRun ::
-    devolve executa_build_like(contexto, "run")
+    devolve executa_build_like(contexto, "run", comando.entrada, "")
   fecha
 
   veja comando e CmdInstall ::
@@ -221,21 +155,10 @@ campo executa_comando(contexto: ContextoToolchain, comando: ComandoSeven) -> Sai
     devolve executa_installer(contexto, comando.sistema, comando.saida)
   fecha
 
-  veja comando e CmdFmt ::
-    devolve adapta_fmt(fmt_caminho(comando.caminho, comando.escreve))
-  fecha
-
-  veja comando e CmdTest ::
-    devolve adapta_testes(roda_testes(contexto, comando.filtro))
-  fecha
-
-  veja comando e CmdBench ::
-    devolve adapta_testes(roda_benchmarks(contexto, comando.filtro))
-  fecha
-
-  veja comando e CmdLsp ::
-    devolve adapta_lsp(inicia_lsp(contexto))
-  fecha
+  veja comando e CmdFmt :: devolve adapta_fmt(fmt_caminho(comando.caminho, comando.escreve)) fecha
+  veja comando e CmdTest :: devolve adapta_testes(roda_testes(contexto, comando.filtro)) fecha
+  veja comando e CmdBench :: devolve adapta_testes(roda_benchmarks(contexto, comando.filtro)) fecha
+  veja comando e CmdLsp :: devolve adapta_lsp(inicia_lsp(contexto)) fecha
 
   veja comando e CmdPkgAdd ::
     devolve adapta_pacote(pacote_add(RequisicaoPacote {
@@ -246,17 +169,9 @@ campo executa_comando(contexto: ContextoToolchain, comando: ComandoSeven) -> Sai
     }))
   fecha
 
-  veja comando e CmdPkgRemove ::
-    devolve adapta_pacote(pacote_remove(contexto.manifesto, comando.nome))
-  fecha
-
-  veja comando e CmdPkgVerify ::
-    devolve adapta_pacote(pacote_verify(contexto.manifesto, "seven.lock"))
-  fecha
-
-  veja comando e CmdPkgInstall ::
-    devolve adapta_pacote(pacote_install(contexto.manifesto, contexto.cache))
-  fecha
+  veja comando e CmdPkgRemove :: devolve adapta_pacote(pacote_remove(contexto.manifesto, comando.nome)) fecha
+  veja comando e CmdPkgVerify :: devolve adapta_pacote(pacote_verify(contexto.manifesto, "seven.lock")) fecha
+  veja comando e CmdPkgInstall :: devolve adapta_pacote(pacote_install(contexto.manifesto, contexto.cache)) fecha
 
   veja comando e CmdTargetList ::
     diga("svbc")
@@ -266,9 +181,7 @@ campo executa_comando(contexto: ContextoToolchain, comando: ComandoSeven) -> Sai
     devolve ToolchainOk(0)
   fecha
 
-  veja comando e CmdRelease ::
-    devolve adapta_release(prepara_release(contexto))
-  fecha
+  veja comando e CmdRelease :: devolve adapta_release(prepara_release(contexto)) fecha
 
   veja comando e CmdVerifyFoundation ::
     guarda rel := verifica_fundacao(contexto)
@@ -325,9 +238,7 @@ campo executa_comando(contexto: ContextoToolchain, comando: ComandoSeven) -> Sai
     devolve ToolchainOk(0)
   fecha
 
-  veja comando e CmdInvalido ::
-    devolve ToolchainErro(2, comando.mensagem)
-  fecha
+  veja comando e CmdInvalido :: devolve ToolchainErro(2, comando.mensagem) fecha
 
   devolve ToolchainErro(2, "comando ainda nao implementado: " + comando_nome(comando))
 fecha
@@ -350,8 +261,20 @@ campo executa_installer(
   devolve ToolchainOk(0)
 fecha
 
-campo executa_build_like(contexto: ContextoToolchain, modo: Texto) -> SaidaToolchain toca terminal, disco, ambiente ::
-  guarda pedido := pedido_de_compilacao(lista<Texto>())
+campo executa_build_like(
+  contexto: ContextoToolchain,
+  modo: Texto,
+  entrada: Texto,
+  saida_caminho: Texto
+) -> SaidaToolchain toca terminal, disco, ambiente ::
+  solta argumentos := lista<Texto>()
+  lista_coloca(argumentos, entrada)
+
+  veja saida_caminho != "" ::
+    lista_coloca(argumentos, saida_caminho)
+  fecha
+
+  guarda pedido := pedido_de_compilacao(argumentos)
   guarda saida := compila(pedido)
 
   veja saida e Sucesso ::
@@ -367,6 +290,7 @@ fecha
 
 campo texto_ajuda() -> Texto ::
   devolve "seven <check|build|run|test|bench|fmt|lint|doc|repl|debug|profile|doctor|install|uninstall|installer|lsp|pkg|target|web|serve|release|verify>\n" +
+    "seven build <seven.pkg> <saida.svbc>\n" +
     "seven installer windows-x64 [diretorio]\n" +
     "seven installer linux-x64 [diretorio]"
 fecha
