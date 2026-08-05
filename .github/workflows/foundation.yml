@@ -34,19 +34,24 @@ jobs:
         shell: cmd
         run: bin\seven.exe --version
 
-      - name: Check Seven compiler source
+      - name: Check Seven sources
         shell: cmd
-        run: bin\seven.exe check seven.pkg
+        run: |
+          bin\seven.exe check compiler0\seven0.sev
+          bin\seven.exe check compiler\seven.sev
+          bin\seven.exe check runtime\host\seven.sev
+          bin\seven.exe check runtime\launcher\seven.sev
+          bin\seven.exe check runtime\installer\seven.sev
 
       - name: Materialize compiler images
         shell: cmd
         run: |
-          bin\seven.exe build seven.pkg build\seven0.svbc
-          bin\seven.exe build seven.pkg build\seven.svbc
-          bin\seven.exe build seven.pkg build\seven.self.svbc
-          bin\seven.exe build seven.pkg build\seven.host.svbc
-          bin\seven.exe build seven.pkg build\seven.launcher.svbc
-          bin\seven.exe build seven.pkg build\seven.installer.svbc
+          bin\seven.exe build compiler0\seven0.sev build\seven0.svbc
+          bin\seven.exe build compiler\seven.sev build\seven.svbc
+          bin\seven.exe build compiler\seven.sev build\seven.self.svbc
+          bin\seven.exe build runtime\host\seven.sev build\seven.host.svbc
+          bin\seven.exe build runtime\launcher\seven.sev build\seven.launcher.svbc
+          bin\seven.exe build runtime\installer\seven.sev build\seven.installer.svbc
 
       - name: Verify native contracts
         shell: cmd
