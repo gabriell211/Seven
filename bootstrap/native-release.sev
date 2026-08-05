@@ -1,0 +1,35 @@
+modulo bootstrap.native_release
+
+usa seven.compiler.toolchain.command
+usa seven.compiler.toolchain.installer_builder
+usa seven.compiler.toolchain.native_build
+usa std.io.console
+
+campo inicio() -> Num toca disco, terminal ::
+  guarda contexto := contexto_padrao()
+  guarda compiladores := gera_compiladores_nativos(contexto)
+
+  veja compiladores e Falha ::
+    diga("falha ao gerar compiladores nativos: " + compiladores.valor.mensagem)
+    devolve 1
+  fecha
+
+  diga("compilador Windows: " + compiladores.valor.windows)
+  diga("compilador Linux: " + compiladores.valor.linux)
+
+  guarda windows := gera_instalador(contexto, "windows-x64", "")
+  veja windows e Falha ::
+    diga("falha no instalador Windows: " + windows.valor.mensagem)
+    devolve 1
+  fecha
+
+  guarda linux := gera_instalador(contexto, "linux-x64", "")
+  veja linux e Falha ::
+    diga("falha no instalador Linux: " + linux.valor.mensagem)
+    devolve 1
+  fecha
+
+  diga("instalador Windows: " + windows.valor.instalador)
+  diga("instalador Linux: " + linux.valor.instalador)
+  devolve 0
+fecha
