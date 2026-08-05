@@ -2,6 +2,7 @@ modulo seven.compiler.types
 
 usa seven.compiler.ast
 usa seven.compiler.symbols
+usa seven.compiler.source
 usa seven.compiler.diagnostic
 
 selo Tipo ::
@@ -11,38 +12,709 @@ selo Tipo ::
   TipoLista(item: Tipo)
   TipoFatia(item: Tipo)
   TipoPonteiro(item: Tipo)
+  TipoAplicado(nome: Texto, argumentos: Lista<Tipo>)
+  TipoCampo(parametros: Lista<Tipo>, retorno: Tipo)
   TipoGenerico(nome: Texto)
+  TipoDesconhecido
   TipoNada
+fecha
+
+molde AssinaturaCampo ::
+  nome: Texto
+  parametros: Lista<Tipo>
+  retorno: Tipo
+  efeitos: Lista<Texto>
+  span: Span
+fecha
+
+molde VinculoTipo ::
+  nome: Texto
+  tipo: Tipo
+  mutavel: Bit
+  span: Span
 fecha
 
 molde TabelaTipos ::
   tipos: Mapa<Texto, Tipo>
+  campos: Mapa<Texto, AssinaturaCampo>
+  membros: Mapa<Texto, Tipo>
   diagnosticos: Lista<Diagnostico>
 fecha
 
 campo tabela_tipos_base() -> TabelaTipos ::
   solta tabela := TabelaTipos {
     tipos: mapa<Texto, Tipo>(),
+    campos: mapa<Texto, AssinaturaCampo>(),
+    membros: mapa<Texto, Tipo>(),
     diagnosticos: lista<Diagnostico>()
   }
 
-  registra_tipo_base(tabela, "Bit")
-  registra_tipo_base(tabela, "Byte")
-  registra_tipo_base(tabela, "Num")
-  registra_tipo_base(tabela, "U32")
-  registra_tipo_base(tabela, "U64")
-  registra_tipo_base(tabela, "Texto")
-  registra_tipo_base(tabela, "Nada")
+  para cada nome em tipos_primitivos() ::
+    registra_tipo_base(tabela, nome)
+  fecha
 
   devolve tabela
+fecha
+
+campo tipos_primitivos() -> Lista<Texto> ::
+  solta nomes := lista<Texto>()
+  lista_coloca(nomes, "Bit")
+  lista_coloca(nomes, "Byte")
+  lista_coloca(nomes, "Num")
+  lista_coloca(nomes, "I8")
+  lista_coloca(nomes, "I16")
+  lista_coloca(nomes, "I32")
+  lista_coloca(nomes, "I64")
+  lista_coloca(nomes, "U8")
+  lista_coloca(nomes, "U16")
+  lista_coloca(nomes, "U32")
+  lista_coloca(nomes, "U64")
+  lista_coloca(nomes, "Real32")
+  lista_coloca(nomes, "Real64")
+  lista_coloca(nomes, "Texto")
+  lista_coloca(nomes, "Nada")
+  devolve nomes
+fecha
+
+campo registra_tipo_base(tabela: TabelaTipos, nome: Texto) -> Nada ::
+  veja nome == "Nada" ::
+    mapa_coloca(tabela.tipos, nome, TipoNada)
+  outro ::
+    mapa_coloca(tabela.tipos, nome, TipoBase(nome))
+  fecha
 fecha
 
 campo mede_tipos(programas: Lista<Programa>, simbolos: TabelaSimbolos) -> TabelaTipos ::
   guarda tabela := tabela_tipos_base()
 
   para cada programa em programas ::
+    registra_tipos_programa(programa, tabela)
+  fecha
+
+  para cada programa em programas ::
+    registra_assinaturas_programa(programa, tabela)
+  fecha
+
+  para cada programa em programas ::
     mede_programa(programa, simbolos, tabela)
   fecha
 
   devolve tabela
+fecha
+
+campo registra_tipos_programa(programa: Programa, tabela: TabelaTipos) -> Nada ::
+  para cada item em programa.itens ::
+    veja item e ItemMolde ::
+      mapa_coloca(tabela.tipos, item.valor.nome, TipoMolde(item.valor.nome))
+    fecha
+
+    veja item e ItemSelo ::
+      mapa_coloca(tabela.tipos, item.valor.nome, TipoSelo(item.valor.nome))
+    fecha
+  fecha
+fecha
+
+campo registra_assinaturas_programa(programa: Programa, tabela: TabelaTipos) -> Nada ::
+  para cada item em programa.itens ::
+    veja item e ItemCampo ::
+      registra_assinatura_campo(item.valor, tabela)
+    fecha
+
+    veja item e ItemExterno ::
+      registra_assinatura_externa(item.valor, tabela)
+    fecha
+
+    veja item e ItemMolde ::
+      registra_membros_molde(item.valor, tabela)
+    fecha
+
+    veja item e ItemSelo ::
+      registra_variantes_selo(item.valor, tabela)
+    fecha
+  fecha
+fecha
+
+campo registra_assinatura_campo(campo: Campo, tabela: TabelaTipos) -> Nada ::
+  solta parametros := lista<Tipo>()
+
+  para cada parametro em campo.parametros ::
+    lista_coloca(parametros, resolve_tipo(parametro.tipo, campo.genericos, tabela))
+  fecha
+
+  mapa_coloca(tabela.campos, campo.nome, AssinaturaCampo {
+    nome: campo.nome,
+    parametros: parametros,
+    retorno: resolve_tipo(campo.retorno, campo.genericos, tabela),
+    efeitos: campo.efeitos,
+    span: campo.span
+  })
+fecha
+
+campo registra_assinatura_externa(campo: CampoExterno, tabela: TabelaTipos) -> Nada ::
+  solta parametros := lista<Tipo>()
+  solta genericos := lista<Texto>()
+
+  para cada parametro em campo.parametros ::
+    lista_coloca(parametros, resolve_tipo(parametro.tipo, genericos, tabela))
+  fecha
+
+  mapa_coloca(tabela.campos, campo.nome, AssinaturaCampo {
+    nome: campo.nome,
+    parametros: parametros,
+    retorno: resolve_tipo(campo.retorno, genericos, tabela),
+    efeitos: lista<Texto>(),
+    span: campo.span
+  })
+fecha
+
+campo registra_membros_molde(molde: Molde, tabela: TabelaTipos) -> Nada ::
+  para cada membro em molde.membros ::
+    guarda chave := molde.nome + "." + membro.nome
+
+    veja mapa_tem(tabela.membros, chave) ::
+      lista_coloca(tabela.diagnosticos, erro(
+        "SV-TIPO-MEMBRO-DUPLICADO",
+        "membro '" + membro.nome + "' esta duplicado em " + molde.nome,
+        membro.span.arquivo,
+        membro.span.linha,
+        membro.span.coluna
+      ))
+    outro ::
+      mapa_coloca(tabela.membros, chave, resolve_tipo(membro.tipo, molde.genericos, tabela))
+    fecha
+  fecha
+fecha
+
+campo registra_variantes_selo(selo: Selo, tabela: TabelaTipos) -> Nada ::
+  para cada variante em selo.variantes ::
+    solta parametros := lista<Tipo>()
+
+    para cada carga in variante.carga ::
+      lista_coloca(parametros, resolve_tipo(carga, selo.genericos, tabela))
+    fecha
+
+    mapa_coloca(tabela.campos, variante.nome, AssinaturaCampo {
+      nome: variante.nome,
+      parametros: parametros,
+      retorno: TipoSelo(selo.nome),
+      efeitos: lista<Texto>(),
+      span: variante.span
+    })
+  fecha
+fecha
+
+campo mede_programa(programa: Programa, simbolos: TabelaSimbolos, tabela: TabelaTipos) -> Nada ::
+  para cada item em programa.itens ::
+    veja item e ItemCampo ::
+      mede_campo(item.valor, programa, simbolos, tabela)
+    fecha
+
+    veja item e ItemConst ::
+      guarda esperado := resolve_tipo(item.valor.tipo, lista<Texto>(), tabela)
+      guarda recebido := infere_expressao(item.valor.valor, mapa<Texto, VinculoTipo>(), programa, simbolos, tabela)
+      exige_compativel(tabela, esperado, recebido, item.valor.span, "valor da constante")
+    fecha
+  fecha
+fecha
+
+campo mede_campo(campo: Campo, programa: Programa, simbolos: TabelaSimbolos, tabela: TabelaTipos) -> Nada ::
+  solta locais := mapa<Texto, VinculoTipo>()
+
+  para cada parametro em campo.parametros ::
+    registra_local(
+      locais,
+      VinculoTipo {
+        nome: parametro.nome,
+        tipo: resolve_tipo(parametro.tipo, campo.genericos, tabela),
+        mutavel: nao,
+        span: parametro.span
+      },
+      tabela
+    )
+  fecha
+
+  guarda retorno := resolve_tipo(campo.retorno, campo.genericos, tabela)
+  solta retornou := nao
+
+  para cada comando em campo.corpo ::
+    veja mede_comando(comando, locais, retorno, programa, simbolos, tabela) ::
+      vira retornou := sim
+    fecha
+  fecha
+
+  veja retorno != TipoNada e nao retornou ::
+    lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+      "SV-TIPO-RETORNO",
+      "campo '" + campo.nome + "' pode terminar sem devolver valor",
+      campo.span.arquivo,
+      campo.span.linha,
+      campo.span.coluna,
+      "adicione devolve em todos os caminhos ou altere o retorno para Nada"
+    ))
+  fecha
+fecha
+
+campo mede_comando(
+  comando: Comando,
+  locais: Mapa<Texto, VinculoTipo>,
+  retorno: Tipo,
+  programa: Programa,
+  simbolos: TabelaSimbolos,
+  tabela: TabelaTipos
+) -> Bit ::
+  veja comando e CmdCria ::
+    guarda recebido := infere_expressao(comando.valor.valor, locais, programa, simbolos, tabela)
+    solta declarado := recebido
+
+    veja comando.valor.tipo.nome != "" ::
+      vira declarado := resolve_tipo(comando.valor.tipo, lista<Texto>(), tabela)
+      exige_compativel(tabela, declarado, recebido, comando.valor.span, "inicializacao de " + comando.valor.nome)
+    fecha
+
+    registra_local(locais, VinculoTipo {
+      nome: comando.valor.nome,
+      tipo: declarado,
+      mutavel: comando.valor.mutavel,
+      span: comando.valor.span
+    }, tabela)
+
+    devolve nao
+  fecha
+
+  veja comando e CmdVira ::
+    guarda alvo := tipo_alvo_atribuicao(comando.valor.alvo, locais, programa, simbolos, tabela)
+    guarda valor := infere_expressao(comando.valor.valor, locais, programa, simbolos, tabela)
+    exige_compativel(tabela, alvo, valor, comando.valor.span, "atribuicao")
+    devolve nao
+  fecha
+
+  veja comando e CmdDiga ::
+    infere_expressao(comando.valor.valor, locais, programa, simbolos, tabela)
+    devolve nao
+  fecha
+
+  veja comando e CmdVeja ::
+    guarda condicao := infere_expressao(comando.valor.condicao, locais, programa, simbolos, tabela)
+    exige_compativel(tabela, TipoBase("Bit"), condicao, comando.valor.span, "condicao de veja")
+    guarda retorno_entao := mede_bloco(comando.valor.entao, locais, retorno, programa, simbolos, tabela)
+    guarda retorno_senao := mede_bloco(comando.valor.senao, locais, retorno, programa, simbolos, tabela)
+    devolve retorno_entao e lista_tamanho(comando.valor.senao) > 0 e retorno_senao
+  fecha
+
+  veja comando e CmdGira ::
+    guarda condicao := infere_expressao(comando.valor.condicao, locais, programa, simbolos, tabela)
+    exige_compativel(tabela, TipoBase("Bit"), condicao, comando.valor.span, "condicao de gira")
+    mede_bloco(comando.valor.corpo, locais, retorno, programa, simbolos, tabela)
+    devolve nao
+  fecha
+
+  veja comando e CmdParaCada ::
+    guarda colecao := infere_expressao(comando.valor.colecao, locais, programa, simbolos, tabela)
+    guarda item := tipo_item_iteravel(colecao)
+    solta escopo := copia_locais(locais)
+    registra_local(escopo, VinculoTipo {
+      nome: comando.valor.nome,
+      tipo: item,
+      mutavel: nao,
+      span: comando.valor.span
+    }, tabela)
+    mede_bloco(comando.valor.corpo, escopo, retorno, programa, simbolos, tabela)
+    devolve nao
+  fecha
+
+  veja comando e CmdDevolve ::
+    guarda recebido := infere_expressao(comando.valor.valor, locais, programa, simbolos, tabela)
+    exige_compativel(tabela, retorno, recebido, comando.valor.span, "retorno")
+    devolve sim
+  fecha
+
+  veja comando e CmdZona ::
+    mede_bloco(comando.valor.corpo, locais, retorno, programa, simbolos, tabela)
+    devolve nao
+  fecha
+
+  veja comando e CmdExpressao ::
+    infere_expressao(comando.valor.valor, locais, programa, simbolos, tabela)
+    devolve nao
+  fecha
+
+  devolve nao
+fecha
+
+campo mede_bloco(
+  comandos: Lista<Comando>,
+  pai: Mapa<Texto, VinculoTipo>,
+  retorno: Tipo,
+  programa: Programa,
+  simbolos: TabelaSimbolos,
+  tabela: TabelaTipos
+) -> Bit ::
+  guarda locais := copia_locais(pai)
+  solta retornou := nao
+
+  para cada comando em comandos ::
+    veja mede_comando(comando, locais, retorno, programa, simbolos, tabela) ::
+      vira retornou := sim
+    fecha
+  fecha
+
+  devolve retornou
+fecha
+
+campo registra_local(locais: Mapa<Texto, VinculoTipo>, vinculo: VinculoTipo, tabela: TabelaTipos) -> Nada ::
+  veja mapa_tem(locais, vinculo.nome) ::
+    lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+      "SV-NOME-DUPLICADO",
+      "nome local '" + vinculo.nome + "' ja existe neste escopo",
+      vinculo.span.arquivo,
+      vinculo.span.linha,
+      vinculo.span.coluna,
+      "renomeie o vinculo ou crie um bloco interno"
+    ))
+    devolve nulo
+  fecha
+
+  mapa_coloca(locais, vinculo.nome, vinculo)
+fecha
+
+campo copia_locais(origem: Mapa<Texto, VinculoTipo>) -> Mapa<Texto, VinculoTipo> ::
+  devolve sys_mapa_copia(origem)
+fecha
+
+campo resolve_tipo(sintaxe: TipoSintaxe, genericos: Lista<Texto>, tabela: TabelaTipos) -> Tipo ::
+  para cada generico em genericos ::
+    veja sintaxe.nome == generico ::
+      devolve TipoGenerico(generico)
+    fecha
+  fecha
+
+  solta argumentos := lista<Tipo>()
+  para cada argumento em sintaxe.argumentos ::
+    lista_coloca(argumentos, resolve_tipo(argumento, genericos, tabela))
+  fecha
+
+  veja sintaxe.nome == "Lista" e lista_tamanho(argumentos) == 1 ::
+    devolve TipoLista(lista_pega(argumentos, 0))
+  fecha
+
+  veja sintaxe.nome == "Fatia" e lista_tamanho(argumentos) == 1 ::
+    devolve TipoFatia(lista_pega(argumentos, 0))
+  fecha
+
+  veja sintaxe.nome == "Ptr" e lista_tamanho(argumentos) == 1 ::
+    devolve TipoPonteiro(lista_pega(argumentos, 0))
+  fecha
+
+  veja lista_tamanho(argumentos) > 0 ::
+    devolve TipoAplicado(sintaxe.nome, argumentos)
+  fecha
+
+  guarda encontrado := mapa_pega(tabela.tipos, sintaxe.nome)
+  veja encontrado e Algo ::
+    devolve encontrado.valor
+  fecha
+
+  lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+    "SV-TIPO-INEXISTENTE",
+    "tipo '" + sintaxe.nome + "' nao foi encontrado",
+    sintaxe.span.arquivo,
+    sintaxe.span.linha,
+    sintaxe.span.coluna,
+    "importe o modulo que declara o tipo ou corrija o nome"
+  ))
+  devolve TipoDesconhecido
+fecha
+
+campo infere_expressao(
+  expressao: Expressao,
+  locais: Mapa<Texto, VinculoTipo>,
+  programa: Programa,
+  simbolos: TabelaSimbolos,
+  tabela: TabelaTipos
+) -> Tipo ::
+  veja expressao e ExprLiteral ::
+    veja expressao.valor e LitNum ::
+      devolve TipoBase("Num")
+    fecha
+    veja expressao.valor e LitTexto ::
+      devolve TipoBase("Texto")
+    fecha
+    veja expressao.valor e LitBit ::
+      devolve TipoBase("Bit")
+    fecha
+    devolve TipoNada
+  fecha
+
+  veja expressao e ExprNome ::
+    guarda local := mapa_pega(locais, expressao.valor.nome)
+    veja local e Algo ::
+      devolve local.valor.tipo
+    fecha
+
+    guarda assinatura := mapa_pega(tabela.campos, expressao.valor.nome)
+    veja assinatura e Algo ::
+      devolve TipoCampo(assinatura.valor.parametros, assinatura.valor.retorno)
+    fecha
+
+    lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+      "SV-NOME-INEXISTENTE",
+      "nome '" + expressao.valor.nome + "' nao existe no escopo visivel",
+      expressao.valor.span.arquivo,
+      expressao.valor.span.linha,
+      expressao.valor.span.coluna,
+      "declare o nome antes de usa-lo ou importe o modulo correto"
+    ))
+    devolve TipoDesconhecido
+  fecha
+
+  veja expressao e ExprUnaria ::
+    guarda direita := infere_expressao(expressao.valor.direita, locais, programa, simbolos, tabela)
+    veja expressao.valor.operador == "nao" ::
+      exige_compativel(tabela, TipoBase("Bit"), direita, expressao.valor.span, "operador nao")
+      devolve TipoBase("Bit")
+    fecha
+    veja nao tipo_numerico(direita) ::
+      reporta_tipo(tabela, "SV-TIPO-OPERADOR", "operador unario - exige numero", expressao.valor.span)
+    fecha
+    devolve direita
+  fecha
+
+  veja expressao e ExprBinaria ::
+    guarda esquerda := infere_expressao(expressao.valor.esquerda, locais, programa, simbolos, tabela)
+    guarda direita := infere_expressao(expressao.valor.direita, locais, programa, simbolos, tabela)
+    guarda operador := expressao.valor.operador
+
+    veja operador == "==" ou operador == "!=" ::
+      exige_compativel(tabela, esquerda, direita, expressao.valor.span, "comparacao")
+      devolve TipoBase("Bit")
+    fecha
+
+    veja operador == "<" ou operador == "<=" ou operador == ">" ou operador == ">=" ::
+      veja nao tipo_numerico(esquerda) ou nao tipo_numerico(direita) ::
+        reporta_tipo(tabela, "SV-TIPO-COMPARACAO", "comparacao de ordem exige numeros", expressao.valor.span)
+      fecha
+      devolve TipoBase("Bit")
+    fecha
+
+    veja operador == "e" ou operador == "ou" ::
+      exige_compativel(tabela, TipoBase("Bit"), esquerda, expressao.valor.span, "operador logico")
+      exige_compativel(tabela, TipoBase("Bit"), direita, expressao.valor.span, "operador logico")
+      devolve TipoBase("Bit")
+    fecha
+
+    veja operador == "+" e (tipo_texto(esquerda) ou tipo_texto(direita)) ::
+      devolve TipoBase("Texto")
+    fecha
+
+    veja nao tipo_numerico(esquerda) ou nao tipo_numerico(direita) ::
+      reporta_tipo(tabela, "SV-TIPO-ARITMETICA", "operacao aritmetica exige numeros", expressao.valor.span)
+      devolve TipoDesconhecido
+    fecha
+
+    devolve promove_numerico(esquerda, direita)
+  fecha
+
+  veja expressao e ExprChamada ::
+    guarda alvo_tipo := infere_expressao(expressao.valor.alvo, locais, programa, simbolos, tabela)
+    veja alvo_tipo e TipoCampo ::
+      confere_argumentos(expressao.valor.argumentos, alvo_tipo.parametros, locais, programa, simbolos, tabela, expressao.valor.span)
+      devolve alvo_tipo.retorno
+    fecha
+
+    reporta_tipo(tabela, "SV-TIPO-CHAMADA", "valor chamado nao e um campo", expressao.valor.span)
+    devolve TipoDesconhecido
+  fecha
+
+  veja expressao e ExprConstrucao ::
+    guarda tipo := resolve_tipo(expressao.valor.tipo, lista<Texto>(), tabela)
+    para cada campo in expressao.valor.campos ::
+      guarda esperado := mapa_pega(tabela.membros, expressao.valor.tipo.nome + "." + campo.nome)
+      guarda recebido := infere_expressao(campo.valor, locais, programa, simbolos, tabela)
+      veja esperado e Algo ::
+        exige_compativel(tabela, esperado.valor, recebido, campo.span, "campo " + campo.nome)
+      outro ::
+        reporta_tipo(tabela, "SV-TIPO-CAMPO-INEXISTENTE", "campo '" + campo.nome + "' nao existe em " + expressao.valor.tipo.nome, campo.span)
+      fecha
+    fecha
+    devolve tipo
+  fecha
+
+  veja expressao e ExprAcesso ::
+    guarda base := infere_expressao(expressao.valor.base, locais, programa, simbolos, tabela)
+    veja base e TipoMolde ::
+      guarda membro := mapa_pega(tabela.membros, base.nome + "." + expressao.valor.membro)
+      veja membro e Algo ::
+        devolve membro.valor
+      fecha
+    fecha
+    devolve TipoDesconhecido
+  fecha
+
+  veja expressao e ExprIndice ::
+    guarda base := infere_expressao(expressao.valor.base, locais, programa, simbolos, tabela)
+    guarda indice := infere_expressao(expressao.valor.indice, locais, programa, simbolos, tabela)
+    veja nao tipo_numerico(indice) ::
+      reporta_tipo(tabela, "SV-TIPO-INDICE", "indice precisa ser numerico", expressao.valor.span)
+    fecha
+    devolve tipo_item_iteravel(base)
+  fecha
+
+  veja expressao e ExprEspecializa ::
+    devolve infere_expressao(expressao.valor.alvo, locais, programa, simbolos, tabela)
+  fecha
+
+  veja expressao e ExprCampo ::
+    solta parametros := lista<Tipo>()
+    para cada parametro em expressao.valor.parametros ::
+      lista_coloca(parametros, resolve_tipo(parametro.tipo, lista<Texto>(), tabela))
+    fecha
+    devolve TipoCampo(parametros, resolve_tipo(expressao.valor.retorno, lista<Texto>(), tabela))
+  fecha
+
+  devolve TipoDesconhecido
+fecha
+
+campo confere_argumentos(
+  argumentos: Lista<Expressao>,
+  parametros: Lista<Tipo>,
+  locais: Mapa<Texto, VinculoTipo>,
+  programa: Programa,
+  simbolos: TabelaSimbolos,
+  tabela: TabelaTipos,
+  local: Span
+) -> Nada ::
+  veja lista_tamanho(argumentos) != lista_tamanho(parametros) ::
+    reporta_tipo(tabela, "SV-TIPO-ARIDADE", "quantidade de argumentos difere da assinatura", local)
+  fecha
+
+  solta indice: U64 := 0
+  gira indice < lista_tamanho(argumentos) e indice < lista_tamanho(parametros) ::
+    guarda recebido := infere_expressao(lista_pega(argumentos, indice), locais, programa, simbolos, tabela)
+    guarda esperado := lista_pega(parametros, indice)
+    exige_compativel(tabela, esperado, recebido, local, "argumento " + texto(indice + 1))
+    vira indice := indice + 1
+  fecha
+fecha
+
+campo tipo_alvo_atribuicao(
+  alvo: Expressao,
+  locais: Mapa<Texto, VinculoTipo>,
+  programa: Programa,
+  simbolos: TabelaSimbolos,
+  tabela: TabelaTipos
+) -> Tipo ::
+  veja alvo e ExprNome ::
+    guarda vinculo := mapa_pega(locais, alvo.valor.nome)
+    veja vinculo e Algo ::
+      veja nao vinculo.valor.mutavel ::
+        reporta_tipo(tabela, "SV-TIPO-IMUTAVEL", "vinculo '" + alvo.valor.nome + "' e imutavel", alvo.valor.span)
+      fecha
+      devolve vinculo.valor.tipo
+    fecha
+  fecha
+
+  devolve infere_expressao(alvo, locais, programa, simbolos, tabela)
+fecha
+
+campo exige_compativel(tabela: TabelaTipos, esperado: Tipo, recebido: Tipo, local: Span, contexto: Texto) -> Nada ::
+  veja tipos_compativeis(esperado, recebido) ::
+    devolve nulo
+  fecha
+
+  lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+    "SV-TIPO-INCOMPATIVEL",
+    contexto + " possui tipo incompativel",
+    local.arquivo,
+    local.linha,
+    local.coluna,
+    "esperado " + tipo_textual(esperado) + ", recebido " + tipo_textual(recebido)
+  ))
+fecha
+
+campo tipos_compativeis(a: Tipo, b: Tipo) -> Bit ::
+  veja a == TipoDesconhecido ou b == TipoDesconhecido ::
+    devolve sim
+  fecha
+
+  veja a == b ::
+    devolve sim
+  fecha
+
+  veja tipo_numerico(a) e tipo_numerico(b) ::
+    devolve sim
+  fecha
+
+  devolve nao
+fecha
+
+campo tipo_numerico(tipo: Tipo) -> Bit ::
+  veja tipo e TipoBase ::
+    devolve tipo.nome == "Num" ou tipo.nome == "Byte" ou tipo.nome == "I8" ou tipo.nome == "I16" ou tipo.nome == "I32" ou tipo.nome == "I64" ou tipo.nome == "U8" ou tipo.nome == "U16" ou tipo.nome == "U32" ou tipo.nome == "U64" ou tipo.nome == "Real32" ou tipo.nome == "Real64"
+  fecha
+  devolve nao
+fecha
+
+campo tipo_texto(tipo: Tipo) -> Bit ::
+  veja tipo e TipoBase ::
+    devolve tipo.nome == "Texto"
+  fecha
+  devolve nao
+fecha
+
+campo promove_numerico(a: Tipo, b: Tipo) -> Tipo ::
+  veja a == TipoBase("Real64") ou b == TipoBase("Real64") ::
+    devolve TipoBase("Real64")
+  fecha
+  veja a == TipoBase("Real32") ou b == TipoBase("Real32") ::
+    devolve TipoBase("Real32")
+  fecha
+  devolve a
+fecha
+
+campo tipo_item_iteravel(tipo: Tipo) -> Tipo ::
+  veja tipo e TipoLista ::
+    devolve tipo.item
+  fecha
+  veja tipo e TipoFatia ::
+    devolve tipo.item
+  fecha
+  veja tipo e TipoPonteiro ::
+    devolve tipo.item
+  fecha
+  devolve TipoDesconhecido
+fecha
+
+campo reporta_tipo(tabela: TabelaTipos, codigo: Texto, mensagem: Texto, local: Span) -> Nada ::
+  lista_coloca(tabela.diagnosticos, erro(codigo, mensagem, local.arquivo, local.linha, local.coluna))
+fecha
+
+campo tipo_textual(tipo: Tipo) -> Texto ::
+  veja tipo e TipoBase ::
+    devolve tipo.nome
+  fecha
+  veja tipo e TipoMolde ::
+    devolve tipo.nome
+  fecha
+  veja tipo e TipoSelo ::
+    devolve tipo.nome
+  fecha
+  veja tipo e TipoGenerico ::
+    devolve tipo.nome
+  fecha
+  veja tipo e TipoLista ::
+    devolve "Lista<" + tipo_textual(tipo.item) + ">"
+  fecha
+  veja tipo e TipoFatia ::
+    devolve "Fatia<" + tipo_textual(tipo.item) + ">"
+  fecha
+  veja tipo e TipoPonteiro ::
+    devolve "Ptr<" + tipo_textual(tipo.item) + ">"
+  fecha
+  veja tipo == TipoNada ::
+    devolve "Nada"
+  fecha
+  veja tipo == TipoDesconhecido ::
+    devolve "?"
+  fecha
+  devolve "tipo"
 fecha
