@@ -76,7 +76,17 @@ jobs:
             printf 'modulo seven_stage1_monolith\n\n'
             while IFS= read -r arquivo; do
               printf '// BEGIN %s\n' "$arquivo"
-              sed '/^modulo /d; /^usa /d' "$arquivo"
+              case "$arquivo" in
+                compiler/bytecode.sev)
+                  sed '/^modulo /d; /^usa /d; s/emite_constante(/bytecode_emite_constante(/g' "$arquivo"
+                  ;;
+                compiler/emitter.sev)
+                  sed '/^modulo /d; /^usa /d; s/^campo emite(/campo emite_formato(/' "$arquivo"
+                  ;;
+                *)
+                  sed '/^modulo /d; /^usa /d' "$arquivo"
+                  ;;
+              esac
               printf '// END %s\n\n' "$arquivo"
             done < build/stage1.sources
 
@@ -128,6 +138,9 @@ jobs:
         with:
           name: seven-stage1-compiler-probe
           path: |
+            compiler0/check.sev
+            compiler0/parse.sev
+            compiler0/emit.sev
             build/seven0-stage1.sha256
             build/seven0-stage1.size
             build/stage1.sources
