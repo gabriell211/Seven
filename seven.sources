@@ -24,8 +24,13 @@ compiler/lexer.sev
 compiler/memory.sev
 compiler/package.sev
 compiler/package_manager.sev
-compiler/parser.sev
 compiler/parser_cursor.sev
+compiler/parser_part00.sev
+compiler/parser_part01.sev
+compiler/parser_part02.sev
+compiler/parser_part03.sev
+compiler/parser_part04.sev
+compiler/parser_part05.sev
 compiler/semantic.sev
 compiler/seven.sev
 compiler/source.sev
@@ -48,7 +53,10 @@ compiler/toolchain/release.sev
 compiler/toolchain/test_runner.sev
 compiler/toolchain/verify.sev
 compiler/toolchain/web_build.sev
-compiler/types.sev
+compiler/types_part00.sev
+compiler/types_part01.sev
+compiler/types_part02.sev
+compiler/types_part03.sev
 compiler/wasm.sev
 compiler0/ast.sev
 compiler0/check.sev
