@@ -233,11 +233,7 @@ campo svs0_parse(dados: Bytes) -> Resultado<FitaSvs0, Falha> ::
     devolve Falha(nova_falha("SVS0-VERSAO", "versao da fita seed nao suportada"))
   fecha
 
-  guarda tamanho_codigo :=
-    U64(bytes_pega(dados, 6)) * 16777216 +
-    U64(bytes_pega(dados, 7)) * 65536 +
-    U64(bytes_pega(dados, 8)) * 256 +
-    U64(bytes_pega(dados, 9))
+  guarda tamanho_codigo := U64(bytes_pega(dados, 6)) * 16777216 + U64(bytes_pega(dados, 7)) * 65536 + U64(bytes_pega(dados, 8)) * 256 + U64(bytes_pega(dados, 9))
 
   veja dados.tamanho != 10 + tamanho_codigo ::
     devolve Falha(nova_falha("SVS0-TAMANHO", "tamanho declarado da fita nao confere"))
@@ -251,9 +247,11 @@ campo svs0_parse(dados: Bytes) -> Resultado<FitaSvs0, Falha> ::
     vira indice := indice + 1
   fecha
 
-  devolve Valor(FitaSvs0 {
+  guarda fita := FitaSvs0 {
     codigo: codigo
-  })
+  }
+
+  devolve Valor(fita)
 fecha
 
 campo seed_le_arquivo(estado: EstadoSeed) -> Resultado<Nada, Falha> toca disco ::
