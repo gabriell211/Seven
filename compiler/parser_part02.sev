@@ -1,0 +1,221 @@
+modulo seven.compiler.parser
+
+usa seven.compiler.token
+usa seven.compiler.ast
+usa seven.compiler.source
+usa seven.compiler.diagnostic
+usa seven.compiler.parser_cursor
+
+campo ler_comando(cursor: CursorTokens) -> Comando ::
+  veja proximo_e(cursor, "guarda") ou proximo_e(cursor, "solta") ::
+    devolve CmdCria(ler_cria(cursor))
+  fecha
+
+  veja proximo_e(cursor, "vira") ::
+    devolve CmdVira(ler_vira(cursor))
+  fecha
+
+  veja proximo_e(cursor, "diga") ::
+    devolve CmdDiga(ler_diga(cursor))
+  fecha
+
+  veja proximo_e(cursor, "veja") ::
+    devolve CmdVeja(ler_veja(cursor))
+  fecha
+
+  veja proximo_e(cursor, "gira") ::
+    devolve CmdGira(ler_gira(cursor))
+  fecha
+
+  veja proximo_e(cursor, "para") ::
+    devolve CmdParaCada(ler_para_cada(cursor))
+  fecha
+
+  veja proximo_e(cursor, "devolve") ::
+    devolve CmdDevolve(ler_devolve(cursor))
+  fecha
+
+  veja proximo_e(cursor, "caixa") ::
+    devolve CmdCaixa(ler_caixa(cursor))
+  fecha
+
+  veja proximo_e(cursor, "marca") ::
+    devolve CmdMarca(ler_marca(cursor))
+  fecha
+
+  veja proximo_e(cursor, "pega") ::
+    devolve CmdPega(ler_pega(cursor))
+  fecha
+
+  veja proximo_e(cursor, "zona") ::
+    devolve CmdZona(ler_zona(cursor))
+  fecha
+
+  veja proximo_e(cursor, "falha") ::
+    devolve CmdFalha(ler_falha(cursor))
+  fecha
+
+  guarda inicio := atual_token(cursor).span
+  guarda valor := ler_expressao(cursor)
+  devolve CmdExpressao(ExpressaoCmd {
+    valor: valor,
+    span: span_junta(inicio, token_anterior(cursor).span)
+  })
+fecha
+
+campo ler_cria(cursor: CursorTokens) -> Cria ::
+  guarda inicio_token := avanca_token(cursor)
+  guarda mutavel := inicio_token.marca == "solta"
+  guarda nome := espera_nome(cursor, "do vinculo").marca
+  solta tipo := tipo_ausente(token_anterior(cursor).span)
+
+  veja aceita(cursor, ":") ::
+    vira tipo := ler_tipo(cursor)
+  fecha
+
+  espera(cursor, ":=", "SV-PARSE-VINCULO", "esperado := antes do valor do vinculo")
+  guarda valor := ler_expressao(cursor)
+
+  devolve Cria {
+    mutavel: mutavel,
+    nome: nome,
+    tipo: tipo,
+    valor: valor,
+    span: span_junta(inicio_token.span, token_anterior(cursor).span)
+  }
+fecha
+
+campo ler_vira(cursor: CursorTokens) -> Vira ::
+  guarda inicio := espera(cursor, "vira", "SV-PARSE-VIRA", "esperado vira").span
+  guarda alvo := ler_posfixa(cursor)
+  espera(cursor, ":=", "SV-PARSE-VIRA-VALOR", "esperado := na atribuicao")
+  guarda valor := ler_expressao(cursor)
+
+  devolve Vira {
+    alvo: alvo,
+    valor: valor,
+    span: span_junta(inicio, token_anterior(cursor).span)
+  }
+fecha
+
+campo ler_diga(cursor: CursorTokens) -> Diga ::
+  guarda inicio := espera(cursor, "diga", "SV-PARSE-DIGA", "esperado diga").span
+  guarda valor := ler_expressao(cursor)
+
+  devolve Diga {
+    valor: valor,
+    span: span_junta(inicio, token_anterior(cursor).span)
+  }
+fecha
+
+campo ler_veja(cursor: CursorTokens) -> Veja ::
+  guarda inicio := espera(cursor, "veja", "SV-PARSE-VEJA", "esperado veja").span
+  guarda condicao := ler_expressao(cursor)
+  espera(cursor, "::", "SV-PARSE-BLOCO", "esperado :: depois da condicao")
+  guarda entao := ler_bloco(cursor, sim)
+  solta senao := lista<Comando>()
+
+  veja aceita(cursor, "outro") ::
+    espera(cursor, "::", "SV-PARSE-OUTRO", "esperado :: depois de outro")
+    vira senao := ler_bloco(cursor, nao)
+  fecha
+
+  guarda fim_span := espera(cursor, "fecha", "SV-PARSE-FECHA", "esperado fecha para encerrar veja").span
+
+  devolve Veja {
+    condicao: condicao,
+    entao: entao,
+    senao: senao,
+    span: span_junta(inicio, fim_span)
+  }
+fecha
+
+campo ler_gira(cursor: CursorTokens) -> Gira ::
+  guarda inicio := espera(cursor, "gira", "SV-PARSE-GIRA", "esperado gira").span
+  guarda condicao := ler_expressao(cursor)
+  espera(cursor, "::", "SV-PARSE-BLOCO", "esperado :: depois da condicao do gira")
+  guarda corpo := ler_bloco(cursor, nao)
+  guarda fim_span := espera(cursor, "fecha", "SV-PARSE-FECHA", "esperado fecha para encerrar gira").span
+
+  devolve Gira {
+    condicao: condicao,
+    corpo: corpo,
+    span: span_junta(inicio, fim_span)
+  }
+fecha
+
+campo ler_para_cada(cursor: CursorTokens) -> ParaCada ::
+  guarda inicio := espera(cursor, "para", "SV-PARSE-PARA", "esperado para").span
+  espera(cursor, "cada", "SV-PARSE-PARA-CADA", "esperado cada depois de para")
+  guarda nome := espera_nome(cursor, "do item iterado").marca
+  espera(cursor, "em", "SV-PARSE-PARA-EM", "esperado em depois do item iterado")
+  guarda colecao := ler_expressao(cursor)
+  espera(cursor, "::", "SV-PARSE-BLOCO", "esperado :: depois da colecao")
+  guarda corpo := ler_bloco(cursor, nao)
+  guarda fim_span := espera(cursor, "fecha", "SV-PARSE-FECHA", "esperado fecha para encerrar para cada").span
+
+  devolve ParaCada {
+    nome: nome,
+    colecao: colecao,
+    corpo: corpo,
+    span: span_junta(inicio, fim_span)
+  }
+fecha
+
+campo ler_devolve(cursor: CursorTokens) -> Devolve ::
+  guarda inicio := espera(cursor, "devolve", "SV-PARSE-DEVOLVE", "esperado devolve").span
+  guarda valor := ler_expressao(cursor)
+
+  devolve Devolve {
+    valor: valor,
+    span: span_junta(inicio, token_anterior(cursor).span)
+  }
+fecha
+
+campo ler_caixa(cursor: CursorTokens) -> Caixa ::
+  guarda inicio := espera(cursor, "caixa", "SV-PARSE-CAIXA", "esperado caixa").span
+  guarda nome := espera_nome(cursor, "da caixa").marca
+  espera(cursor, ":", "SV-PARSE-CAIXA-TIPO", "esperado : depois do nome da caixa")
+  espera(cursor, "Byte", "SV-PARSE-CAIXA-BYTE", "caixa deve declarar Byte[tamanho]")
+  espera(cursor, "[", "SV-PARSE-CAIXA-TAMANHO", "esperado [ antes do tamanho")
+  guarda tamanho := ler_expressao(cursor)
+  espera(cursor, "]", "SV-PARSE-CAIXA-TAMANHO", "esperado ] depois do tamanho")
+
+  devolve Caixa {
+    nome: nome,
+    tamanho: tamanho,
+    span: span_junta(inicio, token_anterior(cursor).span)
+  }
+fecha
+
+campo ler_marca(cursor: CursorTokens) -> Marca ::
+  guarda inicio := espera(cursor, "marca", "SV-PARSE-MARCA", "esperado marca").span
+  guarda bloco := espera_nome(cursor, "da caixa").marca
+  espera(cursor, "@", "SV-PARSE-MARCA-INDICE", "esperado @ antes do indice")
+  guarda indice := ler_expressao(cursor)
+  espera(cursor, ":=", "SV-PARSE-MARCA-VALOR", "esperado := antes do byte")
+  guarda valor := ler_expressao(cursor)
+
+  devolve Marca {
+    bloco: bloco,
+    indice: indice,
+    valor: valor,
+    span: span_junta(inicio, token_anterior(cursor).span)
+  }
+fecha
+
+campo ler_pega(cursor: CursorTokens) -> Pega ::
+  guarda inicio := espera(cursor, "pega", "SV-PARSE-PEGA", "esperado pega").span
+  guarda bloco := espera_nome(cursor, "da caixa").marca
+  espera(cursor, "@", "SV-PARSE-PEGA-INDICE", "esperado @ antes do indice")
+  guarda indice := ler_expressao(cursor)
+  espera(cursor, "->", "SV-PARSE-PEGA-DESTINO", "esperado -> antes do destino")
+  guarda destino := espera_nome(cursor, "do destino").marca
+
+  devolve Pega {
+    bloco: bloco,
+    indice: indice,
+    destino: destino,
+    span: span_junta(inicio, token_anterior(cursor).span)
+  }
+fecha
