@@ -18,7 +18,6 @@ build_marker = '\ngcc -std=c11 -O2 -s -Wall -Wextra -Wno-unused-parameter "$work
 entry_patch = r"""
 CHECKER_SOURCE="$work/seven-bootstrap.c" python - <<'PYENTRY'
 import os
-import re
 from pathlib import Path
 
 path = Path(os.environ["CHECKER_SOURCE"])
@@ -32,30 +31,7 @@ void mainCRTStartup(void){char*cmd=GetCommandLineA();char*argv[128];int argc=par
 new_entry = 'int main(int argc,char**argv){return core_main(argc,argv);}'
 if old_entry not in source:
     raise SystemExit('Windows CRT entrypoint target not found')
-source = source.replace(old_entry, new_entry, 1)
-
-io_pattern = re.compile(
-    r'#ifdef _WIN32\n'
-    r'(?=typedef unsigned long DWORD;)'
-    r'(?:(?!#else).)*GetFileAttributesA'
-    r'(?:(?!#else).)*#else',
-    re.S,
-)
-new_io = '''#ifdef _WIN32
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <string.h>
-#include <ctype.h>
-#include <windows.h>
-#define strtoll _strtoi64
-#define snprintf _snprintf
-#else'''
-source, count = io_pattern.subn(new_io, source, count=1)
-if count != 1:
-    raise SystemExit(f'Windows native import block count was {count}')
-path.write_text(source)
+path.write_text(source.replace(old_entry, new_entry, 1))
 PYENTRY
 """
 if build_marker not in text:
@@ -65,7 +41,7 @@ text = text.replace(build_marker, '\n' + entry_patch + build_marker, 1)
 start = text.index('cat > "$work/kernel32.def"')
 end_line = '"$link" /subsystem:console /entry:mainCRTStartup /nodefaultlib /out:"$work/seven-windows.exe" "$work/seven-windows.obj" "$work/kernel32.lib" "$work/msvcrt.lib"\n'
 end = text.index(end_line, start) + len(end_line)
-mingw = 'x86_64-w64-mingw32-gcc -std=c11 -O2 -s -Wall -Wextra -Wno-unused-parameter "$work/seven-bootstrap.c" -o "$work/seven-windows.exe"\n'
+mingw = 'x86_64-w64-mingw32-gcc -std=c11 -O2 -s -Wall -Wextra -Wno-unused-parameter "$work/seven-bootstrap.c" -Wl,--enable-auto-import -lkernel32 -o "$work/seven-windows.exe"\n'
 text = text[:start] + mingw + text[end:]
 
 old_hash = 'archive_sha=$(sha256sum "$work/native-seeds.zip" | cut -d\' \' -f1)'
