@@ -73,7 +73,7 @@ jobs:
           if linux_marker not in text:
               raise SystemExit('Linux compiler marker not found')
 
-          crt_patch = r'''CHECKER_SOURCE="$work/seven-bootstrap.c" python - <<'PYCRT'
+          crt_patch = r"""CHECKER_SOURCE="$work/seven-bootstrap.c" python - <<'PYCRT'
           import os
           import re
           from pathlib import Path
@@ -112,7 +112,7 @@ jobs:
               raise SystemExit(f'Windows entrypoint replacements: {entry_count}')
           path.write_text(source)
           PYCRT
-          '''
+          """
           text = text.replace(linux_marker, crt_patch + linux_marker, 1)
 
           windows_block = re.compile(
