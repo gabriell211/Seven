@@ -9,6 +9,8 @@ molde Simbolo ::
   especie: Texto
   tipo: Texto
   mutavel: Bit
+  indice: U32
+  aridade: U32
 fecha
 
 molde Unidade ::
@@ -25,18 +27,280 @@ campo conferir(programa: Programa) -> Unidade ::
   }
 
   registra_publicos(unidade)
-  confere_nomes(unidade)
-  confere_tipos(unidade)
-  confere_retorno(unidade)
+  confere_campos(unidade)
+  confere_entrada(unidade)
 
   devolve unidade
 fecha
 
-campo simbolo(nome: Texto, especie: Texto, tipo: Texto, mutavel: Bit) -> Simbolo ::
+campo simbolo(nome: Texto, especie: Texto, tipo: Texto, mutavel: Bit, indice: U32, aridade: U32) -> Simbolo ::
   devolve Simbolo {
     nome: nome,
     especie: especie,
     tipo: tipo,
-    mutavel: mutavel
+    mutavel: mutavel,
+    indice: indice,
+    aridade: aridade
   }
+fecha
+
+campo lista_simbolo_coloca(itens: ListaSimbolo, valor: Simbolo) -> Nada ::
+  sys_lista_coloca(itens, valor)
+fecha
+
+campo lista_simbolo_pega(itens: ListaSimbolo, indice: U64) -> Simbolo ::
+  devolve sys_lista_pega(itens, indice)
+fecha
+
+campo lista_simbolo_tamanho(itens: ListaSimbolo) -> U64 ::
+  devolve itens.tamanho
+fecha
+
+campo simbolo_indice(itens: ListaSimbolo, nome: Texto) -> Num ::
+  solta indice: U64 := 0
+  gira indice < lista_simbolo_tamanho(itens) ::
+    veja lista_simbolo_pega(itens, indice).nome == nome :: devolve Num(indice) fecha
+    vira indice := indice + 1
+  fecha
+  devolve -1
+fecha
+
+campo simbolo_busca(itens: ListaSimbolo, nome: Texto) -> Simbolo ::
+  guarda indice := simbolo_indice(itens, nome)
+  veja indice >= 0 :: devolve lista_simbolo_pega(itens, U64(indice)) fecha
+  devolve simbolo("", "ausente", "", nao, 0, 0)
+fecha
+
+campo registra_publicos(unidade: Unidade) -> Nada ::
+  solta indice_item: U64 := 0
+  solta indice_campo: U32 := 0
+
+  gira indice_item < lista_no_tamanho(unidade.programa.itens) ::
+    guarda item := lista_no_pega(unidade.programa.itens, indice_item)
+
+    veja item.especie == "campo" ou item.especie == "extern" ::
+      registra_publico(unidade, item, indice_campo, campo_aridade(item))
+      vira indice_campo := indice_campo + 1
+    outro ::
+      veja item.especie == "const" ou item.especie == "molde" ou item.especie == "selo" ::
+        registra_publico(unidade, item, U32(indice_item), 0)
+      fecha
+    fecha
+
+    vira indice_item := indice_item + 1
+  fecha
+fecha
+
+campo registra_publico(unidade: Unidade, item: No, indice: U32, aridade: U32) -> Nada ::
+  veja simbolo_indice(unidade.simbolos, item.nome) >= 0 ::
+    lista_diagnostico_coloca(unidade.diagnosticos, diag(
+      "S0-SEM-DUPLICADO",
+      "simbolo publico duplicado: " + item.nome,
+      unidade.programa.modulo,
+      item.linha,
+      item.coluna
+    ))
+    devolve nulo
+  fecha
+
+  lista_simbolo_coloca(unidade.simbolos, simbolo(
+    item.nome,
+    item.especie,
+    item.tipo,
+    nao,
+    indice,
+    aridade
+  ))
+fecha
+
+campo campo_aridade(campo: No) -> U32 ::
+  solta total: U32 := 0
+  solta indice: U64 := 0
+  gira indice < lista_no_tamanho(campo.filhos) ::
+    veja lista_no_pega(campo.filhos, indice).especie == "parametro" ::
+      vira total := total + 1
+    fecha
+    vira indice := indice + 1
+  fecha
+  devolve total
+fecha
+
+campo campo_bloco(campo: No) -> No ::
+  solta indice: U64 := 0
+  gira indice < lista_no_tamanho(campo.filhos) ::
+    guarda filho := lista_no_pega(campo.filhos, indice)
+    veja filho.especie == "bloco" :: devolve filho fecha
+    vira indice := indice + 1
+  fecha
+  devolve no("bloco", "", "", "", campo.linha, campo.coluna)
+fecha
+
+campo confere_campos(unidade: Unidade) -> Nada ::
+  solta indice: U64 := 0
+  gira indice < lista_no_tamanho(unidade.programa.itens) ::
+    guarda item := lista_no_pega(unidade.programa.itens, indice)
+    veja item.especie == "campo" :: confere_campo(unidade, item) fecha
+    vira indice := indice + 1
+  fecha
+fecha
+
+campo confere_campo(unidade: Unidade, campo: No) -> Nada ::
+  solta locais := lista_simbolo()
+  solta local_indice: U32 := 0
+  solta indice: U64 := 0
+
+  gira indice < lista_no_tamanho(campo.filhos) ::
+    guarda filho := lista_no_pega(campo.filhos, indice)
+    veja filho.especie == "parametro" ::
+      veja simbolo_indice(locais, filho.nome) >= 0 ::
+        adiciona_diag(unidade, filho, "S0-SEM-PARAMETRO", "parametro duplicado: " + filho.nome)
+      outro ::
+        lista_simbolo_coloca(locais, simbolo(filho.nome, "local", filho.tipo, nao, local_indice, 0))
+        vira local_indice := local_indice + 1
+      fecha
+    fecha
+    vira indice := indice + 1
+  fecha
+
+  guarda bloco := campo_bloco(campo)
+  confere_bloco(unidade, campo, bloco, locais, local_indice)
+
+  veja campo.tipo != "Nada" e nao bloco_tem_retorno(bloco) ::
+    adiciona_diag(unidade, campo, "S0-SEM-RETORNO", "campo " + campo.nome + " pode terminar sem devolver valor")
+  fecha
+fecha
+
+campo confere_bloco(unidade: Unidade, campo: No, bloco: No, locais: ListaSimbolo, proximo: U32) -> U32 ::
+  solta indice: U64 := 0
+  solta local_atual := proximo
+
+  gira indice < lista_no_tamanho(bloco.filhos) ::
+    guarda comando := lista_no_pega(bloco.filhos, indice)
+
+    veja comando.especie == "declaracao" ::
+      confere_expressao(unidade, campo, lista_no_pega(comando.filhos, 0), locais)
+      veja simbolo_indice(locais, comando.nome) >= 0 ::
+        adiciona_diag(unidade, comando, "S0-SEM-LOCAL", "variavel duplicada: " + comando.nome)
+      outro ::
+        lista_simbolo_coloca(locais, simbolo(
+          comando.nome,
+          "local",
+          comando.tipo,
+          comando.valor == "mutavel",
+          local_atual,
+          0
+        ))
+        vira local_atual := local_atual + 1
+      fecha
+    outro ::
+      veja comando.especie == "atribuicao" ::
+        confere_atribuicao(unidade, campo, comando, locais)
+      outro ::
+        veja comando.especie == "se" ::
+          confere_expressao(unidade, campo, lista_no_pega(comando.filhos, 0), locais)
+          vira local_atual := confere_bloco(unidade, campo, lista_no_pega(comando.filhos, 1), locais, local_atual)
+          veja lista_no_tamanho(comando.filhos) > 2 ::
+            vira local_atual := confere_bloco(unidade, campo, lista_no_pega(comando.filhos, 2), locais, local_atual)
+          fecha
+        outro ::
+          veja comando.especie == "enquanto" ::
+            confere_expressao(unidade, campo, lista_no_pega(comando.filhos, 0), locais)
+            vira local_atual := confere_bloco(unidade, campo, lista_no_pega(comando.filhos, 1), locais, local_atual)
+          outro ::
+            veja comando.especie == "para_cada" ::
+              confere_expressao(unidade, campo, lista_no_pega(comando.filhos, 0), locais)
+              veja simbolo_indice(locais, comando.nome) < 0 ::
+                lista_simbolo_coloca(locais, simbolo(comando.nome, "local", "", sim, local_atual, 0))
+                vira local_atual := local_atual + 1
+              fecha
+              vira local_atual := confere_bloco(unidade, campo, lista_no_pega(comando.filhos, 1), locais, local_atual)
+            outro ::
+              para cada expr em comando.filhos :: confere_expressao(unidade, campo, expr, locais) fecha
+            fecha
+          fecha
+        fecha
+      fecha
+    fecha
+
+    vira indice := indice + 1
+  fecha
+
+  devolve local_atual
+fecha
+
+campo confere_atribuicao(unidade: Unidade, campo: No, comando: No, locais: ListaSimbolo) -> Nada ::
+  guarda alvo := lista_no_pega(comando.filhos, 0)
+  guarda valor := lista_no_pega(comando.filhos, 1)
+  confere_expressao(unidade, campo, valor, locais)
+
+  veja alvo.especie == "nome" ::
+    guarda encontrado := simbolo_busca(locais, alvo.nome)
+    veja encontrado.especie == "ausente" ::
+      adiciona_diag(unidade, alvo, "S0-SEM-NOME", "variavel inexistente: " + alvo.nome)
+    outro ::
+      veja nao encontrado.mutavel ::
+        adiciona_diag(unidade, alvo, "S0-SEM-MUTABILIDADE", "variavel imutavel: " + alvo.nome)
+      fecha
+    fecha
+    devolve nulo
+  fecha
+
+  confere_expressao(unidade, campo, alvo, locais)
+fecha
+
+campo confere_expressao(unidade: Unidade, campo: No, expr: No, locais: ListaSimbolo) -> Nada ::
+  veja expr.especie == "nome" ::
+    veja simbolo_indice(locais, expr.nome) < 0 e simbolo_indice(unidade.simbolos, expr.nome) < 0 ::
+      veja nao sys_texto_contem(expr.nome, ".") ::
+        adiciona_diag(unidade, expr, "S0-SEM-NOME", "nome inexistente: " + expr.nome)
+      fecha
+    fecha
+  fecha
+
+  veja expr.especie == "chamada" ::
+    guarda publico := simbolo_busca(unidade.simbolos, expr.nome)
+    veja publico.especie == "campo" e publico.aridade != lista_no_tamanho(expr.filhos) ::
+      adiciona_diag(unidade, expr, "S0-SEM-ARIDADE", "aridade invalida ao chamar " + expr.nome)
+    fecha
+  fecha
+
+  para cada filho em expr.filhos :: confere_expressao(unidade, campo, filho, locais) fecha
+fecha
+
+campo bloco_tem_retorno(bloco: No) -> Bit ::
+  para cada comando em bloco.filhos ::
+    veja comando.especie == "retorno" :: devolve sim fecha
+    veja comando.especie == "se" ::
+      veja lista_no_tamanho(comando.filhos) > 2 e bloco_tem_retorno(lista_no_pega(comando.filhos, 1)) e bloco_tem_retorno(lista_no_pega(comando.filhos, 2)) ::
+        devolve sim
+      fecha
+    fecha
+  fecha
+  devolve nao
+fecha
+
+campo confere_entrada(unidade: Unidade) -> Nada ::
+  veja simbolo_indice(unidade.simbolos, "inicio") < 0 ::
+    lista_diagnostico_coloca(unidade.diagnosticos, diag(
+      "S0-SEM-ENTRADA",
+      "campo inicio ausente",
+      unidade.programa.modulo,
+      1,
+      1
+    ))
+  fecha
+fecha
+
+campo adiciona_diag(unidade: Unidade, local: No, codigo: Texto, mensagem: Texto) -> Nada ::
+  lista_diagnostico_coloca(unidade.diagnosticos, diag(
+    codigo,
+    mensagem,
+    unidade.programa.modulo,
+    local.linha,
+    local.coluna
+  ))
+fecha
+
+campo unidade_valida(unidade: Unidade) -> Bit ::
+  devolve lista_diagnostico_tamanho(unidade.diagnosticos) == 0
 fecha
