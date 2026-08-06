@@ -10,6 +10,19 @@ from pathlib import Path
 
 path = Path(os.environ["FIXED_SCRIPT"])
 text = path.read_text()
+
+text = text.replace("SIZE_MAX/2", "((size_t)-1)/2")
+text = text.replace("UINT32_MAX", "0xffffffffu")
+text = text.replace("int32_t", "int")
+old_ident = "static int seven_web_ident(int c){return isalnum((unsigned char)c)||c=='_';}"
+new_ident = """static int seven_web_ascii_alnum(int c){return (c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9');}
+static int seven_web_espaco(int c){return c==' '||c=='\\t'||c=='\\r'||c=='\\n';}
+static int seven_web_ident(int c){return seven_web_ascii_alnum(c)||c=='_';}"""
+if old_ident not in text:
+    raise SystemExit("web identifier helper target not found")
+text = text.replace(old_ident, new_ident, 1)
+text = text.replace("isspace((unsigned char)*p)", "seven_web_espaco((unsigned char)*p)")
+
 start = text.index("old_usage = ")
 marker = "path.write_text(source)\nPYWEB"
 end = text.index(marker, start)
