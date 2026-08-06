@@ -1,0 +1,25 @@
+name: Native Seed Hash Diagnostic
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print archive identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -l seed/native/native-seeds.zip
+          sha256sum seed/native/native-seeds.zip
+          unzip -l seed/native/native-seeds.zip
+          mkdir -p build/native-seeds
+          unzip -q seed/native/native-seeds.zip -d build/native-seeds
+          sha256sum build/native-seeds/*
