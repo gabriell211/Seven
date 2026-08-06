@@ -62,7 +62,10 @@ compiler0/ast.sev
 compiler0/check.sev
 compiler0/diagnostic.sev
 compiler0/driver.sev
-compiler0/emit.sev
+compiler0/emit_part00.sev
+compiler0/emit_part01.sev
+compiler0/emit_part02.sev
+compiler0/emit_part03.sev
 compiler0/parse.sev
 compiler0/primitives.sev
 compiler0/scan.sev
