@@ -2,6 +2,7 @@
 set -euo pipefail
 
 mkdir -p build
+python bootstrap/stage1_nao_adapt.py
 python bootstrap/stage1_adapt.py
 python bootstrap/stage1_debug_adapt.py
 
