@@ -1,0 +1,92 @@
+modulo seven.runtime.svbc0.verifier
+
+usa std.base.resultado
+usa seven.runtime.svbc0.image
+usa seven.runtime.svbc0.opcode
+
+campo svbc0_verifica(imagem: ImagemSvbc0) -> Resultado<Nada, Falha> ::
+  veja imagem.versao != VersaoSvbc0Runtime ::
+    devolve Falha(nova_falha("SVBC0-VERSAO", "versao da imagem nao suportada"))
+  fecha
+
+  veja lista_tamanho(imagem.campos) == 0 ::
+    devolve Falha(nova_falha("SVBC0-CAMPOS", "imagem nao possui campos"))
+  fecha
+
+  veja lista_tamanho(imagem.codigo) == 0 ::
+    devolve Falha(nova_falha("SVBC0-CODIGO", "imagem nao possui codigo"))
+  fecha
+
+  guarda inicio := svbc0_campo_indice_opcional(imagem, "inicio")
+  veja inicio e Nada ::
+    devolve Falha(nova_falha("SVBC0-ENTRADA", "campo inicio ausente"))
+  fecha
+
+  para cada campo em imagem.campos ::
+    veja campo.entrada >= lista_tamanho(imagem.codigo) ::
+      devolve Falha(nova_falha("SVBC0-CAMPO-IP", "entrada de campo fora do codigo: " + campo.nome))
+    fecha
+    veja campo.parametros > campo.locais ::
+      devolve Falha(nova_falha("SVBC0-CAMPO-LOCAIS", "parametros excedem locais: " + campo.nome))
+    fecha
+  fecha
+
+  para cada instrucao em imagem.codigo ::
+    guarda valida := svbc0_verifica_instrucao(imagem, instrucao)
+    veja valida e Falha ::
+      devolve valida
+    fecha
+  fecha
+
+  devolve Valor(nulo)
+fecha
+
+campo svbc0_verifica_instrucao(
+  imagem: ImagemSvbc0,
+  instrucao: Instrucao0
+) -> Resultado<Nada, Falha> ::
+  veja instrucao.opcode e ConstU32 ::
+    veja instrucao.a >= lista_tamanho(imagem.constantes_u32) ::
+      devolve Falha(nova_falha("SVBC0-CONSTANTE-U32", "constante u32 fora do limite"))
+    fecha
+  fecha
+
+  veja instrucao.opcode e ConstTexto ::
+    veja instrucao.a >= lista_tamanho(imagem.constantes_texto) ::
+      devolve Falha(nova_falha("SVBC0-CONSTANTE-TEXTO", "constante texto fora do limite"))
+    fecha
+  fecha
+
+  veja instrucao.opcode e Salta0 ::
+    devolve svbc0_verifica_destino(imagem, instrucao.a)
+  fecha
+
+  veja instrucao.opcode e SaltaFalso0 ::
+    devolve svbc0_verifica_destino(imagem, instrucao.a)
+  fecha
+
+  veja instrucao.opcode e Chama0 ::
+    veja instrucao.a >= lista_tamanho(imagem.campos) ::
+      devolve Falha(nova_falha("SVBC0-CALL", "campo chamado fora do limite"))
+    fecha
+    guarda alvo := lista_pega(imagem.campos, instrucao.a)
+    veja instrucao.b != alvo.parametros ::
+      devolve Falha(nova_falha("SVBC0-ARIDADE", "aridade codificada difere do campo " + alvo.nome))
+    fecha
+  fecha
+
+  veja instrucao.opcode e Efeito0 ::
+    veja instrucao.a >= lista_tamanho(imagem.nomes) ::
+      devolve Falha(nova_falha("SVBC0-EFEITO", "nome de efeito fora do limite"))
+    fecha
+  fecha
+
+  devolve Valor(nulo)
+fecha
+
+campo svbc0_verifica_destino(imagem: ImagemSvbc0, destino: U32) -> Resultado<Nada, Falha> ::
+  veja destino >= lista_tamanho(imagem.codigo) ::
+    devolve Falha(nova_falha("SVBC0-SALTO", "destino de salto fora do codigo"))
+  fecha
+  devolve Valor(nulo)
+fecha

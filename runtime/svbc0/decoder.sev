@@ -1,0 +1,193 @@
+modulo seven.runtime.svbc0.decoder
+
+usa std.base.resultado
+usa std.mem.bytes
+usa seven.runtime.svbc0.image
+usa seven.runtime.svbc0.opcode
+
+molde CursorSvbc0 ::
+  dados: Bytes
+  pos: U64
+fecha
+
+campo svbc0_decodifica(dados: Bytes) -> Resultado<ImagemSvbc0, Falha> ::
+  solta cursor := CursorSvbc0 {
+    dados: dados,
+    pos: 0
+  }
+
+  guarda magic := svbc0_le_texto_fixo(cursor, 4)
+  veja magic e Falha :: devolve Falha(magic.valor) fecha
+  veja magic.valor != MagicSvbc0Runtime ::
+    devolve Falha(nova_falha("SVBC0-MAGIC", "imagem SVBC0 invalida"))
+  fecha
+
+  guarda versao := svbc0_le_u32(cursor)
+  veja versao e Falha :: devolve Falha(versao.valor) fecha
+  veja versao.valor != VersaoSvbc0Runtime ::
+    devolve Falha(nova_falha("SVBC0-VERSAO", "versao SVBC0 nao suportada"))
+  fecha
+
+  solta imagem := svbc0_vazia()
+  vira imagem.versao := versao.valor
+
+  guarda nomes := svbc0_le_textos(cursor, imagem.nomes)
+  veja nomes e Falha :: devolve Falha(nomes.valor) fecha
+
+  guarda textos := svbc0_le_textos(cursor, imagem.constantes_texto)
+  veja textos e Falha :: devolve Falha(textos.valor) fecha
+
+  guarda numeros := svbc0_le_numeros(cursor, imagem.constantes_u32)
+  veja numeros e Falha :: devolve Falha(numeros.valor) fecha
+
+  guarda campos := svbc0_le_campos(cursor, imagem)
+  veja campos e Falha :: devolve Falha(campos.valor) fecha
+
+  guarda codigo := svbc0_le_codigo(cursor, imagem)
+  veja codigo e Falha :: devolve Falha(codigo.valor) fecha
+
+  veja cursor.pos != cursor.dados.tamanho ::
+    devolve Falha(nova_falha("SVBC0-SOBRA", "bytes apos o fim da imagem SVBC0"))
+  fecha
+
+  devolve Valor(imagem)
+fecha
+
+campo svbc0_restam(cursor: CursorSvbc0, quantidade: U64) -> Bit ::
+  devolve cursor.pos <= cursor.dados.tamanho e quantidade <= cursor.dados.tamanho - cursor.pos
+fecha
+
+campo svbc0_le_byte(cursor: CursorSvbc0) -> Resultado<Byte, Falha> ::
+  veja svbc0_restam(cursor, 1) == nao ::
+    devolve Falha(nova_falha("SVBC0-FIM", "fim inesperado da imagem"))
+  fecha
+
+  guarda valor := bytes_pega(cursor.dados, cursor.pos)
+  vira cursor.pos := cursor.pos + 1
+  devolve Valor(valor)
+fecha
+
+campo svbc0_le_u32(cursor: CursorSvbc0) -> Resultado<U32, Falha> ::
+  veja svbc0_restam(cursor, 4) == nao ::
+    devolve Falha(nova_falha("SVBC0-FIM", "u32 incompleto na imagem"))
+  fecha
+
+  guarda a := U32(bytes_pega(cursor.dados, cursor.pos))
+  guarda b := U32(bytes_pega(cursor.dados, cursor.pos + 1))
+  guarda c := U32(bytes_pega(cursor.dados, cursor.pos + 2))
+  guarda d := U32(bytes_pega(cursor.dados, cursor.pos + 3))
+  vira cursor.pos := cursor.pos + 4
+
+  devolve Valor(a * 16777216 + b * 65536 + c * 256 + d)
+fecha
+
+campo svbc0_le_texto_fixo(cursor: CursorSvbc0, tamanho: U64) -> Resultado<Texto, Falha> ::
+  veja svbc0_restam(cursor, tamanho) == nao ::
+    devolve Falha(nova_falha("SVBC0-FIM", "texto incompleto na imagem"))
+  fecha
+
+  solta dados := bytes_novo()
+  solta indice: U64 := 0
+
+  gira indice < tamanho ::
+    bytes_coloca_byte(dados, bytes_pega(cursor.dados, cursor.pos + indice))
+    vira indice := indice + 1
+  fecha
+
+  vira cursor.pos := cursor.pos + tamanho
+  devolve Valor(bytes_texto(dados))
+fecha
+
+campo svbc0_le_texto(cursor: CursorSvbc0) -> Resultado<Texto, Falha> ::
+  guarda tamanho := svbc0_le_u32(cursor)
+  veja tamanho e Falha :: devolve Falha(tamanho.valor) fecha
+  devolve svbc0_le_texto_fixo(cursor, tamanho.valor)
+fecha
+
+campo svbc0_le_textos(cursor: CursorSvbc0, destino: Lista<Texto>) -> Resultado<Nada, Falha> ::
+  guarda total := svbc0_le_u32(cursor)
+  veja total e Falha :: devolve Falha(total.valor) fecha
+
+  solta indice: U32 := 0
+  gira indice < total.valor ::
+    guarda texto_lido := svbc0_le_texto(cursor)
+    veja texto_lido e Falha :: devolve Falha(texto_lido.valor) fecha
+    lista_coloca(destino, texto_lido.valor)
+    vira indice := indice + 1
+  fecha
+
+  devolve Valor(nulo)
+fecha
+
+campo svbc0_le_numeros(cursor: CursorSvbc0, destino: Lista<U32>) -> Resultado<Nada, Falha> ::
+  guarda total := svbc0_le_u32(cursor)
+  veja total e Falha :: devolve Falha(total.valor) fecha
+
+  solta indice: U32 := 0
+  gira indice < total.valor ::
+    guarda numero := svbc0_le_u32(cursor)
+    veja numero e Falha :: devolve Falha(numero.valor) fecha
+    lista_coloca(destino, numero.valor)
+    vira indice := indice + 1
+  fecha
+
+  devolve Valor(nulo)
+fecha
+
+campo svbc0_nome(imagem: ImagemSvbc0, indice: U32) -> Resultado<Texto, Falha> ::
+  veja indice >= lista_tamanho(imagem.nomes) ::
+    devolve Falha(nova_falha("SVBC0-NOME", "indice de nome fora do limite"))
+  fecha
+  devolve Valor(lista_pega(imagem.nomes, indice))
+fecha
+
+campo svbc0_le_campos(cursor: CursorSvbc0, imagem: ImagemSvbc0) -> Resultado<Nada, Falha> ::
+  guarda total := svbc0_le_u32(cursor)
+  veja total e Falha :: devolve Falha(total.valor) fecha
+
+  solta indice: U32 := 0
+  gira indice < total.valor ::
+    guarda nome_indice := svbc0_le_u32(cursor)
+    veja nome_indice e Falha :: devolve Falha(nome_indice.valor) fecha
+    guarda entrada := svbc0_le_u32(cursor)
+    veja entrada e Falha :: devolve Falha(entrada.valor) fecha
+    guarda locais := svbc0_le_u32(cursor)
+    veja locais e Falha :: devolve Falha(locais.valor) fecha
+    guarda parametros := svbc0_le_u32(cursor)
+    veja parametros e Falha :: devolve Falha(parametros.valor) fecha
+    guarda nome := svbc0_nome(imagem, nome_indice.valor)
+    veja nome e Falha :: devolve Falha(nome.valor) fecha
+
+    lista_coloca(imagem.campos, campo_imagem0(
+      nome.valor,
+      entrada.valor,
+      locais.valor,
+      parametros.valor
+    ))
+    vira indice := indice + 1
+  fecha
+
+  devolve Valor(nulo)
+fecha
+
+campo svbc0_le_codigo(cursor: CursorSvbc0, imagem: ImagemSvbc0) -> Resultado<Nada, Falha> ::
+  guarda total := svbc0_le_u32(cursor)
+  veja total e Falha :: devolve Falha(total.valor) fecha
+
+  solta indice: U32 := 0
+  gira indice < total.valor ::
+    guarda byte_op := svbc0_le_byte(cursor)
+    veja byte_op e Falha :: devolve Falha(byte_op.valor) fecha
+    guarda op := opcode0_de_byte(byte_op.valor)
+    veja op e Falha :: devolve Falha(op.valor) fecha
+    guarda a := svbc0_le_u32(cursor)
+    veja a e Falha :: devolve Falha(a.valor) fecha
+    guarda b := svbc0_le_u32(cursor)
+    veja b e Falha :: devolve Falha(b.valor) fecha
+
+    lista_coloca(imagem.codigo, instrucao0(op.valor, a.valor, b.valor, indice))
+    vira indice := indice + 1
+  fecha
+
+  devolve Valor(nulo)
+fecha
