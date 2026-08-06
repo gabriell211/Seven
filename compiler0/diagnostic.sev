@@ -20,8 +20,27 @@ campo diag(codigo: Texto, mensagem: Texto, arquivo: Texto, linha: U32, coluna: U
   }
 fecha
 
+campo lista_diagnostico_coloca(itens: ListaDiagnostico, valor: Diagnostico) -> Nada ::
+  sys_lista_coloca(itens, valor)
+fecha
+
+campo lista_diagnostico_pega(itens: ListaDiagnostico, indice: U64) -> Diagnostico ::
+  devolve sys_lista_pega(itens, indice)
+fecha
+
+campo lista_diagnostico_tamanho(itens: ListaDiagnostico) -> U64 ::
+  devolve itens.tamanho
+fecha
+
+campo diagnosticos_tem_erro(diagnosticos: ListaDiagnostico) -> Bit ::
+  devolve diagnosticos.tamanho > 0
+fecha
+
 campo diagnosticos_mostrar(diagnosticos: ListaDiagnostico) -> Nada toca terminal ::
-  para cada d em diagnosticos ::
+  solta indice: U64 := 0
+  gira indice < lista_diagnostico_tamanho(diagnosticos) ::
+    guarda d := lista_diagnostico_pega(diagnosticos, indice)
     diga d.arquivo + ":" + texto(d.linha) + ":" + texto(d.coluna) + " " + d.codigo + " " + d.mensagem
+    vira indice := indice + 1
   fecha
 fecha

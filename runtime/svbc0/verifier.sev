@@ -33,9 +33,7 @@ campo svbc0_verifica(imagem: ImagemSvbc0) -> Resultado<Nada, Falha> ::
 
   para cada instrucao em imagem.codigo ::
     guarda valida := svbc0_verifica_instrucao(imagem, instrucao)
-    veja valida e Falha ::
-      devolve valida
-    fecha
+    veja valida e Falha :: devolve valida fecha
   fecha
 
   devolve Valor(nulo)
@@ -57,13 +55,8 @@ campo svbc0_verifica_instrucao(
     fecha
   fecha
 
-  veja instrucao.opcode e Salta0 ::
-    devolve svbc0_verifica_destino(imagem, instrucao.a)
-  fecha
-
-  veja instrucao.opcode e SaltaFalso0 ::
-    devolve svbc0_verifica_destino(imagem, instrucao.a)
-  fecha
+  veja instrucao.opcode e Salta0 :: devolve svbc0_verifica_destino(imagem, instrucao.a) fecha
+  veja instrucao.opcode e SaltaFalso0 :: devolve svbc0_verifica_destino(imagem, instrucao.a) fecha
 
   veja instrucao.opcode e Chama0 ::
     veja instrucao.a >= lista_tamanho(imagem.campos) ::
@@ -78,6 +71,12 @@ campo svbc0_verifica_instrucao(
   veja instrucao.opcode e Efeito0 ::
     veja instrucao.a >= lista_tamanho(imagem.nomes) ::
       devolve Falha(nova_falha("SVBC0-EFEITO", "nome de efeito fora do limite"))
+    fecha
+  fecha
+
+  veja instrucao.opcode e Syscall0 ::
+    veja instrucao.a >= lista_tamanho(imagem.nomes) ::
+      devolve Falha(nova_falha("SVBC0-SYSCALL", "nome de syscall fora do limite"))
     fecha
   fecha
 

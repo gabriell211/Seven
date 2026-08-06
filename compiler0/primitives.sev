@@ -21,29 +21,104 @@ molde ListaDiagnostico ::
 fecha
 
 molde Bytes ::
+  dados: VistaMut<Byte>
   tamanho: U64
 fecha
 
 campo lista_texto() -> ListaTexto ::
-  devolve ListaTexto { tamanho: 0 }
+  devolve sys_lista_nova()
 fecha
 
 campo lista_token() -> ListaToken ::
-  devolve ListaToken { tamanho: 0 }
+  devolve sys_lista_nova()
 fecha
 
 campo lista_no() -> ListaNo ::
-  devolve ListaNo { tamanho: 0 }
+  devolve sys_lista_nova()
 fecha
 
 campo lista_simbolo() -> ListaSimbolo ::
-  devolve ListaSimbolo { tamanho: 0 }
+  devolve sys_lista_nova()
 fecha
 
 campo lista_diagnostico() -> ListaDiagnostico ::
-  devolve ListaDiagnostico { tamanho: 0 }
+  devolve sys_lista_nova()
+fecha
+
+campo lista_texto_coloca(itens: ListaTexto, valor: Texto) -> Nada ::
+  sys_lista_coloca(itens, valor)
+fecha
+
+campo lista_texto_pega(itens: ListaTexto, indice: U64) -> Texto ::
+  devolve sys_lista_pega(itens, indice)
+fecha
+
+campo lista_texto_define(itens: ListaTexto, indice: U64, valor: Texto) -> Nada ::
+  sys_lista_define(itens, indice, valor)
+fecha
+
+campo lista_texto_tamanho(itens: ListaTexto) -> U64 ::
+  devolve itens.tamanho
+fecha
+
+campo lista_texto_indice(itens: ListaTexto, valor: Texto) -> Num ::
+  solta indice: U64 := 0
+  gira indice < itens.tamanho ::
+    veja lista_texto_pega(itens, indice) == valor :: devolve Num(indice) fecha
+    vira indice := indice + 1
+  fecha
+  devolve -1
+fecha
+
+campo lista_texto_tem(itens: ListaTexto, valor: Texto) -> Bit ::
+  devolve lista_texto_indice(itens, valor) >= 0
 fecha
 
 campo bytes_novo() -> Bytes ::
-  devolve Bytes { tamanho: 0 }
+  devolve sys_bytes_novo()
+fecha
+
+campo bytes_byte(bytes: Bytes, valor: Byte) -> Nada ::
+  sys_bytes_coloca_byte(bytes, valor)
+fecha
+
+campo bytes_u32(bytes: Bytes, valor: U32) -> Nada ::
+  sys_bytes_coloca_u32_be(bytes, valor)
+fecha
+
+campo bytes_u64(bytes: Bytes, valor: U64) -> Nada ::
+  sys_bytes_coloca_u64_be(bytes, valor)
+fecha
+
+campo bytes_escreve_texto(bytes: Bytes, valor: Texto) -> Nada ::
+  sys_bytes_coloca_texto(bytes, valor)
+fecha
+
+campo bytes_texto_com_tamanho(bytes: Bytes, valor: Texto) -> Nada ::
+  bytes_u32(bytes, U32(sys_texto_tamanho(valor)))
+  bytes_escreve_texto(bytes, valor)
+fecha
+
+campo bytes_pega(bytes: Bytes, indice: U64) -> Byte ::
+  devolve sys_bytes_pega(bytes, indice)
+fecha
+
+campo bytes_define(bytes: Bytes, indice: U64, valor: Byte) -> Nada ::
+  sys_bytes_define(bytes, indice, valor)
+fecha
+
+campo texto_tamanho(valor: Texto) -> U64 ::
+  devolve sys_texto_tamanho(valor)
+fecha
+
+campo texto_caractere(valor: Texto, indice: U64) -> Texto ::
+  devolve sys_texto_caractere(valor, indice)
+fecha
+
+campo texto_fatia(valor: Texto, inicio: U64, fim: U64) -> Texto ::
+  devolve sys_texto_fatia(valor, inicio, fim)
+fecha
+
+campo arquivo_grava_bytes(caminho: Texto, conteudo: Bytes) -> Nada toca disco ::
+  sys_arquivo_grava_bytes(caminho, conteudo)
 fecha

@@ -22,3 +22,15 @@ campo token(tipo: Texto, marca: Texto, linha: U32, coluna: U32) -> Token ::
     coluna: coluna
   }
 fecha
+
+campo lista_token_coloca(itens: ListaToken, valor: Token) -> Nada ::
+  sys_lista_coloca(itens, valor)
+fecha
+
+campo lista_token_pega(itens: ListaToken, indice: U64) -> Token ::
+  devolve sys_lista_pega(itens, indice)
+fecha
+
+campo lista_token_tamanho(itens: ListaToken) -> U64 ::
+  devolve itens.tamanho
+fecha

@@ -1,5 +1,7 @@
 modulo seven.runtime.svbc.value
 
+usa std.base.resultado
+
 selo ValorVm ::
   VmNada
   VmBit(valor: Bit)
@@ -10,6 +12,8 @@ selo ValorVm ::
   VmArgs(valores: Lista<Texto>)
   VmBytes(valor: Bytes)
   VmBloco(id: U64)
+  VmObjeto(tipo: Texto, chaves: Lista<Texto>, valores: Lista<ValorVm>)
+  VmIterador(valores: Lista<ValorVm>, indice: U64)
 fecha
 
 molde BlocoMemoria ::
@@ -19,51 +23,375 @@ molde BlocoMemoria ::
 fecha
 
 campo valor_verdadeiro(valor: ValorVm) -> Bit ::
-  veja valor e VmNada ::
-    devolve nao
-  fecha
-  veja valor e VmBit ::
-    devolve valor.valor
-  fecha
-  veja valor e VmU64 ::
-    devolve valor.valor != 0
-  fecha
-  veja valor e VmNum ::
-    devolve valor.valor != 0
-  fecha
-  veja valor e VmTexto ::
-    devolve tamanho(valor.valor) > 0
-  fecha
-  veja valor e VmArgs ::
-    devolve lista_tamanho(valor.valores) > 0
-  fecha
-
+  veja valor e VmNada :: devolve nao fecha
+  veja valor e VmBit :: devolve valor.valor fecha
+  veja valor e VmU64 :: devolve valor.valor != 0 fecha
+  veja valor e VmNum :: devolve valor.valor != 0 fecha
+  veja valor e VmReal :: devolve valor.valor != 0 fecha
+  veja valor e VmTexto :: devolve tamanho(valor.valor) > 0 fecha
+  veja valor e VmArgs :: devolve lista_tamanho(valor.valores) > 0 fecha
+  veja valor e VmBytes :: devolve valor.valor.tamanho > 0 fecha
+  veja valor e VmObjeto :: devolve lista_tamanho(valor.valores) > 0 fecha
+  veja valor e VmIterador :: devolve valor.indice < lista_tamanho(valor.valores) fecha
   devolve sim
 fecha
 
 campo valor_texto(valor: ValorVm) -> Texto ::
-  veja valor e VmNada ::
-    devolve "nulo"
-  fecha
+  veja valor e VmNada :: devolve "nulo" fecha
   veja valor e VmBit ::
-    veja valor.valor ::
-      devolve "sim"
-    outro ::
-      devolve "nao"
+    veja valor.valor :: devolve "sim" outro :: devolve "nao" fecha
+  fecha
+  veja valor e VmU64 :: devolve texto_u64(valor.valor) fecha
+  veja valor e VmNum :: devolve texto(valor.valor) fecha
+  veja valor e VmReal :: devolve texto(valor.valor) fecha
+  veja valor e VmTexto :: devolve valor.valor fecha
+  veja valor e VmArgs :: devolve "<args>" fecha
+  veja valor e VmBytes :: devolve "<bytes:" + texto_u64(valor.valor.tamanho) + ">" fecha
+  veja valor e VmBloco :: devolve "<bloco:" + texto_u64(valor.id) + ">" fecha
+  veja valor e VmObjeto :: devolve "<" + valor.tipo + ">" fecha
+  veja valor e VmIterador :: devolve "<iterador>" fecha
+  devolve "<valor>"
+fecha
+
+campo valor_numero(valor: ValorVm) -> Num ::
+  veja valor e VmNum :: devolve valor.valor fecha
+  veja valor e VmU64 :: devolve Num(valor.valor) fecha
+  veja valor e VmReal :: devolve Num(valor.valor) fecha
+  veja valor e VmBit ::
+    veja valor.valor :: devolve 1 outro :: devolve 0 fecha
+  fecha
+  veja valor e VmTexto :: devolve numero(valor.valor) fecha
+  devolve 0
+fecha
+
+campo valor_u64_seguro(valor: ValorVm) -> U64 ::
+  veja valor e VmU64 :: devolve valor.valor fecha
+  veja valor e VmNum :: devolve U64(valor.valor) fecha
+  veja valor e VmReal :: devolve U64(valor.valor) fecha
+  veja valor e VmBit ::
+    veja valor.valor :: devolve 1 outro :: devolve 0 fecha
+  fecha
+  devolve 0
+fecha
+
+campo valor_igual(esquerda: ValorVm, direita: ValorVm) -> Bit ::
+  veja esquerda e VmNada ::
+    veja direita e VmNada :: devolve sim fecha
+    devolve nao
+  fecha
+  veja esquerda e VmBit ::
+    veja direita e VmBit :: devolve esquerda.valor == direita.valor fecha
+  fecha
+  veja esquerda e VmTexto ::
+    veja direita e VmTexto :: devolve esquerda.valor == direita.valor fecha
+  fecha
+  veja esquerda e VmU64 ::
+    veja direita e VmU64 :: devolve esquerda.valor == direita.valor fecha
+  fecha
+  veja esquerda e VmNum ::
+    veja direita e VmNum :: devolve esquerda.valor == direita.valor fecha
+  fecha
+  veja esquerda e VmReal ::
+    veja direita e VmReal :: devolve esquerda.valor == direita.valor fecha
+  fecha
+  veja esquerda e VmBloco ::
+    veja direita e VmBloco :: devolve esquerda.id == direita.id fecha
+  fecha
+  veja esquerda e VmObjeto ::
+    veja direita e VmObjeto ::
+      veja esquerda.tipo != direita.tipo ou lista_tamanho(esquerda.chaves) != lista_tamanho(direita.chaves) ::
+        devolve nao
+      fecha
+      solta indice: U64 := 0
+      gira indice < lista_tamanho(esquerda.chaves) ::
+        veja lista_pega(esquerda.chaves, indice) != lista_pega(direita.chaves, indice) :: devolve nao fecha
+        veja nao valor_igual(lista_pega(esquerda.valores, indice), lista_pega(direita.valores, indice)) :: devolve nao fecha
+        vira indice := indice + 1
+      fecha
+      devolve sim
     fecha
   fecha
-  veja valor e VmU64 ::
-    devolve texto_u64(valor.valor)
-  fecha
-  veja valor e VmNum ::
-    devolve texto(valor.valor)
-  fecha
-  veja valor e VmTexto ::
-    devolve valor.valor
-  fecha
-  veja valor e VmArgs ::
-    devolve "<args>"
+
+  veja valor_e_numero(esquerda) e valor_e_numero(direita) ::
+    devolve valor_numero(esquerda) == valor_numero(direita)
   fecha
 
-  devolve "<valor>"
+  devolve nao
+fecha
+
+campo valor_e_numero(valor: ValorVm) -> Bit ::
+  veja valor e VmNum :: devolve sim fecha
+  veja valor e VmU64 :: devolve sim fecha
+  veja valor e VmReal :: devolve sim fecha
+  veja valor e VmBit :: devolve sim fecha
+  devolve nao
+fecha
+
+campo sys_vm_binaria(esquerda: ValorVm, operador: Texto, direita: ValorVm) -> Resultado<ValorVm, Falha> ::
+  veja operador == "==" :: devolve Valor(VmBit(valor_igual(esquerda, direita))) fecha
+  veja operador == "!=" :: devolve Valor(VmBit(nao valor_igual(esquerda, direita))) fecha
+
+  veja operador == "+" ::
+    veja esquerda e VmTexto :: devolve Valor(VmTexto(esquerda.valor + valor_texto(direita))) fecha
+    veja direita e VmTexto :: devolve Valor(VmTexto(valor_texto(esquerda) + direita.valor)) fecha
+    devolve Valor(VmNum(valor_numero(esquerda) + valor_numero(direita)))
+  fecha
+
+  veja operador == "-" :: devolve Valor(VmNum(valor_numero(esquerda) - valor_numero(direita))) fecha
+  veja operador == "*" :: devolve Valor(VmNum(valor_numero(esquerda) * valor_numero(direita))) fecha
+  veja operador == "/" ::
+    veja valor_numero(direita) == 0 ::
+      devolve Falha(nova_falha("SVBC-DIV-ZERO", "divisao por zero"))
+    fecha
+    devolve Valor(VmNum(valor_numero(esquerda) / valor_numero(direita)))
+  fecha
+  veja operador == "%" ::
+    veja valor_numero(direita) == 0 ::
+      devolve Falha(nova_falha("SVBC-DIV-ZERO", "modulo por zero"))
+    fecha
+    devolve Valor(VmNum(valor_numero(esquerda) % valor_numero(direita)))
+  fecha
+  veja operador == "<" :: devolve Valor(VmBit(valor_numero(esquerda) < valor_numero(direita))) fecha
+  veja operador == "<=" :: devolve Valor(VmBit(valor_numero(esquerda) <= valor_numero(direita))) fecha
+  veja operador == ">" :: devolve Valor(VmBit(valor_numero(esquerda) > valor_numero(direita))) fecha
+  veja operador == ">=" :: devolve Valor(VmBit(valor_numero(esquerda) >= valor_numero(direita))) fecha
+  veja operador == "e" :: devolve Valor(VmBit(valor_verdadeiro(esquerda) e valor_verdadeiro(direita))) fecha
+  veja operador == "ou" :: devolve Valor(VmBit(valor_verdadeiro(esquerda) ou valor_verdadeiro(direita))) fecha
+
+  devolve Falha(nova_falha("SVBC-OPERADOR", "operador binario desconhecido: " + operador))
+fecha
+
+campo vm_objeto(tipo: Texto) -> ValorVm ::
+  devolve VmObjeto(tipo, lista<Texto>(), lista<ValorVm>())
+fecha
+
+campo vm_objeto_indice(objeto: ValorVm, chave: Texto) -> Num ::
+  veja objeto e VmObjeto ::
+    solta indice: U64 := 0
+    gira indice < lista_tamanho(objeto.chaves) ::
+      veja lista_pega(objeto.chaves, indice) == chave :: devolve Num(indice) fecha
+      vira indice := indice + 1
+    fecha
+  fecha
+  devolve -1
+fecha
+
+campo vm_objeto_pega(objeto: ValorVm, chave: Texto) -> ValorVm ::
+  veja chave == "tamanho" ::
+    veja objeto e VmObjeto :: devolve VmU64(lista_tamanho(objeto.valores)) fecha
+    veja objeto e VmArgs :: devolve VmU64(lista_tamanho(objeto.valores)) fecha
+    veja objeto e VmBytes :: devolve VmU64(objeto.valor.tamanho) fecha
+  fecha
+
+  guarda indice := vm_objeto_indice(objeto, chave)
+  veja indice < 0 :: devolve VmNada fecha
+
+  veja objeto e VmObjeto ::
+    devolve lista_pega(objeto.valores, U64(indice))
+  fecha
+
+  devolve VmNada
+fecha
+
+campo vm_objeto_define(objeto: ValorVm, chave: Texto, valor: ValorVm) -> ValorVm ::
+  veja objeto e VmObjeto ::
+    guarda indice := vm_objeto_indice(objeto, chave)
+    veja indice >= 0 ::
+      lista_define(objeto.valores, U64(indice), valor)
+      devolve objeto
+    fecha
+
+    lista_coloca(objeto.chaves, chave)
+    lista_coloca(objeto.valores, valor)
+    devolve objeto
+  fecha
+
+  devolve objeto
+fecha
+
+campo sys_vm_obj_novo(args: Lista<ValorVm>) -> ValorVm ::
+  solta tipo := "objeto"
+  solta inicio: U64 := 0
+
+  veja lista_tamanho(args) >= 2 e valor_texto(lista_pega(args, 0)) == "__tipo" ::
+    vira tipo := valor_texto(lista_pega(args, 1))
+    vira inicio := 2
+  fecha
+
+  solta objeto := vm_objeto(tipo)
+  solta indice := inicio
+  gira indice + 1 < lista_tamanho(args) ::
+    vira objeto := vm_objeto_define(objeto, valor_texto(lista_pega(args, indice)), lista_pega(args, indice + 1))
+    vira indice := indice + 2
+  fecha
+
+  devolve objeto
+fecha
+
+campo sys_vm_obj_pega(objeto: ValorVm, chave: ValorVm) -> ValorVm ::
+  devolve vm_objeto_pega(objeto, valor_texto(chave))
+fecha
+
+campo sys_vm_obj_define(objeto: ValorVm, chave: ValorVm, valor: ValorVm) -> ValorVm ::
+  devolve vm_objeto_define(objeto, valor_texto(chave), valor)
+fecha
+
+campo sys_vm_lista_coloca(lista: ValorVm, valor: ValorVm) -> ValorVm ::
+  veja lista e VmObjeto ::
+    guarda chave := texto_u64(lista_tamanho(lista.valores))
+    devolve vm_objeto_define(lista, chave, valor)
+  fecha
+  devolve lista
+fecha
+
+campo sys_vm_lista_insere(lista: ValorVm, indice: ValorVm, valor: ValorVm) -> ValorVm ::
+  veja lista e VmObjeto ::
+    guarda pos := valor_u64_seguro(indice)
+    veja pos > lista_tamanho(lista.valores) :: devolve lista fecha
+    lista_insere(lista.chaves, pos, texto_u64(pos))
+    lista_insere(lista.valores, pos, valor)
+    vm_lista_renumera(lista)
+    devolve lista
+  fecha
+  devolve lista
+fecha
+
+campo sys_vm_lista_remove(lista: ValorVm, indice: ValorVm) -> ValorVm ::
+  veja lista e VmObjeto ::
+    guarda pos := valor_u64_seguro(indice)
+    veja pos >= lista_tamanho(lista.valores) :: devolve VmNada fecha
+    lista_remove(lista.chaves, pos)
+    guarda removido := lista_remove(lista.valores, pos)
+    vm_lista_renumera(lista)
+    devolve removido
+  fecha
+  devolve VmNada
+fecha
+
+campo sys_vm_lista_pega(lista: ValorVm, indice: ValorVm) -> ValorVm ::
+  guarda pos := valor_u64_seguro(indice)
+  veja lista e VmObjeto ::
+    veja pos >= lista_tamanho(lista.valores) :: devolve VmNada fecha
+    devolve lista_pega(lista.valores, pos)
+  fecha
+  veja lista e VmArgs ::
+    veja pos >= lista_tamanho(lista.valores) :: devolve VmNada fecha
+    devolve VmTexto(lista_pega(lista.valores, pos))
+  fecha
+  devolve VmNada
+fecha
+
+campo sys_vm_lista_pop_valor(lista: ValorVm) -> ValorVm ::
+  veja lista e VmObjeto ::
+    veja lista_tamanho(lista.valores) == 0 :: devolve VmNada fecha
+    lista_pop(lista.chaves)
+    devolve lista_pop(lista.valores)
+  fecha
+  devolve VmNada
+fecha
+
+campo sys_vm_lista_define(lista: ValorVm, indice: ValorVm, valor: ValorVm) -> ValorVm ::
+  veja lista e VmObjeto ::
+    guarda pos := valor_u64_seguro(indice)
+    veja pos >= lista_tamanho(lista.valores) :: devolve lista fecha
+    lista_define(lista.valores, pos, valor)
+    devolve lista
+  fecha
+  devolve lista
+fecha
+
+campo sys_vm_lista_reverso(lista: ValorVm) -> ValorVm ::
+  veja lista e VmObjeto ::
+    vira lista.valores := reverso(lista.valores)
+    vm_lista_renumera(lista)
+    devolve lista
+  fecha
+  devolve lista
+fecha
+
+campo vm_lista_renumera(lista: ValorVm) -> Nada ::
+  veja lista e VmObjeto ::
+    solta indice: U64 := 0
+    gira indice < lista_tamanho(lista.chaves) ::
+      lista_define(lista.chaves, indice, texto_u64(indice))
+      vira indice := indice + 1
+    fecha
+  fecha
+fecha
+
+campo sys_vm_mapa_coloca(mapa: ValorVm, chave: ValorVm, valor: ValorVm) -> ValorVm ::
+  devolve vm_objeto_define(mapa, valor_texto(chave), valor)
+fecha
+
+campo sys_vm_mapa_pega(mapa: ValorVm, chave: ValorVm) -> ValorVm ::
+  devolve vm_objeto_pega(mapa, valor_texto(chave))
+fecha
+
+campo sys_vm_indice_pega(alvo: ValorVm, indice: ValorVm) -> ValorVm ::
+  veja alvo e VmObjeto :: devolve sys_vm_lista_pega(alvo, indice) fecha
+  veja alvo e VmArgs :: devolve sys_vm_lista_pega(alvo, indice) fecha
+  veja alvo e VmTexto ::
+    guarda pos := valor_u64_seguro(indice)
+    veja pos >= tamanho(alvo.valor) :: devolve VmNada fecha
+    devolve VmTexto(sys_texto_caractere(alvo.valor, pos))
+  fecha
+  veja alvo e VmBytes ::
+    guarda pos := valor_u64_seguro(indice)
+    veja pos >= alvo.valor.tamanho :: devolve VmNada fecha
+    devolve VmU64(sys_bytes_pega(alvo.valor, pos))
+  fecha
+  devolve VmNada
+fecha
+
+campo sys_vm_indice_define(alvo: ValorVm, indice: ValorVm, valor: ValorVm) -> ValorVm ::
+  veja alvo e VmObjeto :: devolve sys_vm_lista_define(alvo, indice, valor) fecha
+  veja alvo e VmBytes ::
+    guarda pos := valor_u64_seguro(indice)
+    veja pos < alvo.valor.tamanho ::
+      sys_bytes_define(alvo.valor, pos, Byte(valor_u64_seguro(valor)))
+    fecha
+    devolve alvo
+  fecha
+  devolve alvo
+fecha
+
+campo sys_vm_iterador_novo(alvo: ValorVm) -> ValorVm ::
+  veja alvo e VmObjeto :: devolve VmIterador(alvo.valores, 0) fecha
+  veja alvo e VmArgs ::
+    solta valores := lista<ValorVm>()
+    para cada item em alvo.valores :: lista_coloca(valores, VmTexto(item)) fecha
+    devolve VmIterador(valores, 0)
+  fecha
+  devolve VmIterador(lista<ValorVm>(), 0)
+fecha
+
+campo sys_vm_iterador_tem(iterador: ValorVm) -> Bit ::
+  veja iterador e VmIterador :: devolve iterador.indice < lista_tamanho(iterador.valores) fecha
+  devolve nao
+fecha
+
+campo sys_vm_iterador_atual(iterador: ValorVm) -> ValorVm ::
+  veja iterador e VmIterador ::
+    veja iterador.indice < lista_tamanho(iterador.valores) ::
+      devolve lista_pega(iterador.valores, iterador.indice)
+    fecha
+  fecha
+  devolve VmNada
+fecha
+
+campo sys_vm_iterador_avanca(iterador: ValorVm) -> ValorVm ::
+  veja iterador e VmIterador ::
+    devolve VmIterador(iterador.valores, iterador.indice + 1)
+  fecha
+  devolve iterador
+fecha
+
+campo sys_vm_closure_nova(args: Lista<ValorVm>) -> ValorVm ::
+  solta objeto := vm_objeto("closure")
+  solta indice: U64 := 0
+  para cada valor em args ::
+    vira objeto := vm_objeto_define(objeto, texto_u64(indice), valor)
+    vira indice := indice + 1
+  fecha
+  devolve objeto
 fecha

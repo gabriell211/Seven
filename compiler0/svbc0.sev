@@ -22,3 +22,4 @@ const OpCaixa: Byte := 15
 const OpMarcaByte: Byte := 16
 const OpPegaByte: Byte := 17
 const OpEfeito: Byte := 18
+const OpSyscall: Byte := 19

@@ -29,3 +29,43 @@ campo no(especie: Texto, nome: Texto, tipo: Texto, valor: Texto, linha: U32, col
     coluna: coluna
   }
 fecha
+
+campo no_com_filho(especie: Texto, nome: Texto, tipo: Texto, valor: Texto, filho: No, linha: U32, coluna: U32) -> No ::
+  solta saida := no(especie, nome, tipo, valor, linha, coluna)
+  lista_no_coloca(saida.filhos, filho)
+  devolve saida
+fecha
+
+campo lista_no_coloca(itens: ListaNo, valor: No) -> Nada ::
+  sys_lista_coloca(itens, valor)
+fecha
+
+campo lista_no_insere(itens: ListaNo, indice: U64, valor: No) -> Nada ::
+  sys_lista_insere(itens, indice, valor)
+fecha
+
+campo lista_no_pega(itens: ListaNo, indice: U64) -> No ::
+  devolve sys_lista_pega(itens, indice)
+fecha
+
+campo lista_no_define(itens: ListaNo, indice: U64, valor: No) -> Nada ::
+  sys_lista_define(itens, indice, valor)
+fecha
+
+campo lista_no_tamanho(itens: ListaNo) -> U64 ::
+  devolve itens.tamanho
+fecha
+
+campo no_adiciona(pai: No, filho: No) -> Nada ::
+  lista_no_coloca(pai.filhos, filho)
+fecha
+
+campo programa_campo(programa: Programa, nome: Texto) -> Num ::
+  solta indice: U64 := 0
+  gira indice < lista_no_tamanho(programa.itens) ::
+    guarda item := lista_no_pega(programa.itens, indice)
+    veja item.especie == "campo" e item.nome == nome :: devolve Num(indice) fecha
+    vira indice := indice + 1
+  fecha
+  devolve -1
+fecha

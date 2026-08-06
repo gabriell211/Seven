@@ -28,10 +28,15 @@ campo pedido_ler(argumentos: ListaTexto) -> Pedido toca ambiente ::
   fecha
 
   guarda entrada := lista_texto_pega(argumentos, 0)
+  solta saida := entrada + ".svbc"
+
+  veja lista_texto_tamanho(argumentos) > 1 ::
+    vira saida := lista_texto_pega(argumentos, 1)
+  fecha
 
   devolve Pedido {
     entrada: entrada,
-    saida: entrada + ".svbc"
+    saida: saida
   }
 fecha
 
@@ -49,9 +54,17 @@ campo compilar(pedido: Pedido) -> Saida toca disco ::
   guarda tokens := tokenizar(fonte.valor)
   guarda arvore := montar(tokens)
   guarda medido := conferir(arvore)
-  guarda bytes := emitir_svbc0(medido)
 
-  arquivo_grava(pedido.saida, bytes)
+  veja nao unidade_valida(medido) ::
+    devolve Saida {
+      ok: nao,
+      caminho: "",
+      diagnosticos: medido.diagnosticos
+    }
+  fecha
+
+  guarda bytes := emitir_svbc0(medido)
+  arquivo_grava_bytes(pedido.saida, bytes)
 
   devolve Saida {
     ok: sim,

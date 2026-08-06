@@ -74,7 +74,8 @@ campo traduz_opcode(op: Opcode0) -> Opcode ::
   veja op e Caixa0 :: devolve Caixa fecha
   veja op e MarcaByte0 :: devolve MarcaByte fecha
   veja op e PegaByte0 :: devolve PegaByte fecha
-  veja op e Efeito0 :: devolve Syscall fecha
+  veja op e Efeito0 :: devolve Efeito fecha
+  veja op e Syscall0 :: devolve Syscall fecha
 
   devolve Pare
 fecha
