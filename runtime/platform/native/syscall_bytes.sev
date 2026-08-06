@@ -1,0 +1,33 @@
+modulo seven.runtime.platform.native.syscall_bytes
+
+usa seven.runtime.platform.native.bytes_core
+usa seven.runtime.platform.native.target
+usa std.base.lista
+usa std.mem.bytes
+
+campo x64_syscall_bytes_emite(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo,
+  nome: Texto,
+  aridade: U32
+) -> Bit ::
+  veja nome == "sys_bytes_novo" e aridade == 0 ::
+    x64_bytes_core_novo(codigo, virtual_alloc_patches, alvo)
+    devolve sim
+  fecha
+  veja nome == "sys_bytes_pega" e aridade == 2 ::
+    x64_bytes_core_pega(codigo)
+    devolve sim
+  fecha
+  veja nome == "sys_bytes_define" e aridade == 3 ::
+    x64_bytes_core_define(codigo)
+    devolve sim
+  fecha
+  veja nome == "sys_bytes_coloca_byte" e aridade == 2 ::
+    x64_bytes_core_coloca_byte(codigo, virtual_alloc_patches, alvo)
+    devolve sim
+  fecha
+
+  devolve nao
+fecha
