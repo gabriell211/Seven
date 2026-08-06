@@ -1,0 +1,234 @@
+modulo seven.compiler.parser
+
+usa seven.compiler.token
+usa seven.compiler.ast
+usa seven.compiler.source
+usa seven.compiler.diagnostic
+usa seven.compiler.parser_cursor
+
+molde SaidaSintatica ::
+  programas: Lista<Programa>
+  diagnosticos: Lista<Diagnostico>
+fecha
+
+campo monta_unidade(fluxos: Lista<FluxoTokens>) -> SaidaSintatica ::
+  solta programas := lista<Programa>()
+  solta bolsa := bolsa_diagnosticos(200)
+
+  para cada fluxo em fluxos ::
+    guarda cursor := cursor_tokens(fluxo)
+    lista_coloca(programas, monta_com_cursor(cursor))
+    diagnosticos_junta(bolsa, cursor.diagnosticos.itens)
+  fecha
+
+  devolve SaidaSintatica {
+    programas: programas,
+    diagnosticos: bolsa.itens
+  }
+fecha
+
+campo monta(fluxo: FluxoTokens) -> Programa ::
+  devolve monta_com_cursor(cursor_tokens(fluxo))
+fecha
+
+campo monta_com_cursor(cursor: CursorTokens) -> Programa ::
+  guarda modulo_nome := ler_modulo_opcional(cursor)
+  guarda usos := ler_usos(cursor)
+  solta itens := lista<Item>()
+
+  gira nao fim(cursor) e nao cursor.diagnosticos.interrompida ::
+    guarda antes := cursor.posicao
+    lista_coloca(itens, ler_item(cursor))
+
+    veja cursor.posicao == antes ::
+      reporta_atual(
+        cursor,
+        "SV-PARSE-PROGRESSO",
+        "parser nao conseguiu consumir o item atual",
+        "corrija a declaracao proxima deste ponto"
+      )
+      avanca_token(cursor)
+      sincroniza_item(cursor)
+    fecha
+  fecha
+
+  devolve Programa {
+    modulo: modulo_nome,
+    usos: usos,
+    itens: itens
+  }
+fecha
+
+campo ler_modulo_opcional(cursor: CursorTokens) -> Texto ::
+  veja nao aceita(cursor, "modulo") ::
+    devolve ""
+  fecha
+
+  devolve ler_caminho(cursor, "depois de modulo")
+fecha
+
+campo ler_usos(cursor: CursorTokens) -> Lista<Uso> ::
+  solta usos := lista<Uso>()
+
+  gira aceita(cursor, "usa") ::
+    guarda inicio := token_anterior(cursor).span
+    guarda caminho := ler_caminho(cursor, "depois de usa")
+    solta apelido := ""
+
+    veja aceita(cursor, "como") ::
+      vira apelido := espera_nome(cursor, "depois de como").marca
+    fecha
+
+    lista_coloca(usos, Uso {
+      caminho: caminho,
+      apelido: apelido,
+      span: span_junta(inicio, token_anterior(cursor).span)
+    })
+  fecha
+
+  devolve usos
+fecha
+
+campo ler_item(cursor: CursorTokens) -> Item ::
+  veja proximo_e(cursor, "campo") ::
+    devolve ItemCampo(ler_campo(cursor))
+  fecha
+
+  veja proximo_e(cursor, "extern") ::
+    devolve ItemExterno(ler_externo(cursor))
+  fecha
+
+  veja proximo_e(cursor, "molde") ::
+    devolve ItemMolde(ler_molde(cursor))
+  fecha
+
+  veja proximo_e(cursor, "selo") ::
+    devolve ItemSelo(ler_selo(cursor))
+  fecha
+
+  veja proximo_e(cursor, "const") ::
+    devolve ItemConst(ler_constante(cursor))
+  fecha
+
+  guarda encontrado := atual_token(cursor)
+  reporta_atual(
+    cursor,
+    "SV-PARSE-ITEM",
+    "esperado campo, extern, molde, selo ou const",
+    "declaracoes de nivel de modulo devem iniciar por uma palavra de item"
+  )
+  sincroniza_item(cursor)
+
+  devolve ItemConst(Constante {
+    nome: "__item_invalido",
+    tipo: tipo_ausente(encontrado.span),
+    valor: ExprLiteral(LitNulo),
+    span: encontrado.span
+  })
+fecha
+
+campo ler_campo(cursor: CursorTokens) -> Campo ::
+  guarda inicio := espera(cursor, "campo", "SV-PARSE-CAMPO", "esperado campo").span
+  guarda nome := espera_nome(cursor, "do campo").marca
+  guarda genericos := ler_genericos_declaracao(cursor)
+  guarda parametros := ler_parametros(cursor)
+  guarda retorno := ler_retorno(cursor)
+  guarda efeitos := ler_efeitos(cursor)
+  solta contratos := lista<Expressao>()
+
+  gira aceita(cursor, "requer") ::
+    lista_coloca(contratos, ler_expressao(cursor))
+  fecha
+
+  espera(cursor, "::", "SV-PARSE-BLOCO", "esperado :: para abrir o corpo do campo")
+  guarda corpo := ler_bloco(cursor, nao)
+  guarda fim_span := espera(cursor, "fecha", "SV-PARSE-FECHA", "esperado fecha para encerrar o campo").span
+
+  devolve Campo {
+    nome: nome,
+    genericos: genericos,
+    parametros: parametros,
+    retorno: retorno,
+    efeitos: efeitos,
+    contratos: contratos,
+    corpo: corpo,
+    span: span_junta(inicio, fim_span)
+  }
+fecha
+
+campo ler_externo(cursor: CursorTokens) -> CampoExterno ::
+  guarda inicio := espera(cursor, "extern", "SV-PARSE-EXTERN", "esperado extern").span
+  guarda abi_nome := espera_nome(cursor, "da ABI externa").marca
+  guarda abi := abi_externa(cursor, abi_nome)
+
+  espera(cursor, "campo", "SV-PARSE-EXTERN-CAMPO", "esperado campo depois da ABI externa")
+  guarda nome := espera_nome(cursor, "do campo externo").marca
+  guarda parametros := ler_parametros(cursor)
+  guarda retorno := ler_retorno(cursor)
+  solta simbolo := nome
+
+  veja aceita(cursor, "liga") ::
+    vira simbolo := espera_texto(cursor, "depois de liga").literal
+  fecha
+
+  devolve CampoExterno {
+    abi: abi,
+    nome: nome,
+    simbolo: simbolo,
+    parametros: parametros,
+    retorno: retorno,
+    span: span_junta(inicio, token_anterior(cursor).span)
+  }
+fecha
+
+campo abi_externa(cursor: CursorTokens, nome: Texto) -> AbiExterna ::
+  veja nome == "c" ::
+    devolve AbiC
+  fecha
+
+  veja nome == "cpp" ::
+    devolve AbiCpp
+  fecha
+
+  guarda encontrado := token_anterior(cursor)
+  diagnosticos_adiciona(cursor.diagnosticos, erro_com_ajuda(
+    "SV-PARSE-ABI",
+    "ABI externa desconhecida '" + nome + "'",
+    encontrado.span.arquivo,
+    encontrado.span.linha,
+    encontrado.span.coluna,
+    "use extern c ou extern cpp"
+  ))
+  devolve AbiC
+fecha
+
+campo ler_molde(cursor: CursorTokens) -> Molde ::
+  guarda inicio := espera(cursor, "molde", "SV-PARSE-MOLDE", "esperado molde").span
+  guarda nome := espera_nome(cursor, "do molde").marca
+  guarda genericos := ler_genericos_declaracao(cursor)
+  solta membros := lista<Membro>()
+
+  espera(cursor, "::", "SV-PARSE-BLOCO", "esperado :: para abrir o molde")
+
+  gira nao fim(cursor) e nao proximo_e(cursor, "fecha") ::
+    guarda membro_nome := espera_nome(cursor, "do membro").marca
+    guarda membro_inicio := token_anterior(cursor).span
+    espera(cursor, ":", "SV-PARSE-MEMBRO-TIPO", "esperado : depois do membro")
+    guarda membro_tipo := ler_tipo(cursor)
+
+    lista_coloca(membros, Membro {
+      nome: membro_nome,
+      tipo: membro_tipo,
+      span: span_junta(membro_inicio, token_anterior(cursor).span)
+    })
+  fecha
+
+  guarda fim_span := espera(cursor, "fecha", "SV-PARSE-FECHA", "esperado fecha para encerrar o molde").span
+
+  devolve Molde {
+    nome: nome,
+    genericos: genericos,
+    membros: membros,
+    span: span_junta(inicio, fim_span)
+  }
+fecha
