@@ -39,6 +39,21 @@ Os seeds existem para romper a dependencia operacional da ponte PowerShell:
 - o Linux instala `brand/seven-mark.svg` no tema de icones e preserva o ICO no
   payload oficial.
 
+## Preparacao do instalador Windows
+
+O seed PE preservado no ZIP possui `SizeOfStackCommit` de 4 KiB. O instalador
+usa um frame inicial maior, portanto o CI aplica uma correcao deterministica no
+cabecalho PE antes do empacotamento:
+
+- valida o SHA-256 original do executavel;
+- altera somente os 8 bytes de `SizeOfStackCommit` para 128 KiB;
+- valida o SHA-256 do executavel preparado;
+- executa instalacao, integracao do sistema e desinstalacao no runner Windows.
+
+Os hashes anterior e posterior estao registrados em `checksums.sha256`. Essa
+preparacao nao introduz outra linguagem de implementacao e nao modifica o codigo
+do instalador.
+
 ## Fronteira de confianca
 
 Estes arquivos sao **artefatos binarios de transicao**, nao a implementacao
@@ -64,9 +79,10 @@ O CI:
 1. concatena os fragmentos Base64;
 2. reconstrói `native-seeds.zip`;
 3. valida o SHA-256 do ZIP e de cada membro;
-4. monta os payloads usando somente arquivos do repositorio e imagens SVBC;
-5. executa instalacao e desinstalacao em runners Windows e Linux;
-6. publica os bundles resultantes como artifacts.
+4. prepara e valida o instalador PE para Windows;
+5. monta os payloads usando somente arquivos do repositorio e imagens SVBC;
+6. executa instalacao e desinstalacao em runners Windows e Linux;
+7. publica os bundles resultantes como artifacts.
 
-Qualquer alteracao em um seed exige atualizar `checksums.sha256` e explicar a
-mudanca no pull request.
+Qualquer alteracao em um seed ou na preparacao de plataforma exige atualizar
+`checksums.sha256` e explicar a mudanca no pull request.
