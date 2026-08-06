@@ -34,10 +34,10 @@ jobs:
           set -euo pipefail
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo 'd25766cb65f04630f3b585e7fa4fe6a77686ed0174fa04d6f63dd8dccfaa6c6f  build/native-seeds.zip' | sha256sum --check
+          echo 'dd88c0779733fc9cf39643ba7257547fc3925023bd1460192c246813843e4afb  build/native-seeds.zip' | sha256sum --check
           unzip -t build/native-seeds.zip
           unzip -q build/native-seeds.zip -d build/native-seeds
-          echo 'ace5ea9e06c9c823e56e547d7af581885f4b4401de17bb87ae5ce8b8ba04b596  build/native-seeds/seven-windows.exe' | sha256sum --check
+          echo 'a53e47a69e8e9cbe4ecb08663e48edee0d950667fe6fdee2260a9d30b55b5b07  build/native-seeds/seven-windows.exe' | sha256sum --check
           echo 'e4847375d1e800425e23253d36394bc8d2a2d9a97598f8905a30986310f176ed  build/native-seeds/seven-installer-windows.exe' | sha256sum --check
 
       - name: Exercise Windows compiler, WebAssembly and deterministic bytecode
@@ -139,10 +139,10 @@ jobs:
           set -euo pipefail
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo 'd25766cb65f04630f3b585e7fa4fe6a77686ed0174fa04d6f63dd8dccfaa6c6f  build/native-seeds.zip' | sha256sum --check
+          echo 'dd88c0779733fc9cf39643ba7257547fc3925023bd1460192c246813843e4afb  build/native-seeds.zip' | sha256sum --check
           unzip -t build/native-seeds.zip
           unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
+          echo '7f1716529ee060b9f71dc64b147633ce79c9023ee6229b6736caefc516b8b13f  build/native-seeds/seven-linux' | sha256sum --check
           echo '8d5b9c534018d8b8ccca7fcdfaa6f7d40587c8a039d63ae214c62f93d35d533e  build/native-seeds/seven-installer-linux' | sha256sum --check
           chmod +x build/native-seeds/seven-linux build/native-seeds/seven-installer-linux
 
