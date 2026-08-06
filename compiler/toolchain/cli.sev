@@ -14,6 +14,7 @@ usa seven.compiler.toolchain.adapters
 usa seven.compiler.toolchain.verify
 usa seven.compiler.toolchain.bootstrap_chain
 usa seven.compiler.toolchain.production_audit
+usa seven.compiler.toolchain.web_build
 usa std.base.lista
 usa std.io.console
 
@@ -76,7 +77,10 @@ campo parseia_comando(argumentos: Lista<Texto>) -> ComandoSeven ::
 
   veja nome == "web" ::
     veja arg_ou(argumentos, 1, "") == "build" ::
-      devolve CmdWebBuild(arg_ou(argumentos, 2, "."))
+      devolve CmdWebBuild(
+        arg_ou(argumentos, 2, "examples/hello.sev"),
+        arg_ou(argumentos, 3, "build/web")
+      )
     fecha
   fecha
 
@@ -139,6 +143,10 @@ campo executa_comando(contexto: ContextoToolchain, comando: ComandoSeven) -> Sai
     devolve executa_build_like(contexto, "build", comando.entrada, comando.saida)
   fecha
 
+  veja comando e CmdWebBuild ::
+    devolve executa_web_build(comando.entrada, comando.saida)
+  fecha
+
   veja comando e CmdRun ::
     devolve executa_build_like(contexto, "run", comando.entrada, "")
   fecha
@@ -175,7 +183,7 @@ campo executa_comando(contexto: ContextoToolchain, comando: ComandoSeven) -> Sai
 
   veja comando e CmdTargetList ::
     diga("svbc")
-    diga("web")
+    diga("webassembly")
     diga("windows-x64")
     diga("linux-x64")
     devolve ToolchainOk(0)
@@ -234,7 +242,7 @@ campo executa_comando(contexto: ContextoToolchain, comando: ComandoSeven) -> Sai
   fecha
 
   veja comando e CmdDoctor ::
-    diga("seven doctor: toolchain Seven-native, instalador Windows/Linux e ponte PowerShell removida")
+    diga("seven doctor: toolchain Seven-native, WebAssembly direto, instalador Windows/Linux e ponte PowerShell removida")
     devolve ToolchainOk(0)
   fecha
 
@@ -290,8 +298,9 @@ fecha
 
 campo texto_ajuda() -> Texto ::
   devolve "seven estavel <check|build|run|doctor>\n" +
-    "seven preview <test|bench|fmt|lint|doc|repl|debug|profile|install|uninstall|installer|lsp|pkg|target|web|serve|release|verify>\n" +
+    "seven preview <web|test|bench|fmt|lint|doc|repl|debug|profile|install|uninstall|installer|lsp|pkg|target|serve|release|verify>\n" +
     "seven build <seven.pkg> <saida.svbc>\n" +
+    "seven web build <entrada.sev> [diretorio]\n" +
     "seven installer windows-x64 [diretorio]\n" +
     "seven installer linux-x64 [diretorio]"
 fecha
