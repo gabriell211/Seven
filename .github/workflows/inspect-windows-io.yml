@@ -22,3 +22,5 @@ jobs:
           awk '/seven-bootstrap.c.gz.b64.*B64/{capture=1;next} /^          B64$/{capture=0} capture{sub(/^          /,"");print}' "$RUNNER_TEMP/generator.yml" > "$RUNNER_TEMP/seven-bootstrap.c.gz.b64"
           base64 --decode "$RUNNER_TEMP/seven-bootstrap.c.gz.b64" | gzip --decompress > "$RUNNER_TEMP/seven-bootstrap.c"
           grep -n -C 14 -E 'read_file|write_file|fopen|CreateDirectoryA' "$RUNNER_TEMP/seven-bootstrap.c" | head -n 220
+
+# trigger: 2
