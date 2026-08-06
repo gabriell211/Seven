@@ -41,7 +41,7 @@ text = text.replace(build_marker, '\n' + entry_patch + build_marker, 1)
 start = text.index('cat > "$work/kernel32.def"')
 end_line = '"$link" /subsystem:console /entry:mainCRTStartup /nodefaultlib /out:"$work/seven-windows.exe" "$work/seven-windows.obj" "$work/kernel32.lib" "$work/msvcrt.lib"\n'
 end = text.index(end_line, start) + len(end_line)
-mingw = 'x86_64-w64-mingw32-gcc -std=c11 -O2 -s -Wall -Wextra -Wno-unused-parameter "$src" -o "$work/seven-windows.exe"\n'
+mingw = 'x86_64-w64-mingw32-gcc -std=c11 -O2 -s -Wall -Wextra -Wno-unused-parameter "$work/seven-bootstrap.c" -o "$work/seven-windows.exe"\n'
 text = text[:start] + mingw + text[end:]
 
 old_hash = 'archive_sha=$(sha256sum "$work/native-seeds.zip" | cut -d\' \' -f1)'
