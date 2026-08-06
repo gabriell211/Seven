@@ -1,0 +1,56 @@
+name: Inspect Seven Web Bootstrap
+
+on:
+  push:
+    branches:
+      - agent/seven-web-build
+    paths:
+      - .github/workflows/web-bootstrap-inspect.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract native bootstrap source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show 3e84aa820625d13370b833b59a869d4e99d81dae:.github/workflows/regenerate-semantic-seeds.yml > "$RUNNER_TEMP/generator.yml"
+          awk '/seven-bootstrap.c.gz.b64.*B64/{capture=1;next} /^          B64$/{capture=0} capture{sub(/^          /,"");print}' "$RUNNER_TEMP/generator.yml" > "$RUNNER_TEMP/seven-bootstrap.c.gz.b64"
+          base64 --decode "$RUNNER_TEMP/seven-bootstrap.c.gz.b64" | gzip --decompress > "$RUNNER_TEMP/seven-bootstrap.c"
+
+      - name: Print relevant bootstrap sections
+        shell: bash
+        run: |
+          set -euo pipefail
+          source="$RUNNER_TEMP/seven-bootstrap.c"
+          grep -nE 'core_main|read_file|write_file|make_dir|exists|emit_image|check_source|build|doctor|usage' "$source" | head -120
+          BOOTSTRAP_SOURCE="$source" python - <<'PY'
+          import os
+          from pathlib import Path
+
+          text = Path(os.environ['BOOTSTRAP_SOURCE']).read_text()
+          needles = [
+              'static int core_main',
+              'int core_main',
+              'static char*read_file',
+              'static int write_file',
+              'static int make_dir',
+              'static int build_source',
+              'static int emit_image',
+          ]
+          for needle in needles:
+              index = text.find(needle)
+              if index >= 0:
+                  print(f'\n===== {needle} =====')
+                  print(text[index:index + 5000])
+          PY
