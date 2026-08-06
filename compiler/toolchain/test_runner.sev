@@ -26,10 +26,15 @@ campo roda_testes(contexto: ContextoToolchain, filtro: Texto) -> Resultado<Resul
 
   para cada caso em casos ::
     vira total := total + 1
-    guarda pedido := pedido_de_compilacao(lista<Texto>())
-    guarda saida := compila(pedido)
 
-    veja saida e Sucesso ::
+    solta argumentos := lista<Texto>()
+    lista_coloca(argumentos, caso.caminho)
+
+    guarda pedido := pedido_de_compilacao(argumentos)
+    guarda saida := compila(pedido)
+    guarda esperado := resultado_esperado(caso.tipo, saida)
+
+    veja esperado ::
       vira passaram := passaram + 1
       vira log := log + "ok " + caso.nome + "\n"
     outro ::
@@ -46,19 +51,69 @@ campo roda_testes(contexto: ContextoToolchain, filtro: Texto) -> Resultado<Resul
   })
 fecha
 
+campo resultado_esperado(tipo: Texto, saida: SaidaCompilacao) -> Bit ::
+  veja tipo == "valido" ::
+    devolve saida e Sucesso
+  fecha
+
+  veja tipo == "invalido" ::
+    devolve saida e Falhou
+  fecha
+
+  devolve nao
+fecha
+
 campo roda_benchmarks(contexto: ContextoToolchain, filtro: Texto) -> Resultado<ResultadoTeste, Falha> toca disco ::
-  devolve roda_testes(contexto, filtro)
+  devolve Falha(nova_falha(
+    "SV-TEST-BENCH-PREVIEW",
+    "benchmarks permanecem fora da superficie estavel da Seven 0.1"
+  ))
 fecha
 
 campo descobre_testes(contexto: ContextoToolchain, filtro: Texto) -> Lista<CasoTeste> toca disco ::
   solta casos := lista<CasoTeste>()
 
-  lista_coloca(casos, CasoTeste {
-    nome: "conformance",
-    caminho: "conformance",
-    tipo: "check"
+  adiciona_caso(casos, filtro, CasoTeste {
+    nome: "valid/hello",
+    caminho: "conformance/valid/hello.sev",
+    tipo: "valido"
+  })
+  adiciona_caso(casos, filtro, CasoTeste {
+    nome: "valid/memory",
+    caminho: "conformance/valid/memory.sev",
+    tipo: "valido"
+  })
+  adiciona_caso(casos, filtro, CasoTeste {
+    nome: "valid/types",
+    caminho: "conformance/valid/types.sev",
+    tipo: "valido"
+  })
+  adiciona_caso(casos, filtro, CasoTeste {
+    nome: "invalid/unknown-name",
+    caminho: "conformance/invalid/unknown_name.sev",
+    tipo: "invalido"
+  })
+  adiciona_caso(casos, filtro, CasoTeste {
+    nome: "invalid/immutable-assign",
+    caminho: "conformance/invalid/immutable_assign.sev",
+    tipo: "invalido"
+  })
+  adiciona_caso(casos, filtro, CasoTeste {
+    nome: "invalid/memory-bounds",
+    caminho: "conformance/invalid/memory_bounds.sev",
+    tipo: "invalido"
+  })
+  adiciona_caso(casos, filtro, CasoTeste {
+    nome: "invalid/effect-leak",
+    caminho: "conformance/invalid/effect_leak.sev",
+    tipo: "invalido"
   })
 
   devolve casos
 fecha
 
+campo adiciona_caso(casos: Lista<CasoTeste>, filtro: Texto, caso: CasoTeste) -> Nada ::
+  veja filtro == "" ou texto_contem(caso.nome, filtro) ou texto_contem(caso.caminho, filtro) ::
+    lista_coloca(casos, caso)
+  fecha
+fecha
