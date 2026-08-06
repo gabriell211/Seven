@@ -31,20 +31,23 @@ jobs:
           printf SVBC > build/diagnostic/payload/seven.host.svbc
           printf SVBC > build/diagnostic/payload/seven.launcher.svbc
 
-      - name: Capture and inspect crash dump
+      - name: Inspect access violation directly in CDB
         shell: cmd
         continue-on-error: true
         run: |
-          mkdir dumps
-          reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\seven-installer.exe" /v DumpFolder /t REG_EXPAND_SZ /d "%CD%\dumps" /f
-          reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\seven-installer.exe" /v DumpType /t REG_DWORD /d 2 /f
           set "CDB=C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe"
-          if exist "%CDB%" echo CDB=%CDB%
-          pushd build\diagnostic
-          start /wait "" ".\seven-installer.exe"
-          echo INSTALL_EXIT=%ERRORLEVEL%
-          popd
-          timeout /t 2 /nobreak >nul
-          dir /s /b dumps
           if not exist "%CDB%" exit /b 2
-          for %%D in (dumps\*.dmp) do "%CDB%" -z "%%D" -c ".ecxr; r; kb; u @rip-20 @rip+40; q"
+          pushd build\diagnostic
+          "%CDB%" -o -logo cdb.log -c "sxe av; g; .ecxr; .exr -1; r; kv; u @rip-20 @rip+40; q" ".\seven-installer.exe"
+          set "DEBUG_EXIT=%ERRORLEVEL%"
+          type cdb.log
+          popd
+          exit /b %DEBUG_EXIT%
+
+      - name: Upload debugger log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seven-windows-installer-cdb-log
+          path: build/diagnostic/cdb.log
+          if-no-files-found: warn
