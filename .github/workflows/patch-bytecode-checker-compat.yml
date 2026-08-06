@@ -6,6 +6,7 @@ on:
       - gabriell211/production-readiness
     paths:
       - .github/workflows/patch-bytecode-checker-compat.yml
+  workflow_dispatch:
 
 permissions:
   contents: write
