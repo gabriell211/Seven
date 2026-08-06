@@ -19,7 +19,7 @@ jobs:
           set -euo pipefail
           mkdir -p build/native-seeds
           : > build/native-seeds.zip
-          for part in seed/native/archive/native-seeds.b64.[0-9][0-9]; do
+          for part in seed/native/archive/native-seeds.zip.part[0-9][0-9].b64; do
             echo "PART $part"
             wc -c "$part"
             tr -cd 'A-Za-z0-9+/=' < "$part" | base64 --decode >> build/native-seeds.zip
