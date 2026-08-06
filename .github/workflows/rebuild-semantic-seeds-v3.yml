@@ -78,7 +78,7 @@ jobs:
               ),
               (
                   'if(!var_by(vars,nv,n)&&!func_by(funcs,nf,n)&&!known_word(n))',
-                  'if(!strstr(n,".")&&!isupper((unsigned char)n[0])&&!var_by(vars,nv,n)&&!func_by(funcs,nf,n)&&!known_word(n))',
+                  'if(!strstr(n,".")&&!((n[0]>="A"[0])&&(n[0]<="Z"[0]))&&!var_by(vars,nv,n)&&!func_by(funcs,nf,n)&&!known_word(n))',
               ),
               (
                   'for(int fi=0;fi<nf;fi++){Func*f=&funcs[fi];Var vars[MAX_SYMBOLS];int nv=0;ArrayInfo arr[MAX_SYMBOLS];int na=0;int returns=0;for(int i=f->body;i<f->end;i++){',
