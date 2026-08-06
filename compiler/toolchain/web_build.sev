@@ -1,0 +1,143 @@
+modulo seven.compiler.toolchain.web_build
+
+usa seven.compiler.source
+usa seven.compiler.lexer
+usa seven.compiler.parser
+usa seven.compiler.semantic
+usa seven.compiler.ir
+usa seven.compiler.driver
+usa seven.compiler.diagnostic
+usa seven.compiler.package
+usa seven.compiler.wasm
+usa seven.compiler.toolchain.command
+usa std.base.resultado
+usa std.crypto.hash
+usa std.fs.file
+usa std.io.console
+usa std.os.install
+
+campo executa_web_build(entrada: Texto, saida: Texto) -> SaidaToolchain toca terminal, disco, ambiente ::
+  guarda pacote := pacote_parse(
+    "pacote seven-web-app\n" +
+    "versao 0.1.0\n" +
+    "criador Gabriel Barcelos\n" +
+    "entrada " + entrada + "\n" +
+    "alvo web\n" +
+    "fonte " + entrada + "\n"
+  )
+  guarda fontes := fonte_carrega_pacote(pacote)
+  guarda tokens := varre_unidade(fontes)
+  guarda sintaxe := monta_unidade(tokens)
+
+  veja diagnosticos_tem_erros(sintaxe.diagnosticos) ::
+    mostra_diagnosticos(sintaxe.diagnosticos)
+    devolve ToolchainErro(1, "compilacao web falhou na sintaxe")
+  fecha
+
+  guarda semantica := mede(sintaxe.programas, pacote)
+  guarda diagnosticos := junta_diagnosticos(sintaxe.diagnosticos, semantica)
+  veja diagnosticos_tem_erros(diagnosticos) ::
+    mostra_diagnosticos(diagnosticos)
+    devolve ToolchainErro(1, "compilacao web falhou na semantica")
+  fecha
+
+  guarda meio := baixa_ir(sintaxe.programas, semantica.tipos, semantica.efeitos)
+  guarda otimizado := otimiza_ir(meio, "seguro")
+  guarda wasm := emite_wasm(otimizado)
+  veja wasm e Falha ::
+    devolve ToolchainErro(1, wasm.valor.codigo + ": " + wasm.valor.mensagem)
+  fecha
+
+  guarda cria := diretorio_cria(saida)
+  veja cria e Falha ::
+    devolve ToolchainErro(1, cria.valor.codigo + ": " + cria.valor.mensagem)
+  fecha
+
+  guarda caminho_wasm := saida + "/app.wasm"
+  guarda grava_wasm := arquivo_salva_bytes(caminho_wasm, wasm.valor)
+  veja grava_wasm e Falha ::
+    devolve ToolchainErro(1, grava_wasm.valor.codigo + ": " + grava_wasm.valor.mensagem)
+  fecha
+
+  guarda checksum := hash_texto(sha256(wasm.valor))
+  guarda grava_html := arquivo_salva_texto(saida + "/index.html", web_index_html())
+  veja grava_html e Falha ::
+    devolve ToolchainErro(1, grava_html.valor.codigo + ": " + grava_html.valor.mensagem)
+  fecha
+
+  guarda grava_loader := arquivo_salva_texto(saida + "/seven-loader.mjs", web_loader_modulo())
+  veja grava_loader e Falha ::
+    devolve ToolchainErro(1, grava_loader.valor.codigo + ": " + grava_loader.valor.mensagem)
+  fecha
+
+  guarda grava_manifesto := arquivo_salva_texto(
+    saida + "/seven.web.json",
+    web_manifesto_json(entrada, checksum)
+  )
+  veja grava_manifesto e Falha ::
+    devolve ToolchainErro(1, grava_manifesto.valor.codigo + ": " + grava_manifesto.valor.mensagem)
+  fecha
+
+  guarda grava_checksum := arquivo_salva_texto(
+    saida + "/app.wasm.sha256",
+    checksum + "  app.wasm\n"
+  )
+  veja grava_checksum e Falha ::
+    devolve ToolchainErro(1, grava_checksum.valor.codigo + ": " + grava_checksum.valor.mensagem)
+  fecha
+
+  diga("web wasm: " + caminho_wasm)
+  diga("web manifesto: " + saida + "/seven.web.json")
+  diga("web sha256: " + checksum)
+  devolve ToolchainOk(0)
+fecha
+
+campo web_index_html() -> Texto ::
+  devolve "<!doctype html>\n" +
+    "<html lang=\"pt-BR\">\n" +
+    "<head>\n" +
+    "  <meta charset=\"utf-8\">\n" +
+    "  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n" +
+    "  <meta name=\"generator\" content=\"Seven WebAssembly\">\n" +
+    "  <title>Seven Web</title>\n" +
+    "</head>\n" +
+    "<body>\n" +
+    "  <main id=\"seven-app\"><pre id=\"seven-output\"></pre></main>\n" +
+    "  <script type=\"module\" src=\"./seven-loader.mjs\"></script>\n" +
+    "</body>\n" +
+    "</html>\n"
+fecha
+
+campo web_loader_modulo() -> Texto ::
+  devolve "const decoder = new TextDecoder();\n" +
+    "const output = document.getElementById('seven-output');\n" +
+    "let memory;\n" +
+    "const imports = { seven: {\n" +
+    "  terminal_diga(ptr, len) {\n" +
+    "    const texto = decoder.decode(new Uint8Array(memory.buffer, ptr, len));\n" +
+    "    if (output) output.textContent += texto + '\\n';\n" +
+    "  }\n" +
+    "} };\n" +
+    "const resposta = await fetch('./app.wasm');\n" +
+    "if (!resposta.ok) throw new Error('Falha ao carregar app.wasm');\n" +
+    "const bytes = await resposta.arrayBuffer();\n" +
+    "const modulo = await WebAssembly.instantiate(bytes, imports);\n" +
+    "memory = modulo.instance.exports.memory;\n" +
+    "const codigo = modulo.instance.exports.seven_start();\n" +
+    "globalThis.SevenWeb = Object.freeze({ instance: modulo.instance, codigo });\n"
+fecha
+
+campo web_manifesto_json(entrada: Texto, checksum: Texto) -> Texto ::
+  devolve "{\n" +
+    "  \"format\": \"seven-web-1\",\n" +
+    "  \"language\": \"Seven\",\n" +
+    "  \"source\": \"" + entrada + "\",\n" +
+    "  \"sourceExtension\": \".sev\",\n" +
+    "  \"target\": \"webassembly\",\n" +
+    "  \"executable\": \"app.wasm\",\n" +
+    "  \"entryExport\": \"seven_start\",\n" +
+    "  \"hostAbi\": \"seven-web-1\",\n" +
+    "  \"applicationLanguageDependency\": false,\n" +
+    "  \"sha256\": \"" + checksum + "\"\n" +
+    "}\n"
+fecha
