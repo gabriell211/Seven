@@ -9,9 +9,19 @@ usa std.base.lista
 usa std.base.resultado
 usa std.mem.bytes
 
+molde OffsetIpX64 ::
+  ip: U64
+  offset: U64
+fecha
+
 molde PatchSaltoX64 ::
   posicao: U64
   destino: U32
+fecha
+
+molde PatchChamadaX64 ::
+  posicao: U64
+  campo: U32
 fecha
 
 molde CodigoX64 ::
@@ -26,21 +36,9 @@ campo x64_compila(imagem: ImagemSvbc, alvo: AlvoNativo) -> Resultado<CodigoX64, 
     devolve Falha(nova_falha("SV-NATIVE-ENTRADA", "campo inicio ausente"))
   fecha
 
-  guarda campo := lista_pega(imagem.campos, U64(indice_inicio))
-  veja campo.parametros != 0 ::
-    devolve Falha(nova_falha("SV-NATIVE-ARGS", "AOT x64 inicial exige inicio() sem parametros"))
-  fecha
-
-  guarda inicio := campo.entrada
-  solta fim := U64(lista_tamanho(imagem.codigo))
-  para cada outro em imagem.campos ::
-    veja outro.entrada > inicio e outro.entrada < fim ::
-      vira fim := outro.entrada
-    fecha
-  fecha
-
-  veja inicio >= fim ::
-    devolve Falha(nova_falha("SV-NATIVE-CODIGO", "campo inicio sem codigo"))
+  guarda entrada := lista_pega(imagem.campos, U64(indice_inicio))
+  veja entrada.parametros != 0 ::
+    devolve Falha(nova_falha("SV-NATIVE-ARGS", "o campo inicio nativo nao recebe parametros"))
   fecha
 
   solta saida := CodigoX64 {
@@ -48,27 +46,72 @@ campo x64_compila(imagem: ImagemSvbc, alvo: AlvoNativo) -> Resultado<CodigoX64, 
     entrada: 0,
     exit_process_patches: lista<U64>()
   }
-  solta offsets := lista<U64>()
-  solta patches := lista<PatchSaltoX64>()
+  solta offsets_ip := lista<OffsetIpX64>()
+  solta offsets_campo := lista<U64>()
+  solta saltos := lista<PatchSaltoX64>()
+  solta chamadas := lista<PatchChamadaX64>()
 
-  x64_prologo(saida.bytes, campo.locais)
+  solta indice_campo: U64 := 0
+  gira indice_campo < lista_tamanho(imagem.campos) ::
+    guarda campo := lista_pega(imagem.campos, indice_campo)
+    guarda fim := x64_campo_fim(imagem, campo.entrada)
 
-  solta ip := inicio
-  gira ip < fim ::
-    lista_coloca(offsets, saida.bytes.tamanho)
-    guarda instr := lista_pega(imagem.codigo, ip)
-    guarda emitida := x64_emite_instrucao(saida, imagem, alvo, instr, inicio, fim, patches)
-    veja emitida e Falha ::
-      devolve Falha(emitida.valor)
+    veja campo.entrada >= fim ::
+      devolve Falha(nova_falha("SV-NATIVE-CODIGO", "campo sem codigo: " + campo.nome))
     fecha
-    vira ip := ip + 1
+    veja campo.locais < campo.parametros ::
+      devolve Falha(nova_falha("SV-NATIVE-LOCAIS", "campo possui menos locais que parametros: " + campo.nome))
+    fecha
+
+    lista_coloca(offsets_campo, saida.bytes.tamanho)
+    veja Num(indice_campo) == indice_inicio ::
+      vira saida.entrada := saida.bytes.tamanho
+    fecha
+
+    x64_prologo(saida.bytes, campo.locais, campo.parametros)
+
+    solta ip := campo.entrada
+    gira ip < fim ::
+      lista_coloca(offsets_ip, OffsetIpX64 {
+        ip: ip,
+        offset: saida.bytes.tamanho
+      })
+
+      guarda instr := lista_pega(imagem.codigo, ip)
+      guarda emitida := x64_emite_instrucao(
+        saida,
+        imagem,
+        alvo,
+        U32(indice_campo),
+        campo.entrada,
+        fim,
+        instr,
+        saltos,
+        chamadas
+      )
+      veja emitida e Falha ::
+        devolve Falha(emitida.valor)
+      fecha
+      vira ip := ip + 1
+    fecha
+
+    vira indice_campo := indice_campo + 1
   fecha
 
-  para cada patch em patches ::
-    veja U64(patch.destino) < inicio ou U64(patch.destino) >= fim ::
-      devolve Falha(nova_falha("SV-NATIVE-SALTO", "salto sai do campo inicio"))
+  para cada patch em saltos ::
+    guarda alvo_offset := x64_offset_ip(offsets_ip, U64(patch.destino))
+    veja alvo_offset < 0 ::
+      devolve Falha(nova_falha("SV-NATIVE-SALTO", "destino de salto nao materializado"))
     fecha
-    guarda alvo_offset := lista_pega(offsets, U64(patch.destino) - inicio)
+    guarda relativo := alvo_offset - Num(patch.posicao + 4)
+    nativo_define_u32_le(saida.bytes, patch.posicao, relativo)
+  fecha
+
+  para cada patch em chamadas ::
+    veja patch.campo >= lista_tamanho(offsets_campo) ::
+      devolve Falha(nova_falha("SV-NATIVE-CALL", "campo de chamada fora do limite"))
+    fecha
+    guarda alvo_offset := lista_pega(offsets_campo, patch.campo)
     guarda relativo := Num(alvo_offset) - Num(patch.posicao + 4)
     nativo_define_u32_le(saida.bytes, patch.posicao, relativo)
   fecha
@@ -85,7 +128,24 @@ campo x64_campo_inicio(imagem: ImagemSvbc) -> Num ::
   devolve -1
 fecha
 
-campo x64_prologo(codigo: Bytes, locais: U32) -> Nada ::
+campo x64_campo_fim(imagem: ImagemSvbc, inicio: U64) -> U64 ::
+  solta fim := U64(lista_tamanho(imagem.codigo))
+  para cada campo em imagem.campos ::
+    veja campo.entrada > inicio e campo.entrada < fim ::
+      vira fim := campo.entrada
+    fecha
+  fecha
+  devolve fim
+fecha
+
+campo x64_offset_ip(offsets: Lista<OffsetIpX64>, ip: U64) -> Num ::
+  para cada item em offsets ::
+    veja item.ip == ip :: devolve Num(item.offset) fecha
+  fecha
+  devolve -1
+fecha
+
+campo x64_prologo(codigo: Bytes, locais: U32, parametros: U32) -> Nada ::
   bytes_coloca_byte(codigo, 85)
   bytes_coloca_byte(codigo, 72)
   bytes_coloca_byte(codigo, 137)
@@ -97,16 +157,33 @@ campo x64_prologo(codigo: Bytes, locais: U32) -> Nada ::
     bytes_coloca_byte(codigo, 236)
     nativo_u32_le(codigo, U64(locais) * 8)
   fecha
+
+  solta indice: U32 := 0
+  gira indice < parametros ::
+    guarda origem := U64(parametros - indice + 1) * 8
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 139)
+    bytes_coloca_byte(codigo, 133)
+    nativo_u32_le(codigo, origem)
+
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 137)
+    bytes_coloca_byte(codigo, 133)
+    nativo_u32_le(codigo, nativo_i32_bits(x64_local_deslocamento(indice)))
+    vira indice := indice + 1
+  fecha
 fecha
 
 campo x64_emite_instrucao(
   saida: CodigoX64,
   imagem: ImagemSvbc,
   alvo: AlvoNativo,
-  instr: Instrucao,
+  campo_atual: U32,
   inicio: U64,
   fim: U64,
-  patches: Lista<PatchSaltoX64>
+  instr: Instrucao,
+  saltos: Lista<PatchSaltoX64>,
+  chamadas: Lista<PatchChamadaX64>
 ) -> Resultado<Nada, Falha> ::
   veja instr.opcode e Pare ::
     x64_mov_rax_u64(saida.bytes, 0)
@@ -126,11 +203,19 @@ campo x64_emite_instrucao(
   fecha
 
   veja instr.opcode e Carrega ::
+    guarda campo := lista_pega(imagem.campos, campo_atual)
+    veja instr.a >= campo.locais ::
+      devolve Falha(nova_falha("SV-NATIVE-LOCAL", "leitura de local fora do limite"))
+    fecha
     x64_local_carrega(saida.bytes, instr.a)
     devolve Valor(nulo)
   fecha
 
   veja instr.opcode e Guarda ::
+    guarda campo := lista_pega(imagem.campos, campo_atual)
+    veja instr.a >= campo.locais ::
+      devolve Falha(nova_falha("SV-NATIVE-LOCAL", "escrita de local fora do limite"))
+    fecha
     x64_local_guarda(saida.bytes, instr.a)
     devolve Valor(nulo)
   fecha
@@ -153,7 +238,7 @@ campo x64_emite_instrucao(
     bytes_coloca_byte(saida.bytes, 233)
     guarda pos := saida.bytes.tamanho
     nativo_u32_le(saida.bytes, 0)
-    lista_coloca(patches, PatchSaltoX64 { posicao: pos, destino: instr.a })
+    lista_coloca(saltos, PatchSaltoX64 { posicao: pos, destino: instr.a })
     devolve Valor(nulo)
   fecha
 
@@ -169,13 +254,42 @@ campo x64_emite_instrucao(
     bytes_coloca_byte(saida.bytes, 132)
     guarda pos := saida.bytes.tamanho
     nativo_u32_le(saida.bytes, 0)
-    lista_coloca(patches, PatchSaltoX64 { posicao: pos, destino: instr.a })
+    lista_coloca(saltos, PatchSaltoX64 { posicao: pos, destino: instr.a })
+    devolve Valor(nulo)
+  fecha
+
+  veja instr.opcode e Chama ::
+    veja instr.a >= lista_tamanho(imagem.campos) ::
+      devolve Falha(nova_falha("SV-NATIVE-CALL", "campo chamado fora do limite"))
+    fecha
+    guarda chamado := lista_pega(imagem.campos, instr.a)
+    veja instr.b != chamado.parametros ::
+      devolve Falha(nova_falha("SV-NATIVE-ARIDADE", "quantidade de argumentos invalida para " + chamado.nome))
+    fecha
+
+    bytes_coloca_byte(saida.bytes, 232)
+    guarda pos := saida.bytes.tamanho
+    nativo_u32_le(saida.bytes, 0)
+    lista_coloca(chamadas, PatchChamadaX64 { posicao: pos, campo: instr.a })
+
+    veja instr.b > 0 ::
+      bytes_coloca_byte(saida.bytes, 72)
+      bytes_coloca_byte(saida.bytes, 129)
+      bytes_coloca_byte(saida.bytes, 196)
+      nativo_u32_le(saida.bytes, U64(instr.b) * 8)
+    fecha
+    bytes_coloca_byte(saida.bytes, 80)
     devolve Valor(nulo)
   fecha
 
   veja instr.opcode e Volta ::
     bytes_coloca_byte(saida.bytes, 88)
-    x64_emite_saida(saida, alvo)
+    guarda indice_inicio := x64_campo_inicio(imagem)
+    veja Num(campo_atual) == indice_inicio ::
+      x64_emite_saida(saida, alvo)
+    outro ::
+      x64_retorna_campo(saida.bytes)
+    fecha
     devolve Valor(nulo)
   fecha
 
@@ -190,17 +304,14 @@ campo x64_emite_instrucao(
     devolve x64_syscall_pura(saida.bytes, lista_pega(imagem.nomes, instr.a), instr.b)
   fecha
 
-  veja instr.opcode e Chama ::
-    devolve Falha(nova_falha("SV-NATIVE-CALL", "chamadas entre campos ainda exigem a ABI x64 fase 2"))
-  fecha
   veja instr.opcode e Caixa ::
-    devolve Falha(nova_falha("SV-NATIVE-MEM", "alocacao nativa entra na ABI x64 fase 2"))
+    devolve Falha(nova_falha("SV-NATIVE-MEM", "alocacao nativa entra na ABI x64 de memoria"))
   fecha
   veja instr.opcode e MarcaByte ::
-    devolve Falha(nova_falha("SV-NATIVE-MEM", "escrita de memoria nativa entra na ABI x64 fase 2"))
+    devolve Falha(nova_falha("SV-NATIVE-MEM", "escrita de memoria nativa entra na ABI x64 de memoria"))
   fecha
   veja instr.opcode e PegaByte ::
-    devolve Falha(nova_falha("SV-NATIVE-MEM", "leitura de memoria nativa entra na ABI x64 fase 2"))
+    devolve Falha(nova_falha("SV-NATIVE-MEM", "leitura de memoria nativa entra na ABI x64 de memoria"))
   fecha
 
   devolve Falha(nova_falha("SV-NATIVE-OP", "opcode SVBC nao suportado pelo AOT x64"))
@@ -213,7 +324,7 @@ campo x64_constante_u64(valor: ValorVm) -> Resultado<U64, Falha> ::
   fecha
   veja valor e VmU64 :: devolve Valor(valor.valor) fecha
   veja valor e VmNum :: devolve Valor(U64(valor.valor)) fecha
-  devolve Falha(nova_falha("SV-NATIVE-TIPO", "AOT x64 fase 1 aceita constantes inteiras, bit e nulo"))
+  devolve Falha(nova_falha("SV-NATIVE-TIPO", "AOT x64 aceita constantes inteiras, bit e nulo nesta fase"))
 fecha
 
 campo x64_mov_rax_u64(codigo: Bytes, valor: U64) -> Nada ::
@@ -339,6 +450,14 @@ campo x64_syscall_pura(codigo: Bytes, nome: Texto, aridade: U32) -> Resultado<Na
   fecha
 
   devolve Falha(nova_falha("SV-NATIVE-SYSCALL", "syscall ainda nao ligada ao runtime nativo: " + nome))
+fecha
+
+campo x64_retorna_campo(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 236)
+  bytes_coloca_byte(codigo, 93)
+  bytes_coloca_byte(codigo, 195)
 fecha
 
 campo x64_emite_saida(saida: CodigoX64, alvo: AlvoNativo) -> Nada ::
