@@ -46,20 +46,106 @@ selo ValorSeed ::
 fecha
 
 campo svs0_carrega(caminho: Texto) -> Resultado<FitaSvs0, Falha> toca disco ::
-  guarda dados := arquivo_bytes(caminho)
+  guarda fonte := arquivo_texto(caminho)
+
+  veja fonte e Falha ::
+    devolve Falha(fonte.valor)
+  fecha
+
+  guarda dados := svhex_decodifica(fonte.valor)
 
   veja dados e Falha ::
-    devolve dados
+    devolve Falha(dados.valor)
   fecha
 
   devolve svs0_parse(dados.valor)
 fecha
 
+campo svhex_decodifica(fonte: Texto) -> Resultado<Bytes, Falha> ::
+  solta dados := bytes_novo()
+  solta indice: U64 := 0
+  solta alto: Num := -1
+  guarda limite := sys_texto_tamanho(fonte)
+
+  gira indice < limite ::
+    guarda caractere := sys_texto_caractere(fonte, indice)
+
+    veja caractere == "#" ::
+      gira indice < limite e sys_texto_caractere(fonte, indice) != "\n" ::
+        vira indice := indice + 1
+      fecha
+    outro ::
+      guarda valor := svhex_nibble(caractere)
+
+      veja valor >= 0 ::
+        veja alto < 0 ::
+          vira alto := valor
+        outro ::
+          bytes_coloca_byte(dados, Byte(alto * 16 + valor))
+          vira alto := -1
+        fecha
+      outro ::
+        veja svhex_espaco(caractere) == nao ::
+          devolve Falha(nova_falha("SVS0-HEX", "caractere invalido na imagem hexadecimal"))
+        fecha
+      fecha
+    fecha
+
+    vira indice := indice + 1
+  fecha
+
+  veja alto >= 0 ::
+    devolve Falha(nova_falha("SVS0-HEX", "imagem hexadecimal terminou com meio byte"))
+  fecha
+
+  devolve Valor(dados)
+fecha
+
+campo svhex_nibble(caractere: Texto) -> Num ::
+  veja caractere == "0" :: devolve 0 fecha
+  veja caractere == "1" :: devolve 1 fecha
+  veja caractere == "2" :: devolve 2 fecha
+  veja caractere == "3" :: devolve 3 fecha
+  veja caractere == "4" :: devolve 4 fecha
+  veja caractere == "5" :: devolve 5 fecha
+  veja caractere == "6" :: devolve 6 fecha
+  veja caractere == "7" :: devolve 7 fecha
+  veja caractere == "8" :: devolve 8 fecha
+  veja caractere == "9" :: devolve 9 fecha
+  veja caractere == "a" ou caractere == "A" :: devolve 10 fecha
+  veja caractere == "b" ou caractere == "B" :: devolve 11 fecha
+  veja caractere == "c" ou caractere == "C" :: devolve 12 fecha
+  veja caractere == "d" ou caractere == "D" :: devolve 13 fecha
+  veja caractere == "e" ou caractere == "E" :: devolve 14 fecha
+  veja caractere == "f" ou caractere == "F" :: devolve 15 fecha
+  devolve -1
+fecha
+
+campo svhex_espaco(caractere: Texto) -> Bit ::
+  devolve caractere == " " ou caractere == "\n" ou caractere == "\r" ou caractere == "\t"
+fecha
+
 campo svs0_executa(fita: FitaSvs0) -> Resultado<Num, Falha> toca disco, terminal ::
+  devolve svs0_executa_compilacao(
+    fita,
+    "compiler0/seven0.sev",
+    "build/seven0.svbc"
+  )
+fecha
+
+campo svs0_executa_compilacao(
+  fita: FitaSvs0,
+  entrada: Texto,
+  saida: Texto
+) -> Resultado<Num, Falha> toca disco, terminal ::
+  solta pilha := lista<ValorSeed>()
+  lista_coloca(pilha, SeedTexto(saida))
+  lista_coloca(pilha, SeedTexto(entrada))
+
   solta estado := EstadoSeed {
     fita: fita,
     ip: 0,
-    pilha: lista<ValorSeed>(),
+    pilha: pilha,
     rodando: sim,
     codigo_saida: 0
   }
@@ -76,6 +162,10 @@ campo svs0_executa(fita: FitaSvs0) -> Resultado<Num, Falha> toca disco, terminal
 fecha
 
 campo svs0_passo(estado: EstadoSeed) -> Resultado<Nada, Falha> toca disco, terminal ::
+  veja estado.ip >= estado.fita.codigo.tamanho ::
+    devolve Falha(nova_falha("SVS0-FIM", "fita terminou sem PARE ou RETORNA"))
+  fecha
+
   guarda op := bytes_pega(estado.fita.codigo, estado.ip)
   vira estado.ip := estado.ip + 1
 
@@ -108,7 +198,15 @@ campo svs0_passo(estado: EstadoSeed) -> Resultado<Nada, Falha> toca disco, termi
     devolve seed_emite_svbc0(estado)
   fecha
 
+  veja op == 12 ::
+    devolve seed_mostra(estado)
+  fecha
+
   veja op == 13 ::
+    veja estado.ip >= estado.fita.codigo.tamanho ::
+      devolve Falha(nova_falha("SVS0-RETORNO", "RETORNA sem codigo"))
+    fecha
+
     guarda codigo := bytes_pega(estado.fita.codigo, estado.ip)
     vira estado.ip := estado.ip + 1
     vira estado.codigo_saida := codigo
@@ -120,14 +218,41 @@ campo svs0_passo(estado: EstadoSeed) -> Resultado<Nada, Falha> toca disco, termi
 fecha
 
 campo svs0_parse(dados: Bytes) -> Resultado<FitaSvs0, Falha> ::
-  guarda magic := sys_bytes_texto_intervalo(dados, 0, 4)
+  veja dados.tamanho < 10 ::
+    devolve Falha(nova_falha("SVS0-CABECALHO", "imagem seed menor que o cabecalho"))
+  fecha
 
-  veja magic != "SVS0" ::
+  veja bytes_pega(dados, 0) != 83 ou
+    bytes_pega(dados, 1) != 86 ou
+    bytes_pega(dados, 2) != 83 ou
+    bytes_pega(dados, 3) != 48 ::
     devolve Falha(nova_falha("SVS0-MAGIC", "fita seed invalida"))
   fecha
 
+  veja bytes_pega(dados, 4) != 0 ou bytes_pega(dados, 5) != 1 ::
+    devolve Falha(nova_falha("SVS0-VERSAO", "versao da fita seed nao suportada"))
+  fecha
+
+  guarda tamanho_codigo :=
+    U64(bytes_pega(dados, 6)) * 16777216 +
+    U64(bytes_pega(dados, 7)) * 65536 +
+    U64(bytes_pega(dados, 8)) * 256 +
+    U64(bytes_pega(dados, 9))
+
+  veja dados.tamanho != 10 + tamanho_codigo ::
+    devolve Falha(nova_falha("SVS0-TAMANHO", "tamanho declarado da fita nao confere"))
+  fecha
+
+  solta codigo := bytes_novo()
+  solta indice: U64 := 10
+
+  gira indice < dados.tamanho ::
+    bytes_coloca_byte(codigo, bytes_pega(dados, indice))
+    vira indice := indice + 1
+  fecha
+
   devolve Valor(FitaSvs0 {
-    codigo: sys_svs0_codigo(dados)
+    codigo: codigo
   })
 fecha
 
@@ -136,7 +261,7 @@ campo seed_le_arquivo(estado: EstadoSeed) -> Resultado<Nada, Falha> toca disco :
   guarda conteudo := arquivo_texto(caminho)
 
   veja conteudo e Falha ::
-    devolve conteudo
+    devolve Falha(conteudo.valor)
   fecha
 
   lista_coloca(estado.pilha, SeedTexto(conteudo.valor))
@@ -146,7 +271,7 @@ fecha
 campo seed_grava_arquivo(estado: EstadoSeed) -> Resultado<Nada, Falha> toca disco ::
   guarda conteudo := valor_seed_bytes(sys_lista_pop(estado.pilha))
   guarda caminho := valor_seed_texto(sys_lista_pop(estado.pilha))
-  guarda r := arquivo_salva_texto(caminho, bytes_texto(conteudo))
+  guarda r := arquivo_salva_bytes(caminho, conteudo)
 
   veja r e Falha ::
     devolve r
@@ -176,6 +301,12 @@ fecha
 campo seed_emite_svbc0(estado: EstadoSeed) -> Resultado<Nada, Falha> ::
   guarda unidade := valor_seed_unidade(sys_lista_pop(estado.pilha))
   lista_coloca(estado.pilha, SeedBytes(sys_seed_emite_svbc0(unidade)))
+  devolve Valor(nulo)
+fecha
+
+campo seed_mostra(estado: EstadoSeed) -> Resultado<Nada, Falha> toca terminal ::
+  guarda valor := sys_lista_pop(estado.pilha)
+  diga valor_seed_texto(valor)
   devolve Valor(nulo)
 fecha
 
