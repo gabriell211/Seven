@@ -22,7 +22,7 @@ jobs:
           ref: gabriell211/production-readiness
           fetch-depth: 0
 
-      - name: Download previously validated artifact
+      - name: Download final validated artifact
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
