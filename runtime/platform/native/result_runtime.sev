@@ -1,0 +1,49 @@
+modulo seven.runtime.platform.native.result_runtime
+
+usa seven.runtime.platform.native.literal_runtime
+usa seven.runtime.platform.native.object_runtime
+usa seven.runtime.platform.native.target
+usa std.base.lista
+usa std.mem.bytes
+
+campo x64_resultado_valor_r15(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, "__tipo")
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, "Resultado")
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, "tag")
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, "Valor")
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, "valor")
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 87)
+  x64_runtime_obj_novo(codigo, virtual_alloc_patches, alvo, 6)
+fecha
+
+campo x64_resultado_falha_generica(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo,
+  codigo_falha: Texto,
+  mensagem: Texto
+) -> Nada ::
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, "__tipo")
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, "Falha")
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, "codigo")
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, codigo_falha)
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, "mensagem")
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, mensagem)
+  x64_runtime_obj_novo(codigo, virtual_alloc_patches, alvo, 6)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 95)
+
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, "__tipo")
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, "Resultado")
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, "tag")
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, "Falha")
+  x64_literal_texto(codigo, virtual_alloc_patches, alvo, "valor")
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 87)
+  x64_runtime_obj_novo(codigo, virtual_alloc_patches, alvo, 6)
+fecha
