@@ -4,26 +4,31 @@ usa seven.runtime.platform.abi
 
 molde AlvoWeb ::
   nome: Texto
+  formato: Texto
+  extensao_fonte: Texto
   imports: Lista<ContratoIntrinseco>
+  exports: Lista<Texto>
   saida: Texto
 fecha
 
 campo alvo_web() -> AlvoWeb ::
   solta imports := lista<ContratoIntrinseco>()
+  solta exports := lista<Texto>()
 
-  lista_coloca(imports, contrato_intrinseco("frontend_monta", CapFrontend, "Nada"))
-  lista_coloca(imports, contrato_intrinseco("frontend_escuta", CapFrontend, "Nada"))
-  lista_coloca(imports, contrato_intrinseco("frontend_navega", CapFrontend, "Nada"))
-  lista_coloca(imports, contrato_intrinseco("frontend_fetch_texto", CapFrontend, "Resultado<Texto, Falha>"))
-  lista_coloca(imports, contrato_intrinseco("frontend_injeta_css", CapFrontend, "Nada"))
-  lista_coloca(imports, contrato_intrinseco("sys_frontend_empacota", CapFrontend, "Resultado<Bytes, Falha>"))
-  lista_coloca(imports, contrato_intrinseco("sys_http_envia", CapRede, "Resultado<Resposta, Falha>"))
-  lista_coloca(imports, contrato_intrinseco("sys_tempo_agora", CapTempo, "U64"))
-  lista_coloca(imports, contrato_intrinseco("sys_env", CapAmbiente, "Resultado<Texto, Falha>"))
+  lista_coloca(imports, contrato_intrinseco(
+    "seven.terminal_diga",
+    CapTerminal,
+    "(ponteiro: U32, tamanho: U32) -> Nada"
+  ))
+  lista_coloca(exports, "memory")
+  lista_coloca(exports, "seven_start")
 
   devolve AlvoWeb {
-    nome: "web",
+    nome: "webassembly",
+    formato: "wasm-binario-1",
+    extensao_fonte: ".sev",
     imports: imports,
-    saida: "pacote-web"
+    exports: exports,
+    saida: "app.wasm"
   }
 fecha
