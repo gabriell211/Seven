@@ -84,6 +84,30 @@ jobs:
           test "$(wc -c < build/seven0.svbc | tr -d ' ')" = '83696'
           test "$(od -An -tx1 -N4 build/seven0.svbc | tr -d ' \n')" = '53564230'
 
+      - name: Compile and execute a fresh Seven program
+        shell: bash
+        run: |
+          set -euo pipefail
+          host="$PWD/${{ matrix.host }}"
+          cat > build/stage0-proof.sev <<'EOF'
+          modulo stage0.prova
+
+          campo inicio() -> Num ::
+            devolve 42
+          fecha
+          EOF
+
+          "$host" build/seven0.svbc build/stage0-proof.sev build/stage0-proof.svbc
+          echo 'ec1cab055cdc99f2293c2009527563afdcd67165dfa98b8a9adf66b4dc7a88bb  build/stage0-proof.svbc' | sha256sum --check
+          test "$(wc -c < build/stage0-proof.svbc | tr -d ' ')" = '76'
+          test "$(od -An -tx1 -N4 build/stage0-proof.svbc | tr -d ' \n')" = '53564230'
+
+          set +e
+          "$host" build/stage0-proof.svbc
+          proof_exit=$?
+          set -e
+          test "$proof_exit" -eq 42
+
       - name: Record fixed-point provenance
         shell: bash
         run: |
@@ -101,6 +125,9 @@ jobs:
           saida build/seven0.svbc
           saida_sha256 dad562c0bc695b6e2724425f3fa0b7e6af2929160a27472e256a4cdf24915678
           autorebuild build/seven0.self.svbc
+          prova build/stage0-proof.svbc
+          prova_sha256 ec1cab055cdc99f2293c2009527563afdcd67165dfa98b8a9adf66b4dc7a88bb
+          prova_exit 42
           fixed_point sim
           EOF
           cat build/stage0-fixed-point.provenance
@@ -113,5 +140,7 @@ jobs:
             build/seven0.svbc
             build/seven0.self.svbc
             build/seven0.monolith.sev
+            build/stage0-proof.sev
+            build/stage0-proof.svbc
             build/stage0-fixed-point.provenance
           if-no-files-found: error
