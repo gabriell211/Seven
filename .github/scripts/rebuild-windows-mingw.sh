@@ -34,7 +34,13 @@ if old_entry not in source:
     raise SystemExit('Windows CRT entrypoint target not found')
 source = source.replace(old_entry, new_entry, 1)
 
-io_pattern = re.compile(r'#ifdef _WIN32\n(?:(?!#else).)*GetFileAttributesA(?:(?!#else).)*#else', re.S)
+io_pattern = re.compile(
+    r'#ifdef _WIN32\n'
+    r'(?=typedef unsigned long DWORD;)'
+    r'(?:(?!#else).)*GetFileAttributesA'
+    r'(?:(?!#else).)*#else',
+    re.S,
+)
 new_io = '''#ifdef _WIN32
 #include <stdio.h>
 #include <stdlib.h>
