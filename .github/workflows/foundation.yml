@@ -41,33 +41,26 @@ jobs:
           echo 'e4847375d1e800425e23253d36394bc8d2a2d9a97598f8905a30986310f176ed  build/native-seeds/seven-installer-windows.exe' | sha256sum --check
 
       - name: Exercise Windows compiler, WebAssembly and deterministic bytecode
-        shell: cmd
+        shell: bash
         run: |
-          set "SEVEN=%CD%\build\native-seeds\seven-windows.exe"
-          "%SEVEN%" --version
-          if errorlevel 1 exit /b 1
-          "%SEVEN%" check "%CD%\examples\hello.sev"
-          if errorlevel 1 exit /b 1
-          "%SEVEN%" check "%CD%\conformance\invalid\unknown_name.sev"
-          if not errorlevel 1 exit /b 1
-          "%SEVEN%" run "%CD%\examples\hello.sev"
-          if errorlevel 1 exit /b 1
-          "%SEVEN%" web build "%CD%\examples\hello.sev" "%CD%\build\web-windows"
-          if errorlevel 1 exit /b 1
-          if not exist "%CD%\build\web-windows\app.wasm" exit /b 1
-          if not exist "%CD%\build\web-windows\seven.web.json" exit /b 1
-          "%SEVEN%" build "%CD%\compiler\seven.sev" "%CD%\build\seven.svbc"
-          if errorlevel 1 exit /b 1
-          "%SEVEN%" build "%CD%\compiler\seven.sev" "%CD%\build\seven.self.svbc"
-          if errorlevel 1 exit /b 1
-          "%SEVEN%" build "%CD%\runtime\host\seven.sev" "%CD%\build\seven.host.svbc"
-          if errorlevel 1 exit /b 1
-          "%SEVEN%" build "%CD%\runtime\launcher\seven.sev" "%CD%\build\seven.launcher.svbc"
-          if errorlevel 1 exit /b 1
-          fc /b "%CD%\build\seven.svbc" "%CD%\build\seven.self.svbc"
-          if errorlevel 1 exit /b 1
-          "%SEVEN%" doctor
-          if errorlevel 1 exit /b 1
+          set -euo pipefail
+          seven="$PWD/build/native-seeds/seven-windows.exe"
+          "$seven" --version
+          "$seven" check examples/hello.sev
+          if "$seven" check conformance/invalid/unknown_name.sev; then
+            echo 'invalid source was accepted'
+            exit 1
+          fi
+          "$seven" run examples/hello.sev
+          "$seven" web build examples/hello.sev build/web-windows
+          test -s build/web-windows/app.wasm
+          test -s build/web-windows/seven.web.json
+          "$seven" build compiler/seven.sev build/seven.svbc
+          "$seven" build compiler/seven.sev build/seven.self.svbc
+          "$seven" build runtime/host/seven.sev build/seven.host.svbc
+          "$seven" build runtime/launcher/seven.sev build/seven.launcher.svbc
+          cmp build/seven.svbc build/seven.self.svbc
+          "$seven" doctor
 
       - name: Assemble Windows bundle
         shell: cmd
@@ -100,11 +93,11 @@ jobs:
           if not exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Seven.url" exit /b 1
           "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" --version
           if errorlevel 1 exit /b 1
-          "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" check "%CD%\examples\hello.sev"
+          "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" check examples\hello.sev
           if errorlevel 1 exit /b 1
-          "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" web build "%CD%\examples\hello.sev" "%CD%\build\installed-web-windows"
+          "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" web build examples\hello.sev build\installed-web-windows
           if errorlevel 1 exit /b 1
-          if not exist "%CD%\build\installed-web-windows\app.wasm" exit /b 1
+          if not exist "build\installed-web-windows\app.wasm" exit /b 1
           reg query HKCU\Software\Classes\.sev >nul
           if errorlevel 1 exit /b 1
           reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Seven.Language >nul
