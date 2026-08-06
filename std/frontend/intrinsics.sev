@@ -1,0 +1,61 @@
+modulo std.frontend.intrinsics
+
+campo frontend_monta(seletor: Texto, html: Texto) -> Nada toca frontend ::
+  devolve nulo
+fecha
+
+campo frontend_texto(seletor: Texto, texto: Texto) -> Nada toca frontend ::
+  devolve nulo
+fecha
+
+campo frontend_atributo(seletor: Texto, nome: Texto, valor: Texto) -> Nada toca frontend ::
+  devolve nulo
+fecha
+
+campo frontend_classe_adiciona(seletor: Texto, classe: Texto) -> Nada toca frontend ::
+  devolve nulo
+fecha
+
+campo frontend_classe_remove(seletor: Texto, classe: Texto) -> Nada toca frontend ::
+  devolve nulo
+fecha
+
+campo frontend_escuta(seletor: Texto, evento: Texto, handler: Texto) -> Nada toca frontend ::
+  devolve nulo
+fecha
+
+campo frontend_navega(url: Texto) -> Nada toca frontend ::
+  devolve nulo
+fecha
+
+campo frontend_injeta_css(css: Texto) -> Nada toca frontend ::
+  devolve nulo
+fecha
+
+campo frontend_fetch_texto(url: Texto, handler: Texto) -> Nada toca frontend, rede ::
+  devolve nulo
+fecha
+
+campo frontend_resposta_texto() -> Texto toca frontend, rede ::
+  devolve ""
+fecha
+
+campo frontend_resposta_status() -> Num toca frontend, rede ::
+  devolve 0
+fecha
+
+campo frontend_evento_valor() -> Texto toca frontend ::
+  devolve ""
+fecha
+
+campo frontend_armazena(chave: Texto, valor: Texto) -> Nada toca frontend ::
+  devolve nulo
+fecha
+
+campo frontend_carrega(chave: Texto) -> Texto toca frontend ::
+  devolve ""
+fecha
+
+campo frontend_remove(chave: Texto) -> Nada toca frontend ::
+  devolve nulo
+fecha
