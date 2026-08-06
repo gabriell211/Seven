@@ -262,15 +262,15 @@ campo wasm_secao_codigo(plano: PlanoWasm) -> Bytes ::
 
   para cada mensagem em plano.mensagens ::
     bytes_coloca_byte(corpo, 65)
-    wasm_uleb(corpo, mensagem.deslocamento)
+    wasm_sleb_positivo(corpo, mensagem.deslocamento)
     bytes_coloca_byte(corpo, 65)
-    wasm_uleb(corpo, mensagem.tamanho)
+    wasm_sleb_positivo(corpo, mensagem.tamanho)
     bytes_coloca_byte(corpo, 16)
     wasm_uleb(corpo, 0)
   fecha
 
   bytes_coloca_byte(corpo, 65)
-  wasm_uleb(corpo, plano.retorno)
+  wasm_sleb_positivo(corpo, plano.retorno)
   bytes_coloca_byte(corpo, 11)
 
   wasm_uleb(secao, 1)
@@ -284,7 +284,7 @@ campo wasm_secao_dados(plano: PlanoWasm) -> Bytes ::
   wasm_uleb(secao, 1)
   wasm_uleb(secao, 0)
   bytes_coloca_byte(secao, 65)
-  wasm_uleb(secao, WasmDadosInicio)
+  wasm_sleb_positivo(secao, WasmDadosInicio)
   bytes_coloca_byte(secao, 11)
   wasm_uleb(secao, U32(plano.dados.tamanho))
   wasm_anexa(secao, plano.dados)
@@ -306,6 +306,15 @@ fecha
 campo wasm_uleb(destino: Bytes, valor: U32) -> Nada ::
   solta restante := valor
   gira restante >= 128 ::
+    bytes_coloca_byte(destino, Byte((restante % 128) + 128))
+    vira restante := restante / 128
+  fecha
+  bytes_coloca_byte(destino, Byte(restante))
+fecha
+
+campo wasm_sleb_positivo(destino: Bytes, valor: U32) -> Nada ::
+  solta restante := valor
+  gira restante >= 64 ::
     bytes_coloca_byte(destino, Byte((restante % 128) + 128))
     vira restante := restante / 128
   fecha
