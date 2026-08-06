@@ -1,11 +1,15 @@
 modulo seven.compiler.package
 
+usa std.base.lista
+usa std.base.texto
+
 molde Pacote ::
   nome: Texto
   versao: Texto
   criador: Texto
   entrada: Texto
   alvo: Texto
+  indice_fontes: Texto
   fontes: Lista<Texto>
   exemplos: Lista<Texto>
   dependencias: Lista<DependenciaPacote>
@@ -30,16 +34,137 @@ campo pacote_parse(texto_manifesto: Texto) -> Pacote ::
     criador: "",
     entrada: "",
     alvo: "svbc",
+    indice_fontes: "",
     fontes: lista<Texto>(),
     exemplos: lista<Texto>(),
     dependencias: lista<DependenciaPacote>()
   }
 
   para cada linha em linhas(texto_manifesto) ::
-    aplica_linha_manifesto(pacote, linha)
+    vira pacote := aplica_linha_manifesto(pacote, linha)
   fecha
 
   devolve pacote
+fecha
+
+campo aplica_linha_manifesto(pacote: Pacote, linha: Texto) -> Pacote ::
+  guarda limpa := texto_apara_manifesto(linha)
+
+  veja limpa == "" ou texto_comeca(limpa, "#") ::
+    devolve pacote
+  fecha
+
+  guarda partes := palavras_manifesto(limpa)
+  veja lista_tamanho(partes) < 2 ::
+    devolve pacote
+  fecha
+
+  guarda chave := lista_pega(partes, 0)
+  guarda valor := valor_manifesto(partes, 1)
+
+  veja chave == "pacote" :: vira pacote.nome := valor devolve pacote fecha
+  veja chave == "versao" :: vira pacote.versao := valor devolve pacote fecha
+  veja chave == "criador" :: vira pacote.criador := junta_manifesto(partes, 1) devolve pacote fecha
+  veja chave == "entrada" :: vira pacote.entrada := valor devolve pacote fecha
+  veja chave == "alvo" :: vira pacote.alvo := valor devolve pacote fecha
+  veja chave == "indice" :: vira pacote.indice_fontes := valor devolve pacote fecha
+
+  veja chave == "fonte" ::
+    lista_coloca(pacote.fontes, valor)
+    devolve pacote
+  fecha
+
+  veja chave == "exemplo" ou chave == "conformidade" ::
+    lista_coloca(pacote.exemplos, valor)
+    devolve pacote
+  fecha
+
+  veja chave == "dep" e lista_tamanho(partes) >= 4 ::
+    guarda dep := dependencia_pacote(
+      lista_pega(partes, 1),
+      lista_pega(partes, 2),
+      lista_pega(partes, 3)
+    )
+    devolve pacote_adiciona_dependencia(pacote, dep)
+  fecha
+
+  devolve pacote
+fecha
+
+campo palavras_manifesto(texto: Texto) -> Lista<Texto> ::
+  solta saida := lista<Texto>()
+  solta atual := ""
+  solta indice: U64 := 0
+
+  gira indice < sys_texto_tamanho(texto) ::
+    guarda caractere := sys_texto_caractere(texto, indice)
+
+    veja caractere == " " ou caractere == "\t" ::
+      veja atual != "" ::
+        lista_coloca(saida, atual)
+        vira atual := ""
+      fecha
+    outro ::
+      vira atual := atual + caractere
+    fecha
+
+    vira indice := indice + 1
+  fecha
+
+  veja atual != "" ::
+    lista_coloca(saida, atual)
+  fecha
+
+  devolve saida
+fecha
+
+campo texto_apara_manifesto(texto: Texto) -> Texto ::
+  solta inicio: U64 := 0
+  solta fim := sys_texto_tamanho(texto)
+
+  gira inicio < fim e caractere_espaco(sys_texto_caractere(texto, inicio)) ::
+    vira inicio := inicio + 1
+  fecha
+
+  gira fim > inicio e caractere_espaco(sys_texto_caractere(texto, fim - 1)) ::
+    vira fim := fim - 1
+  fecha
+
+  solta saida := ""
+  solta indice := inicio
+  gira indice < fim ::
+    vira saida := saida + sys_texto_caractere(texto, indice)
+    vira indice := indice + 1
+  fecha
+
+  devolve saida
+fecha
+
+campo caractere_espaco(caractere: Texto) -> Bit ::
+  devolve caractere == " " ou caractere == "\t" ou caractere == "\r" ou caractere == "\n"
+fecha
+
+campo valor_manifesto(partes: Lista<Texto>, indice: U64) -> Texto ::
+  veja lista_tamanho(partes) <= indice ::
+    devolve ""
+  fecha
+
+  devolve lista_pega(partes, indice)
+fecha
+
+campo junta_manifesto(partes: Lista<Texto>, inicio: U64) -> Texto ::
+  solta saida := ""
+  solta indice := inicio
+
+  gira indice < lista_tamanho(partes) ::
+    veja saida != "" ::
+      vira saida := saida + " "
+    fecha
+    vira saida := saida + lista_pega(partes, indice)
+    vira indice := indice + 1
+  fecha
+
+  devolve saida
 fecha
 
 campo dependencia_pacote(nome: Texto, versao: Texto, fonte: Texto) -> DependenciaPacote ::

@@ -69,12 +69,12 @@ Build profissional precisa registrar:
 Durante a fase de fundacao:
 
 ```powershell
-.\tools\seven-dev.ps1 pkg add std.http 1.0.0 registry
-.\tools\seven-dev.ps1 pkg list
-.\tools\seven-dev.ps1 pkg lock
-.\tools\seven-dev.ps1 pkg verify
-.\tools\seven-dev.ps1 pkg install
-.\tools\seven-dev.ps1 pkg remove std.http
+seven pkg add std.http 1.0.0 registry
+seven pkg list
+seven pkg lock
+seven pkg verify
+seven pkg install
+seven pkg remove std.http
 ```
 
 `seven.lock` e deterministico:

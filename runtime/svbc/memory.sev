@@ -4,18 +4,14 @@ usa std.base.resultado
 usa std.mem.bytes
 usa seven.runtime.svbc.value
 
+const LimiteBlocoMemoria: U64 := 67108864
+
 campo memoria_cria(blocos: Lista<BlocoMemoria>, tamanho: U64) -> Resultado<ValorVm, Falha> ::
-  veja tamanho > 4294967295 ::
-    devolve Falha(nova_falha("SVBC-MEM-TAMANHO", "bloco de memoria excede o limite da VM"))
+  veja tamanho > LimiteBlocoMemoria ::
+    devolve Falha(nova_falha("SVBC-MEM-TAMANHO", "bloco de memoria excede o limite de 64 MiB da VM"))
   fecha
 
-  solta dados := bytes_novo()
-  solta indice: U64 := 0
-  gira indice < tamanho ::
-    bytes_coloca_byte(dados, 0)
-    vira indice := indice + 1
-  fecha
-
+  guarda dados := bytes_com_tamanho(tamanho)
   guarda id := lista_tamanho(blocos)
   lista_coloca(blocos, BlocoMemoria {
     id: id,

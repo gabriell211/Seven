@@ -1,0 +1,119 @@
+name: Seven Production Readiness
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seven-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  readiness:
+    name: Compiler, conformance and source contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify canonical grammar synchronization
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmp syntax/seven.tmLanguage.json editors/vscode/seven-language/syntaxes/seven.tmLanguage.json
+          grep -q '"fileTypes": \["sev"\]' syntax/seven.tmLanguage.json
+          grep -q '"scopeName": "source.seven"' syntax/seven.tmLanguage.json
+
+      - name: Verify deterministic source index
+        shell: bash
+        run: |
+          set -euo pipefail
+          find compiler compiler0 runtime std bootstrap \
+            -type f -name '*.sev' -print | LC_ALL=C sort > "$RUNNER_TEMP/seven.sources"
+          cmp seven.sources "$RUNNER_TEMP/seven.sources"
+          grep -q '^indice seven.sources$' seven.pkg
+          grep -q 'indice_fontes' compiler/package.sev
+          grep -q 'fonte_carrega_indice' compiler/source.sev
+
+      - name: Reconstruct audited semantic bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo 'a2d09138008ae7223683681443663da8d4c58b39600cbaf3bef11889c2495ad3  build/native-seeds.zip' | sha256sum --check
+          unzip -t build/native-seeds.zip
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          echo '2f073ab8101742006728a491b3093ddb093d202289002d13cc2a6a03dfa55dcb  build/native-seeds/seven-linux' | sha256sum --check
+          echo 'f9ebcbe747f5646f1f224af0929d19d321a67a241be3844116e42ac2a5207296  build/native-seeds/seven-windows.exe' | sha256sum --check
+          chmod +x build/native-seeds/seven-linux
+
+      - name: Exercise compiler and conformance behavior
+        shell: bash
+        run: |
+          set -uo pipefail
+          seven="$PWD/build/native-seeds/seven-linux"
+          failures=0
+
+          "$seven" --version || failures=$((failures + 1))
+          "$seven" check examples/hello.sev || failures=$((failures + 1))
+          "$seven" build examples/hello.sev build/readiness-hello.svbc || failures=$((failures + 1))
+          "$seven" run examples/hello.sev || failures=$((failures + 1))
+          "$seven" doctor || failures=$((failures + 1))
+
+          while IFS= read -r file; do
+            echo "valid: $file"
+            "$seven" check "$file" || failures=$((failures + 1))
+          done < <(find conformance -type f -path '*/valid/*.sev' | sort)
+
+          while IFS= read -r file; do
+            echo "invalid: $file"
+            if "$seven" check "$file"; then
+              echo "ERROR: invalid conformance file was accepted: $file"
+              failures=$((failures + 1))
+            fi
+          done < <(find conformance -type f -path '*/invalid/*.sev' | sort)
+
+          if [ ! -s build/readiness-hello.svbc ]; then
+            echo 'ERROR: compiler did not emit bytecode'
+            failures=$((failures + 1))
+          fi
+
+          echo "readiness failures: $failures"
+          test "$failures" -eq 0
+
+      - name: Check every indexed Seven source
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$PWD/build/native-seeds/seven-linux"
+          while IFS= read -r file; do
+            echo "source: $file"
+            "$seven" check "$file"
+          done < seven.sources
+
+      - name: Reject production placeholders
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -n -E 'comando ainda nao implementado|intrinseco puro ainda nao ligado' compiler runtime std; then
+            echo 'Production placeholders remain in the public compiler/runtime surface.'
+            exit 1
+          fi
+
+      - name: Verify compiler contracts and regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'aplica_linha_manifesto' compiler/package.sev
+          grep -q 'pedido_caso_teste' compiler/toolchain/test_runner.sev
+          ! grep -q 'pedido_de_compilacao(lista<Texto>())' compiler/toolchain/test_runner.sev
+          grep -q 'LimiteBlocoMemoria' runtime/svbc/memory.sev
+          grep -q 'rejeita bloco maior que 64 MiB' tests/runtime/svbc_memory.sev
+          grep -q 'uninstall' compiler/toolchain/installer.sev
+          grep -q '\.sev' compiler/toolchain/installer.sev

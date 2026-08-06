@@ -241,30 +241,30 @@ campo emite_ir(
   fecha
 
   veja instrucao e IrChama ::
-    guarda deslocamento := emite_argumentos(bytes, instrucao.argumentos, ip)
+    guarda deslocamento_chamada := emite_argumentos(bytes, instrucao.argumentos, ip)
     emite_instrucao_svbc(
       bytes,
       Chama,
       indice_campo(unidade.campos, instrucao.campo),
       U32(lista_tamanho(instrucao.argumentos)),
       0,
-      ip + deslocamento
+      ip + deslocamento_chamada
     )
-    emite_instrucao_svbc(bytes, Guarda, instrucao.destino, 0, 0, ip + deslocamento + 1)
+    emite_instrucao_svbc(bytes, Guarda, instrucao.destino, 0, 0, ip + deslocamento_chamada + 1)
     devolve nulo
   fecha
 
   veja instrucao e IrSyscall ::
-    guarda deslocamento := emite_argumentos(bytes, instrucao.argumentos, ip)
+    guarda deslocamento_syscall := emite_argumentos(bytes, instrucao.argumentos, ip)
     emite_instrucao_svbc(
       bytes,
       Syscall,
       indice_nome(unidade.nomes, instrucao.nome),
       U32(lista_tamanho(instrucao.argumentos)),
       0,
-      ip + deslocamento
+      ip + deslocamento_syscall
     )
-    emite_instrucao_svbc(bytes, Guarda, instrucao.destino, 0, 0, ip + deslocamento + 1)
+    emite_instrucao_svbc(bytes, Guarda, instrucao.destino, 0, 0, ip + deslocamento_syscall + 1)
     devolve nulo
   fecha
 
@@ -384,7 +384,8 @@ campo opcode_binario(operador: Texto) -> Opcode ::
   veja operador == "<=" :: devolve MenorIgual fecha
   veja operador == ">" :: devolve Maior fecha
   veja operador == ">=" :: devolve MaiorIgual fecha
-  devolve Pare
+  guarda padrao: Opcode := Pare
+  devolve padrao
 fecha
 
 campo opcode_byte(opcode: Opcode) -> Byte ::

@@ -4,6 +4,7 @@ criador Gabriel Barcelos
 perfil gabriell211
 entrada seven.compiler.inicio
 alvo svbc
+indice seven.sources
 fonte compiler
 fonte compiler0
 fonte runtime

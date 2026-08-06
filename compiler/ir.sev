@@ -139,7 +139,7 @@ fecha
 campo baixa_comando(comando: Comando, contexto: ContextoIr) -> Nada ::
   veja comando e CmdCria ::
     guarda valor := baixa_expressao(comando.valor.valor, contexto)
-    guarda tipo := TipoDesconhecido
+    solta tipo := TipoDesconhecido
     veja comando.valor.tipo.nome != "" ::
       vira tipo := resolve_tipo(comando.valor.tipo, lista<Texto>(), contexto.tipos)
     fecha

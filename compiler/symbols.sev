@@ -169,7 +169,7 @@ campo resolve_usos(tabela: TabelaSimbolos, programa: Programa, pacote: Pacote) -
       ))
     fecha
 
-    guarda apelido := uso.apelido
+    solta apelido := uso.apelido
     veja apelido == "" ::
       vira apelido := ultimo_segmento(uso.caminho)
     fecha

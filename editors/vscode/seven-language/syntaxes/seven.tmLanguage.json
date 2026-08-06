@@ -1,19 +1,30 @@
 {
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Seven",
   "scopeName": "source.seven",
+  "fileTypes": ["sev"],
   "patterns": [
     { "include": "#comments" },
     { "include": "#strings" },
     { "include": "#numbers" },
     { "include": "#keywords" },
-    { "include": "#types" }
+    { "include": "#types" },
+    { "include": "#functions" },
+    { "include": "#operators" }
   ],
   "repository": {
     "comments": {
       "patterns": [
-        {
-          "name": "comment.line.double-slash.seven",
-          "match": "//.*$"
-        }
+        { "name": "comment.line.double-slash.seven", "match": "//.*$" },
+        { "include": "#blockComment" }
+      ]
+    },
+    "blockComment": {
+      "name": "comment.block.seven",
+      "begin": "/\\*",
+      "end": "\\*/",
+      "patterns": [
+        { "include": "#blockComment" }
       ]
     },
     "strings": {
@@ -23,36 +34,42 @@
           "begin": "\"",
           "end": "\"",
           "patterns": [
-            {
-              "name": "constant.character.escape.seven",
-              "match": "\\\\."
-            }
+            { "name": "constant.character.escape.seven", "match": "\\\\(?:[\\\\\"nrt0]|u\\{[0-9A-Fa-f]+\\})" }
           ]
         }
       ]
     },
     "numbers": {
       "patterns": [
-        {
-          "name": "constant.numeric.seven",
-          "match": "\\b[0-9]+\\b"
-        }
+        { "name": "constant.numeric.hex.seven", "match": "\\b0x[0-9A-Fa-f](?:_?[0-9A-Fa-f])*\\b" },
+        { "name": "constant.numeric.binary.seven", "match": "\\b0b[01](?:_?[01])*\\b" },
+        { "name": "constant.numeric.float.seven", "match": "\\b[0-9](?:_?[0-9])*\\.[0-9](?:_?[0-9])*(?:[eE][+-]?[0-9](?:_?[0-9])*)?\\b" },
+        { "name": "constant.numeric.integer.seven", "match": "\\b[0-9](?:_?[0-9])*\\b" }
       ]
     },
     "keywords": {
       "patterns": [
-        {
-          "name": "keyword.control.seven",
-          "match": "\\b(modulo|usa|como|campo|molde|selo|const|guarda|solta|vira|veja|outro|gira|para|cada|em|devolve|diga|fecha|toca|zona|falha|extern|liga|c|cpp)\\b"
-        }
+        { "name": "keyword.control.seven", "match": "\\b(?:veja|outro|gira|para|cada|em|devolve|falha|pega|zona|fecha)\\b" },
+        { "name": "keyword.declaration.seven", "match": "\\b(?:modulo|usa|como|campo|molde|selo|const|guarda|solta|vira|extern|liga|marca|caixa)\\b" },
+        { "name": "keyword.other.effects.seven", "match": "\\b(?:toca|requer)\\b" },
+        { "name": "constant.language.seven", "match": "\\b(?:sim|nao|nulo)\\b" },
+        { "name": "support.function.builtin.seven", "match": "\\b(?:diga)\\b" }
       ]
     },
     "types": {
       "patterns": [
-        {
-          "name": "storage.type.seven",
-          "match": "\\b(Num|Nada|Bit|Byte|Texto|I8|I16|I32|I64|U8|U16|U32|U64|Real32|Real64|Ptr|Vista|VistaMut|Posse|Resultado|Talvez|CChar|CVoid)\\b"
-        }
+        { "name": "storage.type.seven", "match": "\\b(?:Bit|Byte|Num|I8|I16|I32|I64|U8|U16|U32|U64|Real32|Real64|Texto|Nada|Ptr|Vista|VistaMut|Posse|Resultado|Talvez|CChar|CVoid)\\b" },
+        { "name": "entity.name.type.seven", "match": "\\b[A-Z][A-Za-z0-9_]*\\b" }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        { "name": "entity.name.function.seven", "match": "(?<=\\bcampo\\s)[A-Za-z_][A-Za-z0-9_]*" }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        { "name": "keyword.operator.seven", "match": "(?::=|->|::|==|!=|<=|>=|[+\\-*/%<>=@])|\\b(?:e|ou)\\b" }
       ]
     }
   }
