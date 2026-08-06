@@ -22,9 +22,9 @@ jobs:
           set -euo pipefail
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo 'b0017401ec6b14eca6efc33008f48fd516cb309075623d7882f5b9fb69fad812  build/native-seeds.zip' | sha256sum --check
+          echo '59ee731203136a87c72ea58ea02a55221f09f7dcdae4c1b143758cdd2df605b1  build/native-seeds.zip' | sha256sum --check
           unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '1f1c99a8444b2e2bdc1d98be7207dc3623954298f2f759971f7da5c45cfccbcb  build/native-seeds/seven-windows.exe' | sha256sum --check
+          echo '0f1f1c994eb2dcf8a8412b8cf33751371f0832937f2556ba3c7405f49fa984aa  build/native-seeds/seven-windows.exe' | sha256sum --check
 
       - name: Exercise path and command handling
         shell: cmd
@@ -55,4 +55,7 @@ jobs:
           popd
 
           echo summary relative=!REL! absolute=!ABS! adjacent=!ADJ!
+          if not "!REL!"=="0" exit /b !REL!
+          if not "!ABS!"=="0" exit /b !ABS!
+          if not "!ADJ!"=="0" exit /b !ADJ!
           exit /b 0
