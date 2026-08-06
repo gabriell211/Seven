@@ -1,6 +1,17 @@
 from pathlib import Path
 
 
+def patch_checker() -> None:
+    path = Path("compiler0/check.sev")
+    text = path.read_text(encoding="utf-8")
+    old = 'veja comando.especie == "retorno" :: devolve sim fecha'
+    new = 'veja comando.especie == "retorno" ou comando.especie == "falha" :: devolve sim fecha'
+    if new not in text:
+        if old not in text:
+            raise RuntimeError("return-flow checker block not found")
+        path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
 def patch_parser() -> None:
     path = Path("compiler0/parse.sev")
     text = path.read_text(encoding="utf-8")
@@ -127,5 +138,6 @@ fecha
     path.write_text(text.replace(marker, "\n" + helper + marker, 1), encoding="utf-8")
 
 
+patch_checker()
 patch_parser()
 patch_emitter()
