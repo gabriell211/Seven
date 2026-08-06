@@ -34,7 +34,12 @@ new_open = '''static int has_block_marker(Tokens*t,int i){
  for(int j=i+1;j<t->n&&t->v[j].line==line;j++)if(t->v[j].kind==TK_SYMBOL&&streq(t->v[j].text,"::"))return 1;
  return 0;
 }
-static int is_open_at(Tokens*t,int i){return is_field_decl(t,i)||(t->v[i].kind==TK_IDENT&&is_open_kw(t->v[i].text)&&has_block_marker(t,i));}'''
+static int is_keyword_block(Tokens*t,int i){
+ if(!(t->v[i].kind==TK_IDENT&&is_open_kw(t->v[i].text)&&has_block_marker(t,i)))return 0;
+ if(streq(t->v[i].text,"para"))return i+1<t->n&&t->v[i+1].kind==TK_IDENT&&streq(t->v[i+1].text,"cada");
+ return 1;
+}
+static int is_open_at(Tokens*t,int i){return is_field_decl(t,i)||is_keyword_block(t,i);}'''
 if old_open not in source:
     raise SystemExit('contextual block opener target not found')
 source = source.replace(old_open, new_open, 1)
