@@ -18,6 +18,7 @@ build_marker = '\ngcc -std=c11 -O2 -s -Wall -Wextra -Wno-unused-parameter "$work
 entry_patch = r"""
 CHECKER_SOURCE="$work/seven-bootstrap.c" python - <<'PYENTRY'
 import os
+import re
 from pathlib import Path
 
 path = Path(os.environ["CHECKER_SOURCE"])
@@ -33,17 +34,7 @@ if old_entry not in source:
     raise SystemExit('Windows CRT entrypoint target not found')
 source = source.replace(old_entry, new_entry, 1)
 
-old_io = '''#ifdef _WIN32
-typedef unsigned long DWORD;
-extern char *GetCommandLineA(void);
-extern void ExitProcess(unsigned long);
-extern DWORD GetFileAttributesA(const char*);
-extern int CreateDirectoryA(const char*,void*);
-static int exists(const char*p){return GetFileAttributesA(p)!=0xffffffffu;}
-static int make_dir(const char*p){if(exists(p))return 1;return CreateDirectoryA(p,NULL)!=0;}
-#define strtoll _strtoi64
-#define snprintf _snprintf
-#else'''
+io_pattern = re.compile(r'#ifdef _WIN32\n(?:(?!#else).)*GetFileAttributesA(?:(?!#else).)*#else', re.S)
 new_io = '''#ifdef _WIN32
 #include <io.h>
 #include <direct.h>
@@ -52,9 +43,9 @@ static int make_dir(const char*p){if(exists(p))return 1;return _mkdir(p)==0;}
 #define strtoll _strtoi64
 #define snprintf _snprintf
 #else'''
-if old_io not in source:
-    raise SystemExit('Windows native IO target not found')
-source = source.replace(old_io, new_io, 1)
+source, count = io_pattern.subn(new_io, source, count=1)
+if count != 1:
+    raise SystemExit(f'Windows native IO block count was {count}')
 path.write_text(source)
 PYENTRY
 """
