@@ -53,6 +53,13 @@ jobs:
         run: |
           set -euo pipefail
           cat > build/stage1.sources <<'EOF'
+          std/base/lista.sev
+          std/base/resultado.sev
+          std/base/talvez.sev
+          std/base/mapa.sev
+          std/base/texto.sev
+          std/mem/bytes.sev
+          std/fs/file.sev
           compiler/ast.sev
           compiler/bytecode.sev
           compiler/diagnostic.sev
