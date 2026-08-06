@@ -44,6 +44,25 @@ static int is_open_at(Tokens*t,int i){return is_field_decl(t,i)||is_anonymous_fi
 if old_open not in source:
     raise SystemExit('contextual block opener target not found')
 source = source.replace(old_open, new_open, 1)
+
+old_extract = 'for(int i=0;i<t.n-1;i++)if(is_field_decl(&t,i)){'
+new_extract = 'for(int i=0;i<t.n-1;i++)if(is_field_decl(&t,i)||is_anonymous_field(&t,i)){'
+if old_extract not in source:
+    raise SystemExit('field extraction target not found')
+source = source.replace(old_extract, new_extract, 1)
+
+old_skip = 'if(nf<MAX_SYMBOLS)funcs[nf++]=f;i=end;}'
+new_skip = 'if(nf<MAX_SYMBOLS)funcs[nf++]=f;}'
+if old_skip not in source:
+    raise SystemExit('nested field extraction skip target not found')
+source = source.replace(old_skip, new_skip, 1)
+
+old_body = 'for(int i=f->body;i<f->end;i++){Token*x=&t.v[i];if('
+new_body = 'for(int i=f->body;i<f->end;i++){Token*x=&t.v[i];if(is_anonymous_field(&t,i)){int nested_end=find_close(&t,i);if(nested_end>i){i=nested_end;continue;}}if('
+if old_body not in source:
+    raise SystemExit('nested field body target not found')
+source = source.replace(old_body, new_body, 1)
+
 path.write_text(source)
 PY
 """
