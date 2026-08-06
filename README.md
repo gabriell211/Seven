@@ -11,6 +11,18 @@ padrao e a toolchain oficial sao escritos em Seven.
 - Bytecode: `SVBC`
 - Alvos: Windows x64, Linux x64, SVBC e web
 
+## Download
+
+- [Seven 0.1.0 para Windows x64](https://github.com/gabriell211/Seven/releases/download/v0.1.0/seven-0.1.0-windows-x64.zip)
+- [SHA-256 do pacote Windows](https://github.com/gabriell211/Seven/releases/download/v0.1.0/seven-0.1.0-windows-x64.zip.sha256)
+- [Seven 0.1.0 para Linux x64](https://github.com/gabriell211/Seven/releases/download/v0.1.0/seven-0.1.0-linux-x64.tar.gz)
+- [SHA-256 do pacote Linux](https://github.com/gabriell211/Seven/releases/download/v0.1.0/seven-0.1.0-linux-x64.tar.gz.sha256)
+- [Notas da release Seven 0.1.0](https://github.com/gabriell211/Seven/releases/tag/v0.1.0)
+
+Os pacotes sao gerados pelos runners oficiais, testados em Windows e Linux e
+publicados somente depois da verificacao dos checksums, compilacao, execucao,
+instalacao e desinstalacao.
+
 ## Principios
 
 - **Controle:** memoria, bytes, layout, ABI e binarios previsiveis.
