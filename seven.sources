@@ -68,6 +68,7 @@ runtime/launcher/seven.sev
 runtime/platform/abi.sev
 runtime/platform/capability.sev
 runtime/platform/intrinsic.sev
+runtime/platform/intrinsic_bootstrap.sev
 runtime/platform/intrinsic_installer.sev
 runtime/platform/native/linker.sev
 runtime/platform/native/target.sev
