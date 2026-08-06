@@ -24,22 +24,30 @@ campo tokenizar(fonte: Fonte) -> Fluxo ::
     diagnosticos: lista_diagnostico()
   }
 
-  gira s.pos < tamanho(s.fonte.texto) ::
-    guarda c := texto_byte(s.fonte.texto, s.pos)
+  gira nao scanner_fim(s) ::
+    guarda c := scanner_atual(s)
 
     veja branco(c) ::
-      scanner_avanca(s)
+      scanner_branco(s)
     outro ::
-      veja letra(c) ::
-        scanner_nome(s)
+      veja c == "/" e scanner_olha(s, 1) == "/" ::
+        scanner_comentario_linha(s)
       outro ::
-        veja digito(c) ::
-          scanner_numero(s)
+        veja c == "/" e scanner_olha(s, 1) == "*" ::
+          scanner_comentario_bloco(s)
         outro ::
-          veja c == 34 ::
-            scanner_texto(s)
+          veja letra(c) ou c == "_" ::
+            scanner_nome(s)
           outro ::
-            scanner_sinal(s)
+            veja digito(c) ::
+              scanner_numero(s)
+            outro ::
+              veja c == "\"" ::
+                scanner_texto(s)
+              outro ::
+                scanner_sinal(s)
+              fecha
+            fecha
           fecha
         fecha
       fecha
@@ -52,4 +60,202 @@ campo tokenizar(fonte: Fonte) -> Fluxo ::
     fonte: fonte.caminho,
     tokens: s.tokens
   }
+fecha
+
+campo scanner_fim(s: Scanner) -> Bit ::
+  devolve s.pos >= texto_tamanho(s.fonte.texto)
+fecha
+
+campo scanner_olha(s: Scanner, deslocamento: U64) -> Texto ::
+  guarda indice := s.pos + deslocamento
+  veja indice >= texto_tamanho(s.fonte.texto) :: devolve "\0" fecha
+  devolve texto_caractere(s.fonte.texto, indice)
+fecha
+
+campo scanner_atual(s: Scanner) -> Texto ::
+  devolve scanner_olha(s, 0)
+fecha
+
+campo scanner_avanca(s: Scanner) -> Texto ::
+  veja scanner_fim(s) :: devolve "\0" fecha
+
+  guarda c := scanner_atual(s)
+  vira s.pos := s.pos + 1
+
+  veja c == "\n" ::
+    vira s.linha := s.linha + 1
+    vira s.coluna := 1
+  outro ::
+    vira s.coluna := s.coluna + 1
+  fecha
+
+  devolve c
+fecha
+
+campo scanner_publica(s: Scanner, tipo: Texto, marca: Texto, linha: U32, coluna: U32) -> Nada ::
+  lista_token_coloca(s.tokens, token(tipo, marca, linha, coluna))
+fecha
+
+campo scanner_reporta(s: Scanner, codigo: Texto, mensagem: Texto, linha: U32, coluna: U32) -> Nada ::
+  lista_diagnostico_coloca(s.diagnosticos, diag(codigo, mensagem, s.fonte.caminho, linha, coluna))
+fecha
+
+campo scanner_branco(s: Scanner) -> Nada ::
+  gira branco(scanner_atual(s)) :: scanner_avanca(s) fecha
+fecha
+
+campo scanner_comentario_linha(s: Scanner) -> Nada ::
+  scanner_avanca(s)
+  scanner_avanca(s)
+  gira nao scanner_fim(s) e scanner_atual(s) != "\n" :: scanner_avanca(s) fecha
+fecha
+
+campo scanner_comentario_bloco(s: Scanner) -> Nada ::
+  guarda linha := s.linha
+  guarda coluna := s.coluna
+  solta profundidade: U32 := 1
+  scanner_avanca(s)
+  scanner_avanca(s)
+
+  gira nao scanner_fim(s) e profundidade > 0 ::
+    veja scanner_atual(s) == "/" e scanner_olha(s, 1) == "*" ::
+      vira profundidade := profundidade + 1
+      scanner_avanca(s)
+      scanner_avanca(s)
+    outro ::
+      veja scanner_atual(s) == "*" e scanner_olha(s, 1) == "/" ::
+        vira profundidade := profundidade - 1
+        scanner_avanca(s)
+        scanner_avanca(s)
+      outro ::
+        scanner_avanca(s)
+      fecha
+    fecha
+  fecha
+
+  veja profundidade > 0 ::
+    scanner_reporta(s, "S0-LEX-COMENTARIO", "comentario de bloco nao foi fechado", linha, coluna)
+  fecha
+fecha
+
+campo scanner_nome(s: Scanner) -> Nada ::
+  guarda inicio := s.pos
+  guarda linha := s.linha
+  guarda coluna := s.coluna
+
+  gira letra(scanner_atual(s)) ou digito(scanner_atual(s)) ou scanner_atual(s) == "_" ::
+    scanner_avanca(s)
+  fecha
+
+  guarda marca := texto_fatia(s.fonte.texto, inicio, s.pos)
+  solta tipo := "nome"
+  veja palavra_reservada(marca) :: vira tipo := "palavra" fecha
+  scanner_publica(s, tipo, marca, linha, coluna)
+fecha
+
+campo scanner_numero(s: Scanner) -> Nada ::
+  guarda inicio := s.pos
+  guarda linha := s.linha
+  guarda coluna := s.coluna
+
+  veja scanner_atual(s) == "0" e (scanner_olha(s, 1) == "x" ou scanner_olha(s, 1) == "X") ::
+    scanner_avanca(s)
+    scanner_avanca(s)
+    gira hexadecimal(scanner_atual(s)) ou scanner_atual(s) == "_" :: scanner_avanca(s) fecha
+    scanner_publica(s, "numero", texto_fatia(s.fonte.texto, inicio, s.pos), linha, coluna)
+    devolve nulo
+  fecha
+
+  gira digito(scanner_atual(s)) ou scanner_atual(s) == "_" :: scanner_avanca(s) fecha
+
+  veja scanner_atual(s) == "." e digito(scanner_olha(s, 1)) ::
+    scanner_avanca(s)
+    gira digito(scanner_atual(s)) ou scanner_atual(s) == "_" :: scanner_avanca(s) fecha
+  fecha
+
+  scanner_publica(s, "numero", texto_fatia(s.fonte.texto, inicio, s.pos), linha, coluna)
+fecha
+
+campo scanner_texto(s: Scanner) -> Nada ::
+  guarda inicio := s.pos
+  guarda linha := s.linha
+  guarda coluna := s.coluna
+  solta fechado := nao
+  scanner_avanca(s)
+  guarda conteudo_inicio := s.pos
+
+  gira nao scanner_fim(s) e nao fechado ::
+    veja scanner_atual(s) == "\"" ::
+      guarda conteudo := texto_fatia(s.fonte.texto, conteudo_inicio, s.pos)
+      scanner_avanca(s)
+      scanner_publica(s, "texto", conteudo, linha, coluna)
+      vira fechado := sim
+    outro ::
+      veja scanner_atual(s) == "\\" ::
+        scanner_avanca(s)
+        veja nao scanner_fim(s) :: scanner_avanca(s) fecha
+      outro ::
+        veja scanner_atual(s) == "\n" ::
+          scanner_reporta(s, "S0-LEX-TEXTO", "literal de texto nao foi fechado", linha, coluna)
+          vira fechado := sim
+        outro ::
+          scanner_avanca(s)
+        fecha
+      fecha
+    fecha
+  fecha
+
+  veja nao fechado ::
+    scanner_reporta(s, "S0-LEX-TEXTO", "literal de texto nao foi fechado", linha, coluna)
+    scanner_publica(s, "invalido", texto_fatia(s.fonte.texto, inicio, s.pos), linha, coluna)
+  fecha
+fecha
+
+campo scanner_sinal(s: Scanner) -> Nada ::
+  guarda linha := s.linha
+  guarda coluna := s.coluna
+  guarda primeiro := scanner_avanca(s)
+  guarda duplo := primeiro + scanner_atual(s)
+
+  veja sinal_duplo(duplo) ::
+    scanner_avanca(s)
+    scanner_publica(s, "sinal", duplo, linha, coluna)
+    devolve nulo
+  fecha
+
+  veja sinal_simples(primeiro) ::
+    scanner_publica(s, "sinal", primeiro, linha, coluna)
+    devolve nulo
+  fecha
+
+  scanner_reporta(s, "S0-LEX-CARACTERE", "caractere nao pertence a linguagem Seven", linha, coluna)
+  scanner_publica(s, "invalido", primeiro, linha, coluna)
+fecha
+
+campo branco(c: Texto) -> Bit ::
+  devolve c == " " ou c == "\t" ou c == "\n" ou c == "\r"
+fecha
+
+campo letra(c: Texto) -> Bit ::
+  devolve (c >= "a" e c <= "z") ou (c >= "A" e c <= "Z")
+fecha
+
+campo digito(c: Texto) -> Bit ::
+  devolve c >= "0" e c <= "9"
+fecha
+
+campo hexadecimal(c: Texto) -> Bit ::
+  devolve digito(c) ou (c >= "a" e c <= "f") ou (c >= "A" e c <= "F")
+fecha
+
+campo sinal_duplo(valor: Texto) -> Bit ::
+  devolve valor == ":=" ou valor == "::" ou valor == "->" ou valor == "==" ou valor == "!=" ou valor == "<=" ou valor == ">="
+fecha
+
+campo sinal_simples(valor: Texto) -> Bit ::
+  devolve valor == "+" ou valor == "-" ou valor == "*" ou valor == "/" ou valor == "%" ou valor == "<" ou valor == ">" ou valor == "=" ou valor == "@" ou valor == "." ou valor == "," ou valor == ":" ou valor == "(" ou valor == ")" ou valor == "[" ou valor == "]" ou valor == "{" ou valor == "}"
+fecha
+
+campo palavra_reservada(valor: Texto) -> Bit ::
+  devolve valor == "modulo" ou valor == "usa" ou valor == "como" ou valor == "campo" ou valor == "extern" ou valor == "molde" ou valor == "selo" ou valor == "const" ou valor == "guarda" ou valor == "solta" ou valor == "vira" ou valor == "diga" ou valor == "veja" ou valor == "outro" ou valor == "gira" ou valor == "para" ou valor == "cada" ou valor == "em" ou valor == "devolve" ou valor == "caixa" ou valor == "marca" ou valor == "pega" ou valor == "falha" ou valor == "fecha" ou valor == "toca" ou valor == "requer" ou valor == "liga" ou valor == "sim" ou valor == "nao" ou valor == "nulo" ou valor == "e" ou valor == "ou"
 fecha
