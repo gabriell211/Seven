@@ -113,7 +113,7 @@ fecha
 campo parse_usos(p: Parser) -> ListaTexto ::
   solta usos := lista_texto()
   gira parse_aceita(p, "usa") ::
-    guarda caminho := parse_caminho(p)
+    solta caminho := parse_caminho(p)
     veja parse_aceita(p, "como") ::
       vira caminho := caminho + " como " + parse_nome(p, "do apelido").marca
     fecha
