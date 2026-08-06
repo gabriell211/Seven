@@ -49,10 +49,31 @@ jobs:
           "$seven" check bootstrap/stage0.sev
           "$seven" run bootstrap/stage0.sev
 
+      - name: Inspect generated Stage 0 files
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          ls -la build || true
+          if test -f build/seven0.svbc; then
+            echo 'seven0 size:'
+            wc -c build/seven0.svbc
+            echo 'seven0 first 32 bytes:'
+            od -An -tx1 -N32 build/seven0.svbc
+            echo 'seven0 sha256:'
+            sha256sum build/seven0.svbc
+          fi
+          if test -f build/stage0.provenance; then
+            echo 'stage0 provenance:'
+            cat build/stage0.provenance
+          else
+            echo 'stage0 provenance ausente'
+          fi
+
       - name: Verify SVBC0 and provenance
         shell: bash
         run: |
-          set -euo pipefail
+          set -euxo pipefail
           test -s build/seven0.svbc
           test "$(od -An -tx1 -N4 build/seven0.svbc | tr -d ' \n')" = '53564230'
           test -s build/stage0.provenance
@@ -63,9 +84,10 @@ jobs:
           grep -Fx 'saida build/seven0.svbc' build/stage0.provenance
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: seven-stage0-${{ matrix.os }}
           path: |
             build/seven0.svbc
             build/stage0.provenance
-          if-no-files-found: error
+          if-no-files-found: warn
