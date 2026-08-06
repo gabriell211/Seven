@@ -30,9 +30,12 @@ campo fonte_de_texto(caminho: Texto, conteudo: Texto) -> Fonte ::
   }
 fecha
 
+campo fonte_carrega_obrigatoria(caminho: Texto) -> Fonte toca disco ::
+  devolve fonte_de_texto(caminho, arquivo_ler(caminho))
+fecha
+
 campo fonte_carrega(caminho: Texto) -> Resultado<Fonte, Diagnostico> toca disco ::
-  guarda conteudo := arquivo_ler(caminho)
-  devolve Valor(fonte_de_texto(caminho, conteudo))
+  devolve Valor(fonte_carrega_obrigatoria(caminho))
 fecha
 
 campo fonte_carrega_pacote(pacote: Pacote) -> UnidadeFonte toca disco ::
@@ -44,10 +47,7 @@ campo fonte_carrega_pacote(pacote: Pacote) -> UnidadeFonte toca disco ::
 
   para cada caminho em pacote.fontes ::
     veja texto_contem(caminho, ".sev") ::
-      guarda fonte := fonte_carrega(caminho)
-      veja fonte e Valor ::
-        lista_coloca(arquivos, fonte.valor)
-      fecha
+      lista_coloca(arquivos, fonte_carrega_obrigatoria(caminho))
     fecha
   fecha
 
@@ -64,10 +64,7 @@ campo fonte_carrega_indice(caminho_indice: Texto) -> UnidadeFonte toca disco ::
     guarda caminho := texto_apara_manifesto(linha)
 
     veja caminho != "" e nao texto_comeca(caminho, "#") ::
-      guarda fonte := fonte_carrega(caminho)
-      veja fonte e Valor ::
-        lista_coloca(arquivos, fonte.valor)
-      fecha
+      lista_coloca(arquivos, fonte_carrega_obrigatoria(caminho))
     fecha
   fecha
 
