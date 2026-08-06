@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   apply:
-    if: ${{ hashFiles('.github/fixed-point/READY') != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,6 +20,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test -f .github/fixed-point/READY
           cat .github/fixed-point/gz*.txt | base64 --decode > /tmp/fixed-point.patch.gz
           echo 'a58a19608513dbdb94f8219008f7e652f8c6482949de79bac5e2593c8420e538  /tmp/fixed-point.patch.gz' | sha256sum --check
           gzip --decompress --stdout /tmp/fixed-point.patch.gz > /tmp/fixed-point.patch
