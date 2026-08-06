@@ -6,6 +6,7 @@ usa seven.runtime.svbc.image
 usa seven.runtime.svbc.opcode
 usa seven.runtime.svbc.value
 usa std.base.lista
+usa std.base.resultado
 
 campo imagem_prova_nativa() -> ImagemSvbc ::
   solta constantes := lista<ValorVm>()
