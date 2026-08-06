@@ -1,0 +1,15 @@
+modulo bootstrap.probes.collections
+
+campo inicio() -> Num toca terminal ::
+  solta valores := lista<Num>()
+  lista_coloca(valores, 2)
+  lista_coloca(valores, 3)
+  solta soma: Num := 0
+
+  para cada valor em valores ::
+    vira soma := soma + valor
+  fecha
+
+  diga "collections=" + texto(soma)
+  devolve soma
+fecha
