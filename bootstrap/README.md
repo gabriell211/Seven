@@ -1,31 +1,44 @@
 # Bootstrap Seven
 
-Este diretorio descreve a execucao planejada do nascimento.
+Este diretorio implementa a cadeia de nascimento e reconstrução da Seven.
 
-## Stage 0
+## Stage 0 — Genesis para Seven-0
 
-Materializa `seed/genesis.svhex` como seed de alvo e compila `compiler0/seven0.sev`.
-
-```text
-seed -> compiler0/seven0.sev -> build/seven0.svbc
-```
-
-## Stage 1
-
-Usa `seven0.svbc` para compilar o compilador completo.
+`bootstrap/stage0.sev` executa `seed/genesis.svhex`, compila `compiler0/seven0.sev`, valida o magic `SVB0` e grava `build/stage0.provenance`.
 
 ```text
-seven0 -> compiler/seven.sev -> build/seven.svbc
+seed/genesis.svhex
+  -> runtime/seed/svs0.sev
+  -> compiler0/seven0.sev
+  -> build/seven0.svbc
+  -> build/stage0.provenance
 ```
 
-## Stage 2
+A proveniencia registra executor, entrada, saida e SHA-256 dos tres artefatos.
 
-Usa `seven.svbc` para compilar a si mesmo.
+## Stage 1 — Seven-0 para Seven
+
+Usara `build/seven0.svbc` como executor real para gerar o compilador completo:
 
 ```text
-seven -> compiler/seven.sev -> build/seven.self.svbc
+build/seven0.svbc -> compiler/seven.sev -> build/seven.svbc
 ```
 
-## Criterio
+Esta etapa ainda nao e considerada concluida enquanto o runtime SVBC0 nao executar o compilador Seven-0 produzido pelo Stage 0.
 
-`build/seven.svbc` e `build/seven.self.svbc` devem ser equivalentes.
+## Stage 2 — Seven para Seven-Self
+
+Usara `build/seven.svbc` para reconstruir integralmente o mesmo compilador:
+
+```text
+build/seven.svbc -> compiler/seven.sev -> build/seven.self.svbc
+```
+
+## Criterio final
+
+A cadeia so e self-hosted quando:
+
+- cada etapa foi executada pelo artefato da etapa anterior;
+- cada etapa possui manifesto de proveniencia valido;
+- `build/seven.svbc` e `build/seven.self.svbc` sao deterministicamente equivalentes;
+- nenhum host de transicao compilou diretamente os artefatos finais.
