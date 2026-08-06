@@ -59,14 +59,15 @@ campo stage0_verifica_svbc0(caminho: Texto) -> Resultado<Nada, Falha> toca disco
     devolve Falha(nova_falha("SV-BOOT-STAGE0-TAMANHO", "SVBC0 menor que o cabecalho"))
   fecha
 
-  veja bytes_pega(dados.valor, 0) != 83 ou
-    bytes_pega(dados.valor, 1) != 86 ou
-    bytes_pega(dados.valor, 2) != 66 ou
-    bytes_pega(dados.valor, 3) != 48 ::
+  veja stage0_magic_svbc0(dados.valor) == nao ::
     devolve Falha(nova_falha("SV-BOOT-STAGE0-MAGIC", "saida nao possui magic SVB0"))
   fecha
 
   devolve Valor(nulo)
+fecha
+
+campo stage0_magic_svbc0(dados: Bytes) -> Bit ::
+  devolve bytes_pega(dados, 0) == 83 e bytes_pega(dados, 1) == 86 e bytes_pega(dados, 2) == 66 e bytes_pega(dados, 3) == 48
 fecha
 
 campo inicio() -> Num toca disco, terminal, ambiente ::
