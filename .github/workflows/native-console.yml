@@ -1,0 +1,70 @@
+name: Seven Native Console
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct audited Seven transition compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
+          chmod +x build/native-seeds/seven-linux
+      - name: Generate and execute native Linux console proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$PWD/build/native-seeds/seven-linux"
+          "$seven" check runtime/platform/native/pe.sev
+          "$seven" check runtime/platform/native/syscall_dispatch.sev
+          "$seven" run tests/native/console_backend.sev
+          chmod +x build/native-console-proof
+          set +e
+          output=$(./build/native-console-proof)
+          status=$?
+          set -e
+          test "$status" -eq 42
+          test "$output" = 'Seven native console'
+
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct audited Seven transition compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          echo '80f1948e83b1c58c719c2ae0579a4b03edd1ccc1bf1e4e52091e2c66478feba5  build/native-seeds/seven-windows.exe' | sha256sum --check
+      - name: Generate and execute native Windows console proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$PWD/build/native-seeds/seven-windows.exe"
+          "$seven" check runtime/platform/native/pe.sev
+          "$seven" check runtime/platform/native/syscall_dispatch.sev
+          "$seven" run tests/native/console_backend.sev
+          set +e
+          output=$(./build/native-console-proof.exe | tr -d '\r')
+          status=$?
+          set -e
+          test "$status" -eq 42
+          test "$output" = 'Seven native console'
