@@ -9,6 +9,7 @@ molde Pacote ::
   criador: Texto
   entrada: Texto
   alvo: Texto
+  indice_fontes: Texto
   fontes: Lista<Texto>
   exemplos: Lista<Texto>
   dependencias: Lista<DependenciaPacote>
@@ -33,6 +34,7 @@ campo pacote_parse(texto_manifesto: Texto) -> Pacote ::
     criador: "",
     entrada: "",
     alvo: "svbc",
+    indice_fontes: "",
     fontes: lista<Texto>(),
     exemplos: lista<Texto>(),
     dependencias: lista<DependenciaPacote>()
@@ -65,6 +67,7 @@ campo aplica_linha_manifesto(pacote: Pacote, linha: Texto) -> Pacote ::
   veja chave == "criador" :: vira pacote.criador := junta_manifesto(partes, 1) devolve pacote fecha
   veja chave == "entrada" :: vira pacote.entrada := valor devolve pacote fecha
   veja chave == "alvo" :: vira pacote.alvo := valor devolve pacote fecha
+  veja chave == "indice" :: vira pacote.indice_fontes := valor devolve pacote fecha
 
   veja chave == "fonte" ::
     lista_coloca(pacote.fontes, valor)
