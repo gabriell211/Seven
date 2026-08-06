@@ -1,0 +1,62 @@
+name: Seven Windows Fixed Installer Diagnostic
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct fixed seeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/archive/native-seeds.b64.* | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo 'fa83be6c949b4e303a74dfe441883316e285baa1388f5b4370312f3c3c506464  build/native-seeds.zip' | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/native-seeds
+
+      - name: Build diagnostic bundle
+        shell: cmd
+        run: |
+          set "B=build\diagnostic"
+          mkdir "%B%\payload\bin"
+          mkdir "%B%\payload\std"
+          copy /y build\native-seeds\seven-installer-windows.exe "%B%\seven-installer.exe"
+          copy /y build\native-seeds\seven-windows.exe "%B%\payload\bin\seven.exe"
+          copy /y brand\seven.ico "%B%\payload\seven.ico"
+          copy /y brand\seven-mark.svg "%B%\payload\seven-mark.svg"
+          copy /y LICENSE "%B%\payload\LICENSE"
+          copy /y NOTICE "%B%\payload\NOTICE"
+          xcopy std "%B%\payload\std" /E /I /Y >nul
+          echo SVBC>"%B%\payload\seven.svbc"
+          echo SVBC>"%B%\payload\seven.host.svbc"
+          echo SVBC>"%B%\payload\seven.launcher.svbc"
+
+      - name: Run installer and inspect state
+        shell: cmd
+        continue-on-error: true
+        run: |
+          set "B=%CD%\build\diagnostic"
+          echo LOCALAPPDATA=%LOCALAPPDATA%
+          echo APPDATA=%APPDATA%
+          pushd "%B%"
+          start /wait "" ".\seven-installer.exe"
+          echo INSTALL_EXIT=%ERRORLEVEL%
+          popd
+          echo ==== INSTALL TREE ====
+          dir /s /b "%LOCALAPPDATA%\Programs\Seven" 2>nul
+          echo ==== START MENU ====
+          dir /s /b "%APPDATA%\Microsoft\Windows\Start Menu\Programs" 2>nul | findstr /i Seven
+          echo ==== FILE ASSOCIATION ====
+          reg query HKCU\Software\Classes\.sev /s
+          echo ==== UNINSTALL KEY ====
+          reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Seven.Language /s
