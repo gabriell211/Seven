@@ -1,4 +1,4 @@
-name: Synchronize Windows Seed Hashes
+name: Rebuild Windows Seed with Production Stack
 
 on:
   pull_request:
@@ -11,19 +11,26 @@ permissions:
   contents: write
 
 concurrency:
-  group: seven-windows-seed-sync
+  group: seven-windows-stack-rebuild
   cancel-in-progress: true
 
 jobs:
-  synchronize:
+  rebuild:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
           ref: gabriell211/production-readiness
           fetch-depth: 0
 
-      - name: Verify seed and synchronize workflow hashes
+      - name: Install Windows cross compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64
+
+      - name: Rebuild and verify production Windows seed
         shell: bash
         run: bash .github/scripts/rebuild-windows-mingw.sh
