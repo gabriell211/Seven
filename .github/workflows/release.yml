@@ -162,6 +162,10 @@ jobs:
       - linux
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/download-artifact@v4
         with:
           pattern: seven-release-*
@@ -189,3 +193,39 @@ jobs:
               --notes "Primeira distribuicao nativa verificavel da linguagem Seven. Inclui compilador, runtime SVBC, biblioteca padrao e instaladores para Windows x64 e Linux x64. Os pacotes foram validados por SHA-256, compilacao, execucao, instalacao e desinstalacao nos runners oficiais."
           fi
           gh release upload "$SEVEN_TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Record verified release manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          windows_archive="seven-$SEVEN_VERSION-windows-x64.zip"
+          linux_archive="seven-$SEVEN_VERSION-linux-x64.tar.gz"
+          windows_sha=$(awk '{print $1}' "dist/$windows_archive.sha256")
+          linux_sha=$(awk '{print $1}' "dist/$linux_archive.sha256")
+          mkdir -p releases
+          cat > "releases/$SEVEN_TAG.json" <<EOF
+          {
+            "version": "$SEVEN_VERSION",
+            "tag": "$SEVEN_TAG",
+            "source_commit": "$GITHUB_SHA",
+            "release_url": "https://github.com/$GITHUB_REPOSITORY/releases/tag/$SEVEN_TAG",
+            "assets": {
+              "$windows_archive": "$windows_sha",
+              "$windows_archive.sha256": "published",
+              "$linux_archive": "$linux_sha",
+              "$linux_archive.sha256": "published"
+            },
+            "seed_archive_sha256": "$SEED_ARCHIVE_SHA256",
+            "windows_compiler_sha256": "$WINDOWS_COMPILER_SHA256",
+            "linux_compiler_sha256": "$LINUX_COMPILER_SHA256",
+            "verified": true
+          }
+          EOF
+          git config user.name gabriell211
+          git config user.email 102088315+gabriell211@users.noreply.github.com
+          git add "releases/$SEVEN_TAG.json"
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "record Seven $SEVEN_VERSION release publication"
+          git push origin HEAD:main
