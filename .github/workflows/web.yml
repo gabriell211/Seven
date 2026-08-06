@@ -27,6 +27,7 @@ jobs:
           set -euo pipefail
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          sha256sum build/native-seeds.zip
           echo '203d701e46ea01c19dce5d7d4e4da746c2812a6afb7c5718783f80ae7b1e90dc  build/native-seeds.zip' | sha256sum --check
           unzip -q build/native-seeds.zip -d build/native-seeds
           echo '7f1716529ee060b9f71dc64b147633ce79c9023ee6229b6736caefc516b8b13f  build/native-seeds/seven-linux' | sha256sum --check
