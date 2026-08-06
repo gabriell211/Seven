@@ -61,6 +61,22 @@ replacements = [
         'for(int fi=0;fi<nf;fi++){Func*f=&funcs[fi];Var vars[MAX_SYMBOLS];int nv=0;ArrayInfo arr[MAX_SYMBOLS];int na=0;int returns=0;for(int i=f->body;i<f->end;i++){',
         'for(int fi=0;fi<nf;fi++){Func*f=&funcs[fi];Var vars[MAX_SYMBOLS];int nv=0;ArrayInfo arr[MAX_SYMBOLS];int na=0;int returns=0;for(int p=f->start+2;p+1<f->body;p++){if(t.v[p].kind==TK_IDENT&&streq(t.v[p+1].text,":")&&nv<MAX_SYMBOLS){Var*v=&vars[nv++];memset(v,0,sizeof(*v));strncpy(v->name,t.v[p].text,127);v->mutable_=0;v->line=t.v[p].line;v->depth=f->body;}}for(int i=f->body;i<f->end;i++){',
     ),
+    (
+        'if((streq(x->text,"guarda")||streq(x->text,"solta"))&&i+1<f->end&&t.v[i+1].kind==TK_IDENT){',
+        'if(x->kind==TK_IDENT&&(streq(x->text,"guarda")||streq(x->text,"solta"))&&i+1<f->end&&t.v[i+1].kind==TK_IDENT){',
+    ),
+    (
+        'if(streq(x->text,"caixa")&&i+5<f->end&&t.v[i+1].kind==TK_IDENT){',
+        'if(x->kind==TK_IDENT&&streq(x->text,"caixa")&&i+5<f->end&&t.v[i+1].kind==TK_IDENT){',
+    ),
+    (
+        'if(streq(x->text,"vira")&&i+1<f->end){',
+        'if(x->kind==TK_IDENT&&streq(x->text,"vira")&&i+1<f->end){',
+    ),
+    (
+        'if(streq(x->text,"devolve")){',
+        'if(x->kind==TK_IDENT&&streq(x->text,"devolve")){',
+    ),
 ]
 
 for old, new in replacements:
@@ -69,10 +85,11 @@ for old, new in replacements:
     source = source.replace(old, new, 1)
 
 mark_rule = 'if(streq(x->text,"marca")&&i+3<f->end){ArrayInfo*a=arr_by(arr,na,t.v[i+1].text);if(a&&streq(t.v[i+2].text,"@")&&t.v[i+3].kind==TK_NUMBER&&strtoll(t.v[i+3].text,NULL,0)>=a->size)report(&r,"SV-MEM-LIMITE",&t.v[i+3],"constant index outside array bounds");}\n'
-pega_rule = ' if(streq(x->text,"pega")){int j=i+1;while(j<f->end&&t.v[j].line==x->line&&!streq(t.v[j].text,"->"))j++;if(j+1<f->end&&streq(t.v[j].text,"->")&&t.v[j+1].kind==TK_IDENT&&!var_by(vars,nv,t.v[j+1].text)&&nv<MAX_SYMBOLS){Var*v=&vars[nv++];memset(v,0,sizeof(*v));strncpy(v->name,t.v[j+1].text,127);v->mutable_=0;v->line=x->line;v->depth=scope_id(&t,f->body,i);}}\n'
+typed_mark_rule = 'if(x->kind==TK_IDENT&&streq(x->text,"marca")&&i+3<f->end){ArrayInfo*a=arr_by(arr,na,t.v[i+1].text);if(a&&streq(t.v[i+2].text,"@")&&t.v[i+3].kind==TK_NUMBER&&strtoll(t.v[i+3].text,NULL,0)>=a->size)report(&r,"SV-MEM-LIMITE",&t.v[i+3],"constant index outside array bounds");}\n'
+pega_rule = ' if(x->kind==TK_IDENT&&streq(x->text,"pega")){int j=i+1;while(j<f->end&&t.v[j].line==x->line&&!streq(t.v[j].text,"->"))j++;if(j+1<f->end&&streq(t.v[j].text,"->")&&t.v[j+1].kind==TK_IDENT&&!var_by(vars,nv,t.v[j+1].text)&&nv<MAX_SYMBOLS){Var*v=&vars[nv++];memset(v,0,sizeof(*v));strncpy(v->name,t.v[j+1].text,127);v->mutable_=0;v->line=x->line;v->depth=scope_id(&t,f->body,i);}}\n'
 if mark_rule not in source:
     raise SystemExit("pega insertion target not found")
-source = source.replace(mark_rule, mark_rule + pega_rule, 1)
+source = source.replace(mark_rule, typed_mark_rule + pega_rule, 1)
 path.write_text(source)
 PY
 
@@ -187,5 +204,5 @@ if git diff --cached --quiet; then
   echo "validated semantic seeds are already current"
   exit 0
 fi
-git commit -m 'rebuild semantic seeds with parameter-aware checker'
+git commit -m 'rebuild semantic seeds with token-kind-aware checker'
 git push origin HEAD:gabriell211/production-readiness
