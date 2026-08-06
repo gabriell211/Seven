@@ -95,9 +95,11 @@ runtime/svbc/syscall.sev
 runtime/svbc/value.sev
 runtime/svbc/verifier.sev
 runtime/svbc/vm.sev
+runtime/svbc0/decoder.sev
 runtime/svbc0/image.sev
 runtime/svbc0/opcode.sev
 runtime/svbc0/translator.sev
+runtime/svbc0/verifier.sev
 runtime/svbc0/vm.sev
 std/ai/agent.sev
 std/ai/embedding.sev
