@@ -1,0 +1,49 @@
+modulo seven.compiler.parser
+
+usa seven.compiler.token
+usa seven.compiler.ast
+usa seven.compiler.source
+usa seven.compiler.diagnostic
+usa seven.compiler.parser_cursor
+
+campo parece_especializacao(cursor: CursorTokens) -> Bit ::
+  veja nao proximo_e(cursor, "<") ::
+    devolve nao
+  fecha
+
+  solta pos := cursor.posicao
+  solta profundidade: U32 := 0
+  guarda total := lista_tamanho(cursor.fluxo.tokens)
+
+  gira pos < total ::
+    guarda t := lista_pega(cursor.fluxo.tokens, pos)
+
+    veja t.marca == "<" ::
+      vira profundidade := profundidade + 1
+    outro ::
+      veja t.marca == ">" ::
+        veja profundidade == 0 ::
+          devolve nao
+        fecha
+
+        vira profundidade := profundidade - 1
+        veja profundidade == 0 ::
+          veja pos + 1 >= total ::
+            devolve nao
+          fecha
+
+          guarda depois := lista_pega(cursor.fluxo.tokens, pos + 1).marca
+          devolve depois == "(" ou depois == "{" ou depois == "."
+        fecha
+      outro ::
+        veja t.marca == "" ou t.marca == "::" ou t.marca == ":=" ::
+          devolve nao
+        fecha
+      fecha
+    fecha
+
+    vira pos := pos + 1
+  fecha
+
+  devolve nao
+fecha
