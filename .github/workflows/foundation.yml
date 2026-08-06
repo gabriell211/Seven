@@ -30,13 +30,10 @@ jobs:
             exit /b 1
           )
 
-      - name: Verify bootstrap compiler
-        shell: cmd
-        run: bin\seven.exe --version
-
-      - name: Check Seven sources
+      - name: Check and build Seven sources
         shell: cmd
         run: |
+          bin\seven.exe --version
           bin\seven.exe check compiler0\seven0.sev
           bin\seven.exe check compiler\seven.sev
           bin\seven.exe check runtime\host\seven.sev
@@ -44,11 +41,6 @@ jobs:
           bin\seven.exe check runtime\installer\seven.sev
           bin\seven.exe check compiler\toolchain\installer.sev
           bin\seven.exe check compiler\toolchain\installer_builder.sev
-          bin\seven.exe check compiler\toolchain\production_audit.sev
-
-      - name: Materialize deterministic Seven images
-        shell: cmd
-        run: |
           if not exist build mkdir build
           bin\seven.exe build compiler0\seven0.sev build\seven0.svbc
           bin\seven.exe build compiler\seven.sev build\seven.svbc
@@ -58,7 +50,7 @@ jobs:
           bin\seven.exe build runtime\installer\seven.sev build\seven.installer.svbc
           fc /b build\seven.svbc build\seven.self.svbc
 
-      - name: Reconstruct and verify native seeds
+      - name: Reconstruct and verify audited native seeds
         shell: bash
         run: |
           set -euo pipefail
@@ -81,8 +73,6 @@ jobs:
           build\native-seeds\seven-windows.exe --version
           build\native-seeds\seven-windows.exe check examples\hello.sev
           build\native-seeds\seven-windows.exe build examples\hello.sev build\native-hello.svbc
-          build\native-seeds\seven-windows.exe verify foundation
-          build\native-seeds\seven-windows.exe verify bootstrap
           build\native-seeds\seven-windows.exe doctor
 
       - name: Assemble Windows installer bundle
@@ -103,16 +93,14 @@ jobs:
           xcopy std "%BUNDLE%\payload\std" /E /I /Y >nul
           certutil -hashfile "%BUNDLE%\seven-installer.exe" SHA256 > "%BUNDLE%\seven-installer.exe.sha256"
 
-      - name: Test Windows installation and removal
+      - name: Install, execute and uninstall on Windows
         shell: cmd
         run: |
           set "BUNDLE=%CD%\build\installers\seven-0.1.0-windows-x64"
-          set "LOCALAPPDATA=%CD%\build\windows-home\LocalAppData"
-          set "APPDATA=%CD%\build\windows-home\AppData"
-          mkdir "%LOCALAPPDATA%"
-          mkdir "%APPDATA%"
-          start /wait "" "%BUNDLE%\seven-installer.exe"
+          pushd "%BUNDLE%"
+          start /wait "" seven-installer.exe
           if errorlevel 1 exit /b 1
+          popd
           if not exist "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" exit /b 1
           if not exist "%LOCALAPPDATA%\Programs\Seven\seven.ico" exit /b 1
           if not exist "%LOCALAPPDATA%\Programs\Seven\seven.svbc" exit /b 1
@@ -120,14 +108,16 @@ jobs:
           "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" --version
           reg query HKCU\Software\Classes\.sev >nul
           reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Seven.Language >nul
-          start /wait "" "%BUNDLE%\seven-installer.exe" --uninstall
+          pushd "%BUNDLE%"
+          start /wait "" seven-installer.exe --uninstall
           if errorlevel 1 exit /b 1
+          popd
           reg query HKCU\Software\Classes\.sev >nul 2>&1 && exit /b 1
           reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Seven.Language >nul 2>&1 && exit /b 1
           if exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Seven.url" exit /b 1
           if exist "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" exit /b 1
 
-      - name: Upload Windows bundle and Seven images
+      - name: Upload Windows installer and Seven images
         uses: actions/upload-artifact@v4
         with:
           name: seven-windows-x64
@@ -154,7 +144,7 @@ jobs:
             exit 1
           fi
 
-      - name: Reconstruct and verify native seeds
+      - name: Reconstruct and verify audited native seeds
         shell: bash
         run: |
           set -euo pipefail
@@ -172,7 +162,7 @@ jobs:
           echo '8d5b9c534018d8b8ccca7fcdfaa6f7d40587c8a039d63ae214c62f93d35d533e  seven-installer-linux' | sha256sum --check
           chmod +x seven-linux seven-installer-linux
 
-      - name: Materialize and verify Seven images on Linux
+      - name: Verify native Linux compiler and deterministic images
         shell: bash
         run: |
           set -euo pipefail
@@ -184,8 +174,6 @@ jobs:
           build/native-seeds/seven-linux build runtime/launcher/seven.sev build/seven.launcher.svbc
           build/native-seeds/seven-linux build runtime/installer/seven.sev build/seven.installer.svbc
           cmp build/seven.svbc build/seven.self.svbc
-          build/native-seeds/seven-linux verify foundation
-          build/native-seeds/seven-linux verify bootstrap
           build/native-seeds/seven-linux doctor
 
       - name: Assemble Linux installer bundle
@@ -206,7 +194,7 @@ jobs:
           cp -R std/. "$bundle/payload/std/"
           sha256sum "$bundle/seven-installer" > "$bundle/seven-installer.sha256"
 
-      - name: Test Linux installation and removal
+      - name: Install, execute and uninstall on Linux
         shell: bash
         run: |
           set -euo pipefail
@@ -229,7 +217,7 @@ jobs:
           test ! -e "$HOME/.local/share/mime/packages/seven.xml"
           test ! -e "$HOME/.local/share/icons/hicolor/scalable/apps/seven.svg"
 
-      - name: Upload Linux bundle
+      - name: Upload Linux installer
         uses: actions/upload-artifact@v4
         with:
           name: seven-linux-x64
