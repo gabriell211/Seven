@@ -1,0 +1,76 @@
+name: Apply Stable Seven Command Surface
+
+on:
+  push:
+    branches:
+      - gabriell211/production-readiness
+    paths:
+      - .github/workflows/patch-stable-surface.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gabriell211/production-readiness
+          fetch-depth: 0
+
+      - name: Mark stable and preview commands explicitly
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path("compiler/toolchain/cli.sev"): [
+                  (
+                      'devolve ToolchainErro(2, "comando ainda nao implementado: " + comando_nome(comando))',
+                      'devolve ToolchainErro(2, "comando fora da superficie estavel da Seven 0.1: " + comando_nome(comando))',
+                  ),
+                  (
+                      'devolve "seven <check|build|run|test|bench|fmt|lint|doc|repl|debug|profile|doctor|install|uninstall|installer|lsp|pkg|target|web|serve|release|verify>\\n" +',
+                      'devolve "seven estavel <check|build|run|test|doctor|install|uninstall|installer|verify>\\n" +\\n    "seven preview <bench|fmt|lint|doc|repl|debug|profile|lsp|pkg|target|web|serve|release>\\n" +',
+                  ),
+              ],
+              Path("runtime/platform/svbc/toolchain.sev"): [
+                  (
+                      'svbc_terminal_escreve("seven <check|build|run|test|bench|fmt|lint|doc|repl|debug|profile|doctor|install|lsp|pkg|target|web|serve|release|verify>")',
+                      'svbc_terminal_escreve("seven estavel <check|build|run|test|doctor|install|uninstall|installer|verify>")',
+                  ),
+                  (
+                      'svbc_terminal_escreve("comando ainda nao implementado no SVBC de transicao: " + valor_texto(lista_pega(args, 0)))',
+                      'svbc_terminal_escreve("comando fora da superficie estavel da Seven 0.1: " + valor_texto(lista_pega(args, 0)))',
+                  ),
+              ],
+              Path("docs/package-system.md"): [
+                  ('.\\tools\\seven-dev.ps1 pkg add', 'seven pkg add'),
+                  ('.\\tools\\seven-dev.ps1 pkg list', 'seven pkg list'),
+                  ('.\\tools\\seven-dev.ps1 pkg lock', 'seven pkg lock'),
+                  ('.\\tools\\seven-dev.ps1 pkg verify', 'seven pkg verify'),
+                  ('.\\tools\\seven-dev.ps1 pkg install', 'seven pkg install'),
+                  ('.\\tools\\seven-dev.ps1 pkg remove', 'seven pkg remove'),
+              ],
+          }
+
+          for path, changes in replacements.items():
+              text = path.read_text()
+              for old, new in changes:
+                  if old not in text:
+                      raise SystemExit(f"expected text not found in {path}: {old}")
+                  text = text.replace(old, new)
+              path.write_text(text)
+          PY
+
+      - name: Commit source and documentation patch
+        run: |
+          set -euo pipefail
+          git config user.name gabriell211
+          git config user.email 102088315+gabriell211@users.noreply.github.com
+          git add compiler/toolchain/cli.sev runtime/platform/svbc/toolchain.sev docs/package-system.md
+          git commit -m 'define stable Seven 0.1 command surface'
+          git push origin HEAD:gabriell211/production-readiness
