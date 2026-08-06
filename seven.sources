@@ -46,7 +46,9 @@ compiler/toolchain/production_audit.sev
 compiler/toolchain/release.sev
 compiler/toolchain/test_runner.sev
 compiler/toolchain/verify.sev
+compiler/toolchain/web_build.sev
 compiler/types.sev
+compiler/wasm.sev
 compiler0/ast.sev
 compiler0/check.sev
 compiler0/diagnostic.sev
