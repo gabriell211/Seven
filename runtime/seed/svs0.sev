@@ -222,10 +222,7 @@ campo svs0_parse(dados: Bytes) -> Resultado<FitaSvs0, Falha> ::
     devolve Falha(nova_falha("SVS0-CABECALHO", "imagem seed menor que o cabecalho"))
   fecha
 
-  veja bytes_pega(dados, 0) != 83 ou
-    bytes_pega(dados, 1) != 86 ou
-    bytes_pega(dados, 2) != 83 ou
-    bytes_pega(dados, 3) != 48 ::
+  veja svs0_magic_valido(dados) == nao ::
     devolve Falha(nova_falha("SVS0-MAGIC", "fita seed invalida"))
   fecha
 
@@ -252,6 +249,10 @@ campo svs0_parse(dados: Bytes) -> Resultado<FitaSvs0, Falha> ::
   }
 
   devolve Valor(fita)
+fecha
+
+campo svs0_magic_valido(dados: Bytes) -> Bit ::
+  devolve bytes_pega(dados, 0) == 83 e bytes_pega(dados, 1) == 86 e bytes_pega(dados, 2) == 83 e bytes_pega(dados, 3) == 48
 fecha
 
 campo seed_le_arquivo(estado: EstadoSeed) -> Resultado<Nada, Falha> toca disco ::
