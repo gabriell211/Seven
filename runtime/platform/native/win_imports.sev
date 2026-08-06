@@ -1,0 +1,17 @@
+modulo seven.runtime.platform.native.win_imports
+
+usa seven.runtime.platform.native.bytes
+usa std.mem.bytes
+
+const WinImportGetStdHandle: U64 := 1901288961
+const WinImportWriteFile: U64 := 1901288962
+const WinImportCreateFileA: U64 := 1901288963
+const WinImportReadFile: U64 := 1901288964
+const WinImportGetFileSizeEx: U64 := 1901288965
+const WinImportCloseHandle: U64 := 1901288966
+
+campo x64_windows_importa(codigo: Bytes, marcador: U64) -> Nada ::
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 21)
+  nativo_u32_le(codigo, marcador)
+fecha
