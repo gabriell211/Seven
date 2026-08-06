@@ -1,27 +1,701 @@
 modulo seven0.emit
 
+usa std.base.lista
 usa seven0.primitives
 usa seven0.ast
 usa seven0.check
 usa seven0.svbc0
 
+molde InstrucaoEmitida ::
+  opcode: Byte
+  a: U32
+  b: U32
+fecha
+
+molde CampoEmitido ::
+  nome: Texto
+  entrada: U32
+  locais: U32
+  parametros: U32
+fecha
+
+molde LocalEmitido ::
+  nome: Texto
+  indice: U32
+  mutavel: Bit
+fecha
+
+molde ContextoEmissao ::
+  unidade: Unidade
+  nomes: Lista<Texto>
+  textos: Lista<Texto>
+  numeros: Lista<U32>
+  campos: Lista<CampoEmitido>
+  codigo: Lista<InstrucaoEmitida>
+fecha
+
+molde ContextoCampo ::
+  emissao: ContextoEmissao
+  campo: No
+  locais: Lista<LocalEmitido>
+  proximo_local: U32
+  descarte: U32
+fecha
+
 campo emitir_svbc0(unidade: Unidade) -> Bytes ::
+  solta contexto := ContextoEmissao {
+    unidade: unidade,
+    nomes: lista<Texto>(),
+    textos: lista<Texto>(),
+    numeros: lista<U32>(),
+    campos: lista<CampoEmitido>(),
+    codigo: lista<InstrucaoEmitida>()
+  }
+
+  emite_programa(contexto)
+  devolve serializa_svbc0(contexto)
+fecha
+
+campo emite_programa(contexto: ContextoEmissao) -> Nada ::
+  solta indice: U64 := 0
+
+  gira indice < lista_no_tamanho(contexto.unidade.programa.itens) ::
+    guarda item := lista_no_pega(contexto.unidade.programa.itens, indice)
+    veja item.especie == "campo" :: emite_campo(contexto, item) fecha
+    vira indice := indice + 1
+  fecha
+fecha
+
+campo emite_campo(contexto: ContextoEmissao, campo: No) -> Nada ::
+  solta locais := lista<LocalEmitido>()
+  solta parametros: U32 := 0
+  solta indice: U64 := 0
+
+  gira indice < lista_no_tamanho(campo.filhos) ::
+    guarda filho := lista_no_pega(campo.filhos, indice)
+    veja filho.especie == "parametro" ::
+      lista_coloca(locais, LocalEmitido {
+        nome: filho.nome,
+        indice: parametros,
+        mutavel: nao
+      })
+      vira parametros := parametros + 1
+    fecha
+    vira indice := indice + 1
+  fecha
+
+  solta campo_contexto := ContextoCampo {
+    emissao: contexto,
+    campo: campo,
+    locais: locais,
+    proximo_local: parametros,
+    descarte: 4294967295
+  }
+
+  guarda entrada := U32(lista_tamanho(contexto.codigo))
+  guarda bloco := campo_bloco(campo)
+  emite_bloco(campo_contexto, bloco)
+
+  veja lista_tamanho(contexto.codigo) == 0 ou lista_pega(contexto.codigo, lista_tamanho(contexto.codigo) - 1).opcode != OpRetorna ::
+    emite_const_u32(campo_contexto, 0)
+    emite_instrucao(contexto, OpRetorna, 0, 0)
+  fecha
+
+  lista_coloca(contexto.campos, CampoEmitido {
+    nome: campo.nome,
+    entrada: entrada,
+    locais: campo_contexto.proximo_local,
+    parametros: parametros
+  })
+
+  nome_indice(contexto, campo.nome)
+fecha
+
+campo emite_bloco(contexto: ContextoCampo, bloco: No) -> Nada ::
+  solta indice: U64 := 0
+  gira indice < lista_no_tamanho(bloco.filhos) ::
+    emite_comando(contexto, lista_no_pega(bloco.filhos, indice))
+    vira indice := indice + 1
+  fecha
+fecha
+
+campo emite_comando(contexto: ContextoCampo, comando: No) -> Nada ::
+  veja comando.especie == "declaracao" ::
+    guarda local := local_adiciona(contexto, comando.nome, comando.valor == "mutavel")
+    emite_expressao(contexto, lista_no_pega(comando.filhos, 0))
+    emite_instrucao(contexto.emissao, OpLocalGrava, local, 0)
+    devolve nulo
+  fecha
+
+  veja comando.especie == "atribuicao" ::
+    emite_atribuicao(contexto, comando)
+    devolve nulo
+  fecha
+
+  veja comando.especie == "retorno" ::
+    emite_expressao(contexto, lista_no_pega(comando.filhos, 0))
+    emite_instrucao(contexto.emissao, OpRetorna, 0, 0)
+    devolve nulo
+  fecha
+
+  veja comando.especie == "diga" ::
+    emite_expressao(contexto, lista_no_pega(comando.filhos, 0))
+    emite_syscall(contexto, "terminal_diga", 1)
+    emite_descarta(contexto)
+    devolve nulo
+  fecha
+
+  veja comando.especie == "expressao" ::
+    emite_expressao(contexto, lista_no_pega(comando.filhos, 0))
+    emite_descarta(contexto)
+    devolve nulo
+  fecha
+
+  veja comando.especie == "falha" ::
+    emite_expressao(contexto, lista_no_pega(comando.filhos, 0))
+    emite_expressao(contexto, lista_no_pega(comando.filhos, 1))
+    emite_syscall(contexto, "sys_falha", 2)
+    devolve nulo
+  fecha
+
+  veja comando.especie == "se" ::
+    emite_se(contexto, comando)
+    devolve nulo
+  fecha
+
+  veja comando.especie == "enquanto" ::
+    emite_enquanto(contexto, comando)
+    devolve nulo
+  fecha
+
+  veja comando.especie == "para_cada" ::
+    emite_para_cada(contexto, comando)
+    devolve nulo
+  fecha
+fecha
+
+campo emite_atribuicao(contexto: ContextoCampo, comando: No) -> Nada ::
+  guarda alvo := lista_no_pega(comando.filhos, 0)
+  guarda valor := lista_no_pega(comando.filhos, 1)
+
+  veja alvo.especie == "nome" e nao sys_texto_contem(alvo.nome, ".") ::
+    guarda indice := local_indice(contexto, alvo.nome)
+    emite_expressao(contexto, valor)
+    emite_instrucao(contexto.emissao, OpLocalGrava, indice, 0)
+    devolve nulo
+  fecha
+
+  veja alvo.especie == "nome" e sys_texto_contem(alvo.nome, ".") ::
+    emite_atribuicao_nome_composto(contexto, alvo.nome, valor)
+    devolve nulo
+  fecha
+
+  veja alvo.especie == "acesso" ::
+    guarda base := lista_no_pega(alvo.filhos, 0)
+    emite_expressao(contexto, base)
+    emite_const_texto(contexto, alvo.nome)
+    emite_expressao(contexto, valor)
+    emite_syscall(contexto, "sys_obj_define", 3)
+    veja base.especie == "nome" ::
+      emite_instrucao(contexto.emissao, OpLocalGrava, local_indice(contexto, base.nome), 0)
+    outro ::
+      emite_descarta(contexto)
+    fecha
+    devolve nulo
+  fecha
+
+  veja alvo.especie == "indice" ::
+    guarda base := lista_no_pega(alvo.filhos, 0)
+    emite_expressao(contexto, base)
+    emite_expressao(contexto, lista_no_pega(alvo.filhos, 1))
+    emite_expressao(contexto, valor)
+    emite_syscall(contexto, "sys_indice_define", 3)
+    veja base.especie == "nome" ::
+      emite_instrucao(contexto.emissao, OpLocalGrava, local_indice(contexto, base.nome), 0)
+    outro ::
+      emite_descarta(contexto)
+    fecha
+  fecha
+fecha
+
+campo emite_atribuicao_nome_composto(contexto: ContextoCampo, nome: Texto, valor: No) -> Nada ::
+  guarda ponto := texto_indice(nome, ".")
+  veja ponto < 0 :: devolve nulo fecha
+
+  guarda base := texto_fatia(nome, 0, U64(ponto))
+  guarda campo := texto_fatia(nome, U64(ponto) + 1, texto_tamanho(nome))
+  emite_instrucao(contexto.emissao, OpLocalLe, local_indice(contexto, base), 0)
+  emite_const_texto(contexto, campo)
+  emite_expressao(contexto, valor)
+  emite_syscall(contexto, "sys_obj_define", 3)
+  emite_instrucao(contexto.emissao, OpLocalGrava, local_indice(contexto, base), 0)
+fecha
+
+campo emite_se(contexto: ContextoCampo, comando: No) -> Nada ::
+  emite_expressao(contexto, lista_no_pega(comando.filhos, 0))
+  guarda salto_falso := emite_instrucao(contexto.emissao, OpSaltaFalso, 0, 0)
+  emite_bloco(contexto, lista_no_pega(comando.filhos, 1))
+
+  veja lista_no_tamanho(comando.filhos) > 2 ::
+    guarda salto_fim := emite_instrucao(contexto.emissao, OpSalta, 0, 0)
+    corrige_a(contexto.emissao, salto_falso, U32(lista_tamanho(contexto.emissao.codigo)))
+    emite_bloco(contexto, lista_no_pega(comando.filhos, 2))
+    corrige_a(contexto.emissao, salto_fim, U32(lista_tamanho(contexto.emissao.codigo)))
+  outro ::
+    corrige_a(contexto.emissao, salto_falso, U32(lista_tamanho(contexto.emissao.codigo)))
+  fecha
+fecha
+
+campo emite_enquanto(contexto: ContextoCampo, comando: No) -> Nada ::
+  guarda inicio := U32(lista_tamanho(contexto.emissao.codigo))
+  emite_expressao(contexto, lista_no_pega(comando.filhos, 0))
+  guarda salto_fim := emite_instrucao(contexto.emissao, OpSaltaFalso, 0, 0)
+  emite_bloco(contexto, lista_no_pega(comando.filhos, 1))
+  emite_instrucao(contexto.emissao, OpSalta, inicio, 0)
+  corrige_a(contexto.emissao, salto_fim, U32(lista_tamanho(contexto.emissao.codigo)))
+fecha
+
+campo emite_para_cada(contexto: ContextoCampo, comando: No) -> Nada ::
+  guarda iterador := local_adiciona(contexto, "__iter_" + comando.nome + "_" + texto_u64(contexto.proximo_local), sim)
+  guarda item := local_indice_opcional(contexto, comando.nome)
+  veja item < 0 :: vira item := Num(local_adiciona(contexto, comando.nome, sim)) fecha
+
+  emite_expressao(contexto, lista_no_pega(comando.filhos, 0))
+  emite_syscall(contexto, "sys_iterador_novo", 1)
+  emite_instrucao(contexto.emissao, OpLocalGrava, iterador, 0)
+
+  guarda inicio := U32(lista_tamanho(contexto.emissao.codigo))
+  emite_instrucao(contexto.emissao, OpLocalLe, iterador, 0)
+  emite_syscall(contexto, "sys_iterador_tem", 1)
+  guarda salto_fim := emite_instrucao(contexto.emissao, OpSaltaFalso, 0, 0)
+
+  emite_instrucao(contexto.emissao, OpLocalLe, iterador, 0)
+  emite_syscall(contexto, "sys_iterador_atual", 1)
+  emite_instrucao(contexto.emissao, OpLocalGrava, U32(item), 0)
+
+  emite_bloco(contexto, lista_no_pega(comando.filhos, 1))
+
+  emite_instrucao(contexto.emissao, OpLocalLe, iterador, 0)
+  emite_syscall(contexto, "sys_iterador_avanca", 1)
+  emite_instrucao(contexto.emissao, OpLocalGrava, iterador, 0)
+  emite_instrucao(contexto.emissao, OpSalta, inicio, 0)
+  corrige_a(contexto.emissao, salto_fim, U32(lista_tamanho(contexto.emissao.codigo)))
+fecha
+
+campo emite_expressao(contexto: ContextoCampo, expr: No) -> Nada ::
+  veja expr.especie == "numero" ::
+    emite_const_u32(contexto, U32(numero(expr.valor)))
+    devolve nulo
+  fecha
+
+  veja expr.especie == "texto" ::
+    emite_const_texto(contexto, expr.valor)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "bit" ::
+    emite_const_u32(contexto, U32(numero(expr.valor)))
+    devolve nulo
+  fecha
+
+  veja expr.especie == "nulo" ::
+    emite_const_u32(contexto, 0)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "nome" ::
+    emite_nome(contexto, expr.nome)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "acesso" ::
+    emite_expressao(contexto, lista_no_pega(expr.filhos, 0))
+    emite_const_texto(contexto, expr.nome)
+    emite_syscall(contexto, "sys_obj_pega", 2)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "indice" ::
+    emite_expressao(contexto, lista_no_pega(expr.filhos, 0))
+    emite_expressao(contexto, lista_no_pega(expr.filhos, 1))
+    emite_syscall(contexto, "sys_indice_pega", 2)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "objeto" ::
+    emite_objeto(contexto, expr)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "chamada" ::
+    emite_chamada(contexto, expr)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "binario" ::
+    emite_binario(contexto, expr)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "unario" ::
+    emite_unario(contexto, expr)
+    devolve nulo
+  fecha
+
+  emite_const_u32(contexto, 0)
+fecha
+
+campo emite_nome(contexto: ContextoCampo, nome: Texto) -> Nada ::
+  guarda local := local_indice_opcional(contexto, nome)
+  veja local >= 0 ::
+    emite_instrucao(contexto.emissao, OpLocalLe, U32(local), 0)
+    devolve nulo
+  fecha
+
+  guarda constante := constante_por_nome(contexto.emissao.unidade.programa, nome)
+  veja constante.especie == "const" ::
+    emite_expressao(contexto, lista_no_pega(constante.filhos, 0))
+    devolve nulo
+  fecha
+
+  veja sys_texto_contem(nome, ".") ::
+    emite_nome_composto(contexto, nome)
+    devolve nulo
+  fecha
+
+  veja nome_maiusculo(nome) ::
+    emite_objeto_vazio(contexto, nome)
+    devolve nulo
+  fecha
+
+  emite_const_u32(contexto, 0)
+fecha
+
+campo emite_nome_composto(contexto: ContextoCampo, nome: Texto) -> Nada ::
+  guarda ponto := texto_indice(nome, ".")
+  veja ponto < 0 :: emite_nome(contexto, nome) devolve nulo fecha
+
+  guarda base := texto_fatia(nome, 0, U64(ponto))
+  emite_nome(contexto, base)
+  solta inicio := U64(ponto) + 1
+
+  gira inicio < texto_tamanho(nome) ::
+    guarda resto := texto_fatia(nome, inicio, texto_tamanho(nome))
+    guarda proximo := texto_indice(resto, ".")
+    solta campo := resto
+    veja proximo >= 0 :: vira campo := texto_fatia(resto, 0, U64(proximo)) fecha
+    emite_const_texto(contexto, campo)
+    emite_syscall(contexto, "sys_obj_pega", 2)
+    veja proximo < 0 :: devolve nulo fecha
+    vira inicio := inicio + U64(proximo) + 1
+  fecha
+fecha
+
+campo emite_objeto(contexto: ContextoCampo, expr: No) -> Nada ::
+  emite_const_texto(contexto, "__tipo")
+  emite_const_texto(contexto, expr.nome)
+  emite_const_texto(contexto, "tag")
+  emite_const_texto(contexto, expr.nome)
+  solta argumentos: U32 := 4
+
+  para cada campo em expr.filhos ::
+    emite_const_texto(contexto, campo.nome)
+    emite_expressao(contexto, lista_no_pega(campo.filhos, 0))
+    vira argumentos := argumentos + 2
+  fecha
+
+  emite_syscall(contexto, "sys_obj_novo", argumentos)
+fecha
+
+campo emite_objeto_vazio(contexto: ContextoCampo, tipo: Texto) -> Nada ::
+  emite_const_texto(contexto, "__tipo")
+  emite_const_texto(contexto, tipo)
+  emite_const_texto(contexto, "tag")
+  emite_const_texto(contexto, tipo)
+  emite_syscall(contexto, "sys_obj_novo", 4)
+fecha
+
+campo emite_lista_nova(contexto: ContextoCampo) -> Nada ::
+  emite_const_texto(contexto, "__tipo")
+  emite_const_texto(contexto, "lista")
+  emite_const_texto(contexto, "tag")
+  emite_const_texto(contexto, "lista")
+  emite_syscall(contexto, "sys_obj_novo", 4)
+fecha
+
+campo emite_chamada(contexto: ContextoCampo, expr: No) -> Nada ::
+  veja chamada_lista(expr.nome) ::
+    emite_lista_nova(contexto)
+    devolve nulo
+  fecha
+
+  guarda campo := campo_interno_indice(contexto.emissao.unidade.programa, expr.nome)
+  veja campo >= 0 ::
+    para cada argumento em expr.filhos :: emite_expressao(contexto, argumento) fecha
+    emite_instrucao(contexto.emissao, OpChama, U32(campo), U32(lista_no_tamanho(expr.filhos)))
+    devolve nulo
+  fecha
+
+  veja nome_maiusculo(expr.nome) ::
+    emite_variante(contexto, expr)
+    devolve nulo
+  fecha
+
+  para cada argumento em expr.filhos :: emite_expressao(contexto, argumento) fecha
+  emite_syscall(contexto, expr.nome, U32(lista_no_tamanho(expr.filhos)))
+fecha
+
+campo emite_variante(contexto: ContextoCampo, expr: No) -> Nada ::
+  emite_const_texto(contexto, "__tipo")
+  emite_const_texto(contexto, expr.nome)
+  emite_const_texto(contexto, "tag")
+  emite_const_texto(contexto, expr.nome)
+  solta argumentos: U32 := 4
+  solta indice: U64 := 0
+
+  para cada valor em expr.filhos ::
+    veja lista_no_tamanho(expr.filhos) == 1 ::
+      emite_const_texto(contexto, "valor")
+    outro ::
+      emite_const_texto(contexto, texto_u64(indice))
+    fecha
+    emite_expressao(contexto, valor)
+    vira argumentos := argumentos + 2
+    vira indice := indice + 1
+  fecha
+
+  emite_syscall(contexto, "sys_obj_novo", argumentos)
+fecha
+
+campo emite_binario(contexto: ContextoCampo, expr: No) -> Nada ::
+  guarda esquerda := lista_no_pega(expr.filhos, 0)
+  guarda direita := lista_no_pega(expr.filhos, 1)
+
+  veja expr.valor == "e" e direita.especie == "nome" e nome_maiusculo(direita.nome) ::
+    emite_expressao(contexto, esquerda)
+    emite_const_texto(contexto, "tag")
+    emite_syscall(contexto, "sys_obj_pega", 2)
+    emite_const_texto(contexto, direita.nome)
+    emite_instrucao(contexto.emissao, OpIgual, 0, 0)
+    devolve nulo
+  fecha
+
+  emite_expressao(contexto, esquerda)
+  emite_expressao(contexto, direita)
+
+  veja expr.valor == "+" :: emite_instrucao(contexto.emissao, OpSoma, 0, 0) devolve nulo fecha
+  veja expr.valor == "-" :: emite_instrucao(contexto.emissao, OpSub, 0, 0) devolve nulo fecha
+  veja expr.valor == "*" :: emite_instrucao(contexto.emissao, OpMul, 0, 0) devolve nulo fecha
+  veja expr.valor == "/" :: emite_instrucao(contexto.emissao, OpDiv, 0, 0) devolve nulo fecha
+  veja expr.valor == "==" :: emite_instrucao(contexto.emissao, OpIgual, 0, 0) devolve nulo fecha
+  veja expr.valor == "<" :: emite_instrucao(contexto.emissao, OpMenor, 0, 0) devolve nulo fecha
+
+  guarda descarte_direita := local_temporario(contexto)
+  emite_instrucao(contexto.emissao, OpLocalGrava, descarte_direita, 0)
+  guarda descarte_esquerda := local_temporario(contexto)
+  emite_instrucao(contexto.emissao, OpLocalGrava, descarte_esquerda, 0)
+  emite_instrucao(contexto.emissao, OpLocalLe, descarte_esquerda, 0)
+  emite_const_texto(contexto, expr.valor)
+  emite_instrucao(contexto.emissao, OpLocalLe, descarte_direita, 0)
+  emite_syscall(contexto, "sys_vm_binaria", 3)
+fecha
+
+campo emite_unario(contexto: ContextoCampo, expr: No) -> Nada ::
+  veja expr.valor == "nao" ::
+    emite_expressao(contexto, lista_no_pega(expr.filhos, 0))
+    emite_syscall(contexto, "sys_bit_nao", 1)
+    devolve nulo
+  fecha
+
+  veja expr.valor == "-" ::
+    emite_const_u32(contexto, 0)
+    emite_expressao(contexto, lista_no_pega(expr.filhos, 0))
+    emite_instrucao(contexto.emissao, OpSub, 0, 0)
+    devolve nulo
+  fecha
+
+  emite_expressao(contexto, lista_no_pega(expr.filhos, 0))
+fecha
+
+campo emite_const_u32(contexto: ContextoCampo, valor: U32) -> Nada ::
+  emite_instrucao(contexto.emissao, OpConstU32, numero_indice(contexto.emissao, valor), 0)
+fecha
+
+campo emite_const_texto(contexto: ContextoCampo, valor: Texto) -> Nada ::
+  emite_instrucao(contexto.emissao, OpConstTexto, texto_indice_pool(contexto.emissao, valor), 0)
+fecha
+
+campo emite_syscall(contexto: ContextoCampo, nome: Texto, argumentos: U32) -> Nada ::
+  emite_instrucao(contexto.emissao, OpSyscall, nome_indice(contexto.emissao, nome), argumentos)
+fecha
+
+campo emite_descarta(contexto: ContextoCampo) -> Nada ::
+  veja contexto.descarte == 4294967295 ::
+    vira contexto.descarte := local_adiciona(contexto, "__descarte", sim)
+  fecha
+  emite_instrucao(contexto.emissao, OpLocalGrava, contexto.descarte, 0)
+fecha
+
+campo local_temporario(contexto: ContextoCampo) -> U32 ::
+  devolve local_adiciona(contexto, "__tmp_" + texto_u64(contexto.proximo_local), sim)
+fecha
+
+campo local_adiciona(contexto: ContextoCampo, nome: Texto, mutavel: Bit) -> U32 ::
+  guarda existente := local_indice_opcional(contexto, nome)
+  veja existente >= 0 :: devolve U32(existente) fecha
+
+  guarda indice := contexto.proximo_local
+  lista_coloca(contexto.locais, LocalEmitido {
+    nome: nome,
+    indice: indice,
+    mutavel: mutavel
+  })
+  vira contexto.proximo_local := contexto.proximo_local + 1
+  devolve indice
+fecha
+
+campo local_indice(contexto: ContextoCampo, nome: Texto) -> U32 ::
+  guarda indice := local_indice_opcional(contexto, nome)
+  veja indice >= 0 :: devolve U32(indice) fecha
+  devolve local_adiciona(contexto, nome, sim)
+fecha
+
+campo local_indice_opcional(contexto: ContextoCampo, nome: Texto) -> Num ::
+  solta indice: U64 := 0
+  gira indice < lista_tamanho(contexto.locais) ::
+    guarda local := lista_pega(contexto.locais, indice)
+    veja local.nome == nome :: devolve Num(local.indice) fecha
+    vira indice := indice + 1
+  fecha
+  devolve -1
+fecha
+
+campo emite_instrucao(contexto: ContextoEmissao, opcode: Byte, a: U32, b: U32) -> U32 ::
+  guarda indice := U32(lista_tamanho(contexto.codigo))
+  lista_coloca(contexto.codigo, InstrucaoEmitida {
+    opcode: opcode,
+    a: a,
+    b: b
+  })
+  devolve indice
+fecha
+
+campo corrige_a(contexto: ContextoEmissao, indice: U32, valor: U32) -> Nada ::
+  guarda instrucao := lista_pega(contexto.codigo, indice)
+  vira instrucao.a := valor
+  lista_define(contexto.codigo, indice, instrucao)
+fecha
+
+campo nome_indice(contexto: ContextoEmissao, valor: Texto) -> U32 ::
+  solta indice: U32 := 0
+  para cada existente em contexto.nomes ::
+    veja existente == valor :: devolve indice fecha
+    vira indice := indice + 1
+  fecha
+  lista_coloca(contexto.nomes, valor)
+  devolve indice
+fecha
+
+campo texto_indice_pool(contexto: ContextoEmissao, valor: Texto) -> U32 ::
+  solta indice: U32 := 0
+  para cada existente em contexto.textos ::
+    veja existente == valor :: devolve indice fecha
+    vira indice := indice + 1
+  fecha
+  lista_coloca(contexto.textos, valor)
+  devolve indice
+fecha
+
+campo numero_indice(contexto: ContextoEmissao, valor: U32) -> U32 ::
+  solta indice: U32 := 0
+  para cada existente em contexto.numeros ::
+    veja existente == valor :: devolve indice fecha
+    vira indice := indice + 1
+  fecha
+  lista_coloca(contexto.numeros, valor)
+  devolve indice
+fecha
+
+campo campo_interno_indice(programa: Programa, nome: Texto) -> Num ::
+  solta indice_item: U64 := 0
+  solta indice_campo: U32 := 0
+  gira indice_item < lista_no_tamanho(programa.itens) ::
+    guarda item := lista_no_pega(programa.itens, indice_item)
+    veja item.especie == "campo" ::
+      veja item.nome == nome :: devolve Num(indice_campo) fecha
+      vira indice_campo := indice_campo + 1
+    fecha
+    vira indice_item := indice_item + 1
+  fecha
+  devolve -1
+fecha
+
+campo constante_por_nome(programa: Programa, nome: Texto) -> No ::
+  solta indice: U64 := 0
+  gira indice < lista_no_tamanho(programa.itens) ::
+    guarda item := lista_no_pega(programa.itens, indice)
+    veja item.especie == "const" e item.nome == nome :: devolve item fecha
+    vira indice := indice + 1
+  fecha
+  devolve no("ausente", "", "", "", 0, 0)
+fecha
+
+campo chamada_lista(nome: Texto) -> Bit ::
+  devolve nome == "lista" ou nome == "lista_texto" ou nome == "lista_token" ou nome == "lista_no" ou nome == "lista_simbolo" ou nome == "lista_diagnostico"
+fecha
+
+campo nome_maiusculo(nome: Texto) -> Bit ::
+  veja texto_tamanho(nome) == 0 :: devolve nao fecha
+  guarda primeiro := texto_caractere(nome, 0)
+  devolve primeiro >= "A" e primeiro <= "Z"
+fecha
+
+campo texto_indice(valor: Texto, procurado: Texto) -> Num ::
+  solta indice: U64 := 0
+  gira indice < texto_tamanho(valor) ::
+    veja texto_caractere(valor, indice) == procurado :: devolve Num(indice) fecha
+    vira indice := indice + 1
+  fecha
+  devolve -1
+fecha
+
+campo serializa_svbc0(contexto: ContextoEmissao) -> Bytes ::
   solta bytes := bytes_novo()
-
-  bytes_texto(bytes, MagicSvbc0)
+  bytes_escreve_texto(bytes, MagicSvbc0)
   bytes_u32(bytes, VersaoSvbc0)
-  emite_constantes(bytes, unidade)
-  emite_campos(bytes, unidade)
-  emite_codigo(bytes, unidade)
-  bytes_byte(bytes, OpPare)
-
+  serializa_textos(bytes, contexto.nomes)
+  serializa_textos(bytes, contexto.textos)
+  serializa_numeros(bytes, contexto.numeros)
+  serializa_campos(bytes, contexto)
+  serializa_codigo(bytes, contexto.codigo)
   devolve bytes
 fecha
 
-campo emite_codigo(bytes: Bytes, unidade: Unidade) -> Nada ::
-  para cada item em unidade.programa.itens ::
-    veja item.especie == "campo" ::
-      emite_campo(bytes, item)
-    fecha
+campo serializa_textos(bytes: Bytes, valores: Lista<Texto>) -> Nada ::
+  bytes_u32(bytes, U32(lista_tamanho(valores)))
+  para cada valor em valores :: bytes_texto_com_tamanho(bytes, valor) fecha
+fecha
+
+campo serializa_numeros(bytes: Bytes, valores: Lista<U32>) -> Nada ::
+  bytes_u32(bytes, U32(lista_tamanho(valores)))
+  para cada valor em valores :: bytes_u32(bytes, valor) fecha
+fecha
+
+campo serializa_campos(bytes: Bytes, contexto: ContextoEmissao) -> Nada ::
+  bytes_u32(bytes, U32(lista_tamanho(contexto.campos)))
+  para cada campo em contexto.campos ::
+    bytes_u32(bytes, nome_indice(contexto, campo.nome))
+    bytes_u32(bytes, campo.entrada)
+    bytes_u32(bytes, campo.locais)
+    bytes_u32(bytes, campo.parametros)
+  fecha
+fecha
+
+campo serializa_codigo(bytes: Bytes, codigo: Lista<InstrucaoEmitida>) -> Nada ::
+  bytes_u32(bytes, U32(lista_tamanho(codigo)))
+  para cada instrucao em codigo ::
+    bytes_byte(bytes, instrucao.opcode)
+    bytes_u32(bytes, instrucao.a)
+    bytes_u32(bytes, instrucao.b)
   fecha
 fecha
