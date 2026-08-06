@@ -1,7 +1,11 @@
 modulo seven.runtime.platform.native.linker
 
+usa seven.runtime.platform.native.elf
+usa seven.runtime.platform.native.pe
 usa seven.runtime.platform.native.target
+usa seven.runtime.platform.native.x64
 usa seven.runtime.svbc.image
+usa std.base.lista
 usa std.base.resultado
 usa std.fs.file
 usa std.mem.bytes
@@ -19,7 +23,33 @@ campo baixa_nativo(imagem: ImagemSvbc, alvo: AlvoNativo) -> Resultado<ArtefatoNa
     devolve Falha(recursos.valor)
   fecha
 
-  devolve sys_native_baixa(imagem, alvo)
+  veja alvo.arquitetura != "x86_64" ::
+    devolve Falha(nova_falha("SV-NATIVE-ARQ", "arquitetura nativa ainda nao suportada: " + alvo.arquitetura))
+  fecha
+
+  guarda codigo := x64_compila(imagem, alvo)
+  veja codigo e Falha ::
+    devolve Falha(codigo.valor)
+  fecha
+
+  solta binario := bytes_novo()
+  veja alvo.formato == "elf" ::
+    vira binario := elf_x64(codigo.valor)
+  outro ::
+    veja alvo.formato == "exe" ::
+      vira binario := pe_x64(codigo.valor)
+    outro ::
+      devolve Falha(nova_falha("SV-NATIVE-FORMATO", "formato nativo desconhecido: " + alvo.formato))
+    fecha
+  fecha
+
+  solta simbolos := lista<Texto>()
+  lista_coloca(simbolos, alvo.entrada)
+  devolve Valor(ArtefatoNativo {
+    alvo: alvo,
+    bytes: binario,
+    simbolos: simbolos
+  })
 fecha
 
 campo grava_nativo(artefato: ArtefatoNativo, caminho: Texto) -> Resultado<Nada, Falha> toca disco ::
