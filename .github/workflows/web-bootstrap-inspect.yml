@@ -36,24 +36,24 @@ jobs:
         run: |
           set -euo pipefail
           source="$RUNNER_TEMP/seven-bootstrap.c"
-          grep -nE 'core_main|read_file|write_file|make_dir|exists|emit_image|check_source|build|doctor|usage' "$source" | head -120
+          grep -nE 'core_main|read_file|write_file|ensure_parent|make_dir|exists|check_source|cmd_build|doctor|usage' "$source" | head -140
           BOOTSTRAP_SOURCE="$source" python - <<'PY'
           import os
           from pathlib import Path
 
           text = Path(os.environ['BOOTSTRAP_SOURCE']).read_text()
           needles = [
-              'static int core_main',
-              'int core_main',
-              'static char*read_file',
-              'static int write_file',
+              'static int exists',
               'static int make_dir',
-              'static int build_source',
-              'static int emit_image',
+              'static void ensure_parent',
+              'static char *read_file',
+              'static int write_file',
+              'static int cmd_build',
+              'static int core_main',
           ]
           for needle in needles:
               index = text.find(needle)
               if index >= 0:
                   print(f'\n===== {needle} =====')
-                  print(text[index:index + 5000])
+                  print(text[index:index + 8000])
           PY
