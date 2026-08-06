@@ -1,16 +1,13 @@
 name: Finalize Seven Stage 1
 
 on:
-  push:
-    branches:
-      - stage1-self-host-clean
+  pull_request:
 
 permissions:
   contents: write
 
 jobs:
   finalize:
-    if: ${{ !contains(github.event.head_commit.message, '[stage1-final]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
