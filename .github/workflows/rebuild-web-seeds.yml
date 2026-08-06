@@ -1,9 +1,7 @@
 name: Rebuild Seven 0.2 Transition Seeds
 
 on:
-  push:
-    branches:
-      - agent/seven-web-build
+  pull_request:
     paths:
       - .github/scripts/rebuild-web-seeds.sh
       - .github/workflows/rebuild-web-seeds.yml
@@ -14,7 +12,7 @@ permissions:
 
 concurrency:
   group: seven-web-seed-rebuild
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   rebuild:
