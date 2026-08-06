@@ -1,0 +1,50 @@
+name: Seven Windows Crash Diagnostic
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build crash reproduction bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds build/diagnostic/payload/bin build/diagnostic/payload/std
+          cat seed/native/canonical/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo '207b4d92a4bfd4d8dc32cba05c5d6b24cc6f7b62e87210de81eb3addc85f50a4  build/native-seeds.zip' | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          cp build/native-seeds/seven-installer-windows.exe build/diagnostic/seven-installer.exe
+          cp build/native-seeds/seven-windows.exe build/diagnostic/payload/bin/seven.exe
+          cp brand/seven.ico brand/seven-mark.svg LICENSE NOTICE build/diagnostic/payload/
+          cp -R std/. build/diagnostic/payload/std/
+          printf SVBC > build/diagnostic/payload/seven.svbc
+          printf SVBC > build/diagnostic/payload/seven.host.svbc
+          printf SVBC > build/diagnostic/payload/seven.launcher.svbc
+
+      - name: Capture and inspect crash dump
+        shell: cmd
+        continue-on-error: true
+        run: |
+          mkdir dumps
+          reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\seven-installer.exe" /v DumpFolder /t REG_EXPAND_SZ /d "%CD%\dumps" /f
+          reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps\seven-installer.exe" /v DumpType /t REG_DWORD /d 2 /f
+          set "CDB=C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe"
+          if exist "%CDB%" echo CDB=%CDB%
+          pushd build\diagnostic
+          start /wait "" ".\seven-installer.exe"
+          echo INSTALL_EXIT=%ERRORLEVEL%
+          popd
+          timeout /t 2 /nobreak >nul
+          dir /s /b dumps
+          if not exist "%CDB%" exit /b 2
+          for %%D in (dumps\*.dmp) do "%CDB%" -z "%%D" -c ".ecxr; r; kb; u @rip-20 @rip+40; q"
