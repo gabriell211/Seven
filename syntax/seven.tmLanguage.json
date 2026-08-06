@@ -16,7 +16,15 @@
     "comments": {
       "patterns": [
         { "name": "comment.line.double-slash.seven", "match": "//.*$" },
-        { "name": "comment.block.seven", "begin": "/\\*", "end": "\\*/" }
+        { "include": "#blockComment" }
+      ]
+    },
+    "blockComment": {
+      "name": "comment.block.seven",
+      "begin": "/\\*",
+      "end": "\\*/",
+      "patterns": [
+        { "include": "#blockComment" }
       ]
     },
     "strings": {
@@ -50,7 +58,7 @@
     },
     "types": {
       "patterns": [
-        { "name": "storage.type.seven", "match": "\\b(?:Num|Int|Real|Bool|Byte|Texto|Nada|Resultado|Opcao)\\b" },
+        { "name": "storage.type.seven", "match": "\\b(?:Bit|Byte|Num|I8|I16|I32|I64|U8|U16|U32|U64|Real32|Real64|Texto|Nada|Ptr|Vista|VistaMut|Posse|Resultado|Talvez|CChar|CVoid)\\b" },
         { "name": "entity.name.type.seven", "match": "\\b[A-Z][A-Za-z0-9_]*\\b" }
       ]
     },
