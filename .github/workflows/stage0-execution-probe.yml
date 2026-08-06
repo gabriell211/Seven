@@ -1,0 +1,76 @@
+name: Seven Stage 0 Execution Probe
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seven-stage0-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    name: Seven-0 direct execution (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            seed: seven-linux
+          - os: windows-latest
+            seed: seven-windows.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct transition executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          chmod +x "build/native-seeds/${{ matrix.seed }}" || true
+
+      - name: Execute the Seven-0 entrypoint
+        id: execute
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -uo pipefail
+          seven="$PWD/build/native-seeds/${{ matrix.seed }}"
+          "$seven" run compiler0/seven0.sev 2>&1 | tee build/stage0-probe.log
+          printf '%s\n' "${PIPESTATUS[0]}" > build/stage0-probe.exit
+          exit 0
+
+      - name: Inspect direct execution evidence
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          echo 'exit:'
+          cat build/stage0-probe.exit || true
+          echo 'files:'
+          find build -maxdepth 2 -type f -printf '%p %s bytes\n' 2>/dev/null || find build -maxdepth 2 -type f -exec wc -c {} \;
+          if test -f build/seven0.svbc; then
+            echo 'seven0 header:'
+            od -An -tx1 -N32 build/seven0.svbc
+            sha256sum build/seven0.svbc
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: seven-stage0-probe-${{ matrix.os }}
+          path: |
+            build/stage0-probe.log
+            build/stage0-probe.exit
+            build/seven0.svbc
+          if-no-files-found: warn
