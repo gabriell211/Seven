@@ -2,4 +2,5 @@ formato seven-bootstrap-stage1-v1
 estado em-construcao
 entrada seven0-fixed-point
 alvo compiler-core-svbc0
+adaptacao variantes-nomeadas
 criterio seven-stage1-executa-e-reconstroi-stage2
