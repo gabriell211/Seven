@@ -263,8 +263,7 @@ fecha
 
 campo nome_construtor(nome: Texto) -> Bit ::
   veja texto_tamanho(nome) == 0 :: devolve nao fecha
-  guarda primeiro := texto_byte(nome, 0)
-  devolve primeiro >= 65 e primeiro <= 90
+  devolve sys_texto_contem("ABCDEFGHIJKLMNOPQRSTUVWXYZ", texto_caractere(nome, 0))
 fecha
 
 campo confere_expressao(unidade: Unidade, campo: No, expr: No, locais: ListaSimbolo) -> Nada ::
