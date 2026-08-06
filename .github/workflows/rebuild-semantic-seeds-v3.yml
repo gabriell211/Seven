@@ -21,6 +21,38 @@ jobs:
           ref: gabriell211/production-readiness
           fetch-depth: 0
 
+      - name: Repair IR mutability contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("compiler/ir.sev")
+          text = path.read_text()
+          old = '''  veja comando e CmdCria ::
+    guarda valor := baixa_expressao(comando.valor.valor, contexto)
+    guarda tipo := TipoDesconhecido
+'''
+          new = '''  veja comando e CmdCria ::
+    guarda valor := baixa_expressao(comando.valor.valor, contexto)
+    solta tipo := TipoDesconhecido
+'''
+          if old in text:
+              path.write_text(text.replace(old, new, 1))
+          elif new not in text:
+              raise SystemExit("IR mutability contract not found")
+          PY
+
+          if ! git diff --quiet -- compiler/ir.sev; then
+            git config user.name gabriell211
+            git config user.email 102088315+gabriell211@users.noreply.github.com
+            git add compiler/ir.sev
+            git commit -m 'fix IR type mutability during lowering'
+            git push origin HEAD:gabriell211/production-readiness
+            exit 0
+          fi
+
       - name: Recover audited semantic checker source
         shell: bash
         run: |
