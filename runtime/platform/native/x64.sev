@@ -28,6 +28,7 @@ molde CodigoX64 ::
   bytes: Bytes
   entrada: U64
   exit_process_patches: Lista<U64>
+  virtual_alloc_patches: Lista<U64>
 fecha
 
 campo x64_compila(imagem: ImagemSvbc, alvo: AlvoNativo) -> Resultado<CodigoX64, Falha> ::
@@ -44,7 +45,8 @@ campo x64_compila(imagem: ImagemSvbc, alvo: AlvoNativo) -> Resultado<CodigoX64, 
   solta saida := CodigoX64 {
     bytes: bytes_novo(),
     entrada: 0,
-    exit_process_patches: lista<U64>()
+    exit_process_patches: lista<U64>(),
+    virtual_alloc_patches: lista<U64>()
   }
   solta offsets_ip := lista<OffsetIpX64>()
   solta offsets_campo := lista<U64>()
@@ -293,6 +295,21 @@ campo x64_emite_instrucao(
     devolve Valor(nulo)
   fecha
 
+  veja instr.opcode e Caixa ::
+    x64_caixa(saida, alvo)
+    devolve Valor(nulo)
+  fecha
+
+  veja instr.opcode e MarcaByte ::
+    x64_marca_byte(saida.bytes)
+    devolve Valor(nulo)
+  fecha
+
+  veja instr.opcode e PegaByte ::
+    x64_pega_byte(saida.bytes)
+    devolve Valor(nulo)
+  fecha
+
   veja instr.opcode e Efeito ::
     devolve Valor(nulo)
   fecha
@@ -302,16 +319,6 @@ campo x64_emite_instrucao(
       devolve Falha(nova_falha("SV-NATIVE-SYSCALL", "nome de syscall fora do limite"))
     fecha
     devolve x64_syscall_pura(saida.bytes, lista_pega(imagem.nomes, instr.a), instr.b)
-  fecha
-
-  veja instr.opcode e Caixa ::
-    devolve Falha(nova_falha("SV-NATIVE-MEM", "alocacao nativa entra na ABI x64 de memoria"))
-  fecha
-  veja instr.opcode e MarcaByte ::
-    devolve Falha(nova_falha("SV-NATIVE-MEM", "escrita de memoria nativa entra na ABI x64 de memoria"))
-  fecha
-  veja instr.opcode e PegaByte ::
-    devolve Falha(nova_falha("SV-NATIVE-MEM", "leitura de memoria nativa entra na ABI x64 de memoria"))
   fecha
 
   devolve Falha(nova_falha("SV-NATIVE-OP", "opcode SVBC nao suportado pelo AOT x64"))
@@ -397,6 +404,97 @@ campo x64_compara(codigo: Bytes, setcc: Byte) -> Nada ::
   bytes_coloca_byte(codigo, 15)
   bytes_coloca_byte(codigo, 182)
   bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 80)
+fecha
+
+campo x64_caixa(saida: CodigoX64, alvo: AlvoNativo) -> Nada ::
+  veja alvo.formato == "elf" ::
+    bytes_coloca_byte(saida.bytes, 94)
+    bytes_coloca_byte(saida.bytes, 49)
+    bytes_coloca_byte(saida.bytes, 255)
+    bytes_coloca_byte(saida.bytes, 186)
+    nativo_u32_le(saida.bytes, 3)
+    bytes_coloca_byte(saida.bytes, 65)
+    bytes_coloca_byte(saida.bytes, 186)
+    nativo_u32_le(saida.bytes, 34)
+    bytes_coloca_byte(saida.bytes, 73)
+    bytes_coloca_byte(saida.bytes, 199)
+    bytes_coloca_byte(saida.bytes, 192)
+    bytes_coloca_byte(saida.bytes, 255)
+    bytes_coloca_byte(saida.bytes, 255)
+    bytes_coloca_byte(saida.bytes, 255)
+    bytes_coloca_byte(saida.bytes, 69)
+    bytes_coloca_byte(saida.bytes, 49)
+    bytes_coloca_byte(saida.bytes, 201)
+    bytes_coloca_byte(saida.bytes, 184)
+    nativo_u32_le(saida.bytes, 9)
+    bytes_coloca_byte(saida.bytes, 15)
+    bytes_coloca_byte(saida.bytes, 5)
+    bytes_coloca_byte(saida.bytes, 80)
+    devolve nulo
+  fecha
+
+  bytes_coloca_byte(saida.bytes, 90)
+  bytes_coloca_byte(saida.bytes, 49)
+  bytes_coloca_byte(saida.bytes, 201)
+  bytes_coloca_byte(saida.bytes, 65)
+  bytes_coloca_byte(saida.bytes, 184)
+  nativo_u32_le(saida.bytes, 12288)
+  bytes_coloca_byte(saida.bytes, 65)
+  bytes_coloca_byte(saida.bytes, 185)
+  nativo_u32_le(saida.bytes, 4)
+
+  bytes_coloca_byte(saida.bytes, 76)
+  bytes_coloca_byte(saida.bytes, 139)
+  bytes_coloca_byte(saida.bytes, 220)
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 131)
+  bytes_coloca_byte(saida.bytes, 228)
+  bytes_coloca_byte(saida.bytes, 240)
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 131)
+  bytes_coloca_byte(saida.bytes, 236)
+  bytes_coloca_byte(saida.bytes, 48)
+  bytes_coloca_byte(saida.bytes, 76)
+  bytes_coloca_byte(saida.bytes, 137)
+  bytes_coloca_byte(saida.bytes, 92)
+  bytes_coloca_byte(saida.bytes, 36)
+  bytes_coloca_byte(saida.bytes, 32)
+
+  bytes_coloca_byte(saida.bytes, 255)
+  bytes_coloca_byte(saida.bytes, 21)
+  guarda pos := saida.bytes.tamanho
+  nativo_u32_le(saida.bytes, 0)
+  lista_coloca(saida.virtual_alloc_patches, pos)
+
+  bytes_coloca_byte(saida.bytes, 76)
+  bytes_coloca_byte(saida.bytes, 139)
+  bytes_coloca_byte(saida.bytes, 92)
+  bytes_coloca_byte(saida.bytes, 36)
+  bytes_coloca_byte(saida.bytes, 32)
+  bytes_coloca_byte(saida.bytes, 76)
+  bytes_coloca_byte(saida.bytes, 137)
+  bytes_coloca_byte(saida.bytes, 220)
+  bytes_coloca_byte(saida.bytes, 80)
+fecha
+
+campo x64_marca_byte(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 90)
+  bytes_coloca_byte(codigo, 89)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 136)
+  bytes_coloca_byte(codigo, 20)
+  bytes_coloca_byte(codigo, 8)
+fecha
+
+campo x64_pega_byte(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 89)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 182)
+  bytes_coloca_byte(codigo, 4)
+  bytes_coloca_byte(codigo, 8)
   bytes_coloca_byte(codigo, 80)
 fecha
 
