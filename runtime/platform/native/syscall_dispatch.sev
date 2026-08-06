@@ -1,0 +1,20 @@
+modulo seven.runtime.platform.native.syscall_dispatch
+
+usa seven.runtime.platform.native.syscall_objects
+usa seven.runtime.platform.native.target
+usa std.base.lista
+usa std.mem.bytes
+
+campo x64_runtime_dispatch(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo,
+  nome: Texto,
+  aridade: U32
+) -> Bit ::
+  veja x64_syscall_objeto_emite(codigo, virtual_alloc_patches, alvo, nome, aridade) ::
+    devolve sim
+  fecha
+
+  devolve nao
+fecha
