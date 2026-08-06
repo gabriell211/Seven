@@ -22,8 +22,13 @@ campo montar(fluxo: Fluxo) -> Programa ::
   guarda usos := parse_usos(p)
   solta itens := lista_no()
 
-  gira parse_fim(p) == nao ::
+  gira nao parse_fim(p) ::
+    guarda antes := p.pos
     lista_no_coloca(itens, parse_item(p))
+    veja p.pos == antes ::
+      parse_reporta(p, "S0-PARSE-PROGRESSO", "parser nao consumiu o item atual")
+      parse_avanca(p)
+    fecha
   fecha
 
   devolve Programa {
@@ -33,24 +38,526 @@ campo montar(fluxo: Fluxo) -> Programa ::
   }
 fecha
 
-campo parse_item(p: Parser) -> No ::
-  guarda t := parse_atual(p)
+campo parse_atual(p: Parser) -> Token ::
+  devolve lista_token_pega(p.fluxo.tokens, p.pos)
+fecha
 
-  veja t.marca == "const" ::
-    devolve parse_const(p)
-  outro ::
-    veja t.marca == "molde" ::
-      devolve parse_molde(p)
+campo parse_anterior(p: Parser) -> Token ::
+  veja p.pos == 0 :: devolve parse_atual(p) fecha
+  devolve lista_token_pega(p.fluxo.tokens, p.pos - 1)
+fecha
+
+campo parse_olha(p: Parser, deslocamento: U64) -> Token ::
+  guarda indice := p.pos + deslocamento
+  veja indice >= lista_token_tamanho(p.fluxo.tokens) ::
+    devolve lista_token_pega(p.fluxo.tokens, lista_token_tamanho(p.fluxo.tokens) - 1)
+  fecha
+  devolve lista_token_pega(p.fluxo.tokens, indice)
+fecha
+
+campo parse_fim(p: Parser) -> Bit ::
+  devolve parse_atual(p).tipo == "fim"
+fecha
+
+campo parse_avanca(p: Parser) -> Token ::
+  guarda atual := parse_atual(p)
+  veja nao parse_fim(p) :: vira p.pos := p.pos + 1 fecha
+  devolve atual
+fecha
+
+campo parse_proximo(p: Parser, marca: Texto) -> Bit ::
+  devolve parse_atual(p).marca == marca
+fecha
+
+campo parse_aceita(p: Parser, marca: Texto) -> Bit ::
+  veja parse_proximo(p, marca) ::
+    parse_avanca(p)
+    devolve sim
+  fecha
+  devolve nao
+fecha
+
+campo parse_espera(p: Parser, marca: Texto, codigo: Texto, mensagem: Texto) -> Token ::
+  veja parse_proximo(p, marca) :: devolve parse_avanca(p) fecha
+  parse_reporta(p, codigo, mensagem)
+  devolve parse_avanca(p)
+fecha
+
+campo parse_nome(p: Parser, contexto: Texto) -> Token ::
+  guarda atual := parse_atual(p)
+  veja atual.tipo == "nome" ou atual.tipo == "palavra" ::
+    devolve parse_avanca(p)
+  fecha
+  parse_reporta(p, "S0-PARSE-NOME", "esperado nome " + contexto)
+  devolve parse_avanca(p)
+fecha
+
+campo parse_reporta(p: Parser, codigo: Texto, mensagem: Texto) -> Nada ::
+  guarda atual := parse_atual(p)
+  lista_diagnostico_coloca(p.diagnosticos, diag(codigo, mensagem, p.fluxo.fonte, atual.linha, atual.coluna))
+fecha
+
+campo parse_modulo(p: Parser) -> Texto ::
+  veja nao parse_aceita(p, "modulo") :: devolve "" fecha
+  devolve parse_caminho(p)
+fecha
+
+campo parse_caminho(p: Parser) -> Texto ::
+  solta caminho := parse_nome(p, "do caminho").marca
+  gira parse_aceita(p, ".") ::
+    vira caminho := caminho + "." + parse_nome(p, "depois de .").marca
+  fecha
+  devolve caminho
+fecha
+
+campo parse_usos(p: Parser) -> ListaTexto ::
+  solta usos := lista_texto()
+  gira parse_aceita(p, "usa") ::
+    guarda caminho := parse_caminho(p)
+    veja parse_aceita(p, "como") ::
+      vira caminho := caminho + " como " + parse_nome(p, "do apelido").marca
+    fecha
+    lista_texto_coloca(usos, caminho)
+  fecha
+  devolve usos
+fecha
+
+campo parse_item(p: Parser) -> No ::
+  veja parse_proximo(p, "const") :: devolve parse_const(p) fecha
+  veja parse_proximo(p, "molde") :: devolve parse_molde(p) fecha
+  veja parse_proximo(p, "selo") :: devolve parse_selo(p) fecha
+  veja parse_proximo(p, "campo") :: devolve parse_campo(p, nao) fecha
+  veja parse_proximo(p, "extern") :: devolve parse_externo(p) fecha
+
+  guarda atual := parse_atual(p)
+  parse_reporta(p, "S0-PARSE-ITEM", "esperado const, molde, selo, campo ou extern")
+  parse_avanca(p)
+  devolve no("invalido", "", "", atual.marca, atual.linha, atual.coluna)
+fecha
+
+campo parse_const(p: Parser) -> No ::
+  guarda inicio := parse_espera(p, "const", "S0-PARSE-CONST", "esperado const")
+  guarda nome := parse_nome(p, "da constante").marca
+  parse_espera(p, ":", "S0-PARSE-TIPO", "esperado : depois da constante")
+  guarda tipo := parse_tipo(p)
+  parse_espera(p, ":=", "S0-PARSE-VALOR", "esperado := antes do valor")
+  guarda valor := parse_expressao(p)
+  devolve no_com_filho("const", nome, tipo, "", valor, inicio.linha, inicio.coluna)
+fecha
+
+campo parse_molde(p: Parser) -> No ::
+  guarda inicio := parse_espera(p, "molde", "S0-PARSE-MOLDE", "esperado molde")
+  guarda nome := parse_nome(p, "do molde").marca
+  parse_pula_genericos(p)
+  solta saida := no("molde", nome, "", "", inicio.linha, inicio.coluna)
+  parse_espera(p, "::", "S0-PARSE-BLOCO", "esperado :: para abrir molde")
+
+  gira nao parse_fim(p) e nao parse_proximo(p, "fecha") ::
+    guarda membro := parse_nome(p, "do membro")
+    parse_espera(p, ":", "S0-PARSE-MEMBRO", "esperado : depois do membro")
+    lista_no_coloca(saida.filhos, no("membro", membro.marca, parse_tipo(p), "", membro.linha, membro.coluna))
+  fecha
+
+  parse_espera(p, "fecha", "S0-PARSE-FECHA", "esperado fecha no molde")
+  devolve saida
+fecha
+
+campo parse_selo(p: Parser) -> No ::
+  guarda inicio := parse_espera(p, "selo", "S0-PARSE-SELO", "esperado selo")
+  guarda nome := parse_nome(p, "do selo").marca
+  parse_pula_genericos(p)
+  solta saida := no("selo", nome, "", "", inicio.linha, inicio.coluna)
+  parse_espera(p, "::", "S0-PARSE-BLOCO", "esperado :: para abrir selo")
+
+  gira nao parse_fim(p) e nao parse_proximo(p, "fecha") ::
+    guarda variante := parse_nome(p, "da variante")
+    solta no_variante := no("variante", variante.marca, "", "", variante.linha, variante.coluna)
+    veja parse_aceita(p, "(") ::
+      veja nao parse_proximo(p, ")") ::
+        lista_no_coloca(no_variante.filhos, no("carga", "", parse_tipo(p), "", variante.linha, variante.coluna))
+        gira parse_aceita(p, ",") ::
+          lista_no_coloca(no_variante.filhos, no("carga", "", parse_tipo(p), "", variante.linha, variante.coluna))
+        fecha
+      fecha
+      parse_espera(p, ")", "S0-PARSE-VARIANTE", "esperado ) na variante")
+    fecha
+    lista_no_coloca(saida.filhos, no_variante)
+  fecha
+
+  parse_espera(p, "fecha", "S0-PARSE-FECHA", "esperado fecha no selo")
+  devolve saida
+fecha
+
+campo parse_externo(p: Parser) -> No ::
+  guarda inicio := parse_espera(p, "extern", "S0-PARSE-EXTERN", "esperado extern")
+  guarda abi := parse_nome(p, "da ABI").marca
+  guarda campo := parse_campo(p, sim)
+  vira campo.especie := "extern"
+  vira campo.valor := abi
+  veja parse_aceita(p, "liga") ::
+    vira campo.valor := campo.valor + ":" + parse_atual(p).marca
+    parse_avanca(p)
+  fecha
+  vira campo.linha := inicio.linha
+  vira campo.coluna := inicio.coluna
+  devolve campo
+fecha
+
+campo parse_campo(p: Parser, externo: Bit) -> No ::
+  guarda inicio := parse_espera(p, "campo", "S0-PARSE-CAMPO", "esperado campo")
+  guarda nome := parse_nome(p, "do campo").marca
+  parse_pula_genericos(p)
+  solta saida := no("campo", nome, "Nada", "", inicio.linha, inicio.coluna)
+
+  parse_espera(p, "(", "S0-PARSE-PARAMETROS", "esperado (")
+  veja nao parse_proximo(p, ")") ::
+    lista_no_coloca(saida.filhos, parse_parametro(p))
+    gira parse_aceita(p, ",") :: lista_no_coloca(saida.filhos, parse_parametro(p)) fecha
+  fecha
+  parse_espera(p, ")", "S0-PARSE-PARAMETROS", "esperado )")
+
+  veja parse_aceita(p, "->") :: vira saida.tipo := parse_tipo(p) fecha
+
+  veja parse_aceita(p, "toca") ::
+    vira saida.valor := parse_nome(p, "do efeito").marca
+    gira parse_aceita(p, ",") ::
+      vira saida.valor := saida.valor + "," + parse_nome(p, "do efeito").marca
+    fecha
+  fecha
+
+  gira parse_aceita(p, "requer") :: parse_expressao(p) fecha
+
+  veja externo :: devolve saida fecha
+
+  parse_espera(p, "::", "S0-PARSE-BLOCO", "esperado :: para abrir campo")
+  lista_no_coloca(saida.filhos, parse_bloco(p, nao))
+  parse_espera(p, "fecha", "S0-PARSE-FECHA", "esperado fecha no campo")
+  devolve saida
+fecha
+
+campo parse_parametro(p: Parser) -> No ::
+  guarda nome := parse_nome(p, "do parametro")
+  parse_espera(p, ":", "S0-PARSE-PARAMETRO", "esperado : depois do parametro")
+  devolve no("parametro", nome.marca, parse_tipo(p), "", nome.linha, nome.coluna)
+fecha
+
+campo parse_tipo(p: Parser) -> Texto ::
+  solta tipo := parse_caminho(p)
+
+  veja parse_aceita(p, "<") ::
+    vira tipo := tipo + "<" + parse_tipo(p)
+    gira parse_aceita(p, ",") :: vira tipo := tipo + "," + parse_tipo(p) fecha
+    parse_espera(p, ">", "S0-PARSE-TIPO", "esperado > no tipo generico")
+    vira tipo := tipo + ">"
+  fecha
+
+  veja parse_aceita(p, "[") ::
+    vira tipo := tipo + "["
+    veja nao parse_proximo(p, "]") ::
+      guarda tamanho_tipo := parse_expressao(p)
+      vira tipo := tipo + tamanho_tipo.valor
+    fecha
+    parse_espera(p, "]", "S0-PARSE-TIPO", "esperado ] no tipo")
+    vira tipo := tipo + "]"
+  fecha
+
+  devolve tipo
+fecha
+
+campo parse_pula_genericos(p: Parser) -> Nada ::
+  veja nao parse_aceita(p, "<") :: devolve nulo fecha
+  solta profundidade: U32 := 1
+  gira nao parse_fim(p) e profundidade > 0 ::
+    veja parse_aceita(p, "<") ::
+      vira profundidade := profundidade + 1
     outro ::
-      veja t.marca == "selo" ::
-        devolve parse_selo(p)
+      veja parse_aceita(p, ">") ::
+        vira profundidade := profundidade - 1
       outro ::
-        veja t.marca == "campo" ::
-          devolve parse_campo(p)
+        parse_avanca(p)
+      fecha
+    fecha
+  fecha
+fecha
+
+campo parse_bloco(p: Parser, aceita_outro: Bit) -> No ::
+  guarda atual := parse_atual(p)
+  solta bloco := no("bloco", "", "", "", atual.linha, atual.coluna)
+
+  gira nao parse_fim(p) e nao parse_proximo(p, "fecha") e (nao aceita_outro ou nao parse_proximo(p, "outro")) ::
+    guarda antes := p.pos
+    lista_no_coloca(bloco.filhos, parse_comando(p))
+    veja p.pos == antes ::
+      parse_reporta(p, "S0-PARSE-COMANDO", "comando nao reconhecido")
+      parse_avanca(p)
+    fecha
+  fecha
+
+  devolve bloco
+fecha
+
+campo parse_comando(p: Parser) -> No ::
+  veja parse_proximo(p, "guarda") :: devolve parse_declaracao(p, "imutavel") fecha
+  veja parse_proximo(p, "solta") :: devolve parse_declaracao(p, "mutavel") fecha
+  veja parse_proximo(p, "vira") :: devolve parse_atribuicao(p) fecha
+  veja parse_proximo(p, "devolve") :: devolve parse_retorno(p) fecha
+  veja parse_proximo(p, "diga") :: devolve parse_diga(p) fecha
+  veja parse_proximo(p, "veja") :: devolve parse_se(p) fecha
+  veja parse_proximo(p, "gira") :: devolve parse_enquanto(p) fecha
+  veja parse_proximo(p, "para") :: devolve parse_para_cada(p) fecha
+  veja parse_proximo(p, "falha") :: devolve parse_falha(p) fecha
+
+  guarda inicio := parse_atual(p)
+  guarda expr := parse_expressao(p)
+  devolve no_com_filho("expressao", "", "", "", expr, inicio.linha, inicio.coluna)
+fecha
+
+campo parse_declaracao(p: Parser, mutabilidade: Texto) -> No ::
+  guarda inicio := parse_avanca(p)
+  guarda nome := parse_nome(p, "da variavel").marca
+  solta tipo := ""
+  veja parse_aceita(p, ":") :: vira tipo := parse_tipo(p) fecha
+  parse_espera(p, ":=", "S0-PARSE-DECLARACAO", "esperado := na declaracao")
+  guarda valor := parse_expressao(p)
+  devolve no_com_filho("declaracao", nome, tipo, mutabilidade, valor, inicio.linha, inicio.coluna)
+fecha
+
+campo parse_atribuicao(p: Parser) -> No ::
+  guarda inicio := parse_espera(p, "vira", "S0-PARSE-ATRIBUICAO", "esperado vira")
+  guarda alvo := parse_expressao(p)
+  parse_espera(p, ":=", "S0-PARSE-ATRIBUICAO", "esperado := na atribuicao")
+  guarda valor := parse_expressao(p)
+  solta saida := no("atribuicao", "", "", "", inicio.linha, inicio.coluna)
+  lista_no_coloca(saida.filhos, alvo)
+  lista_no_coloca(saida.filhos, valor)
+  devolve saida
+fecha
+
+campo parse_retorno(p: Parser) -> No ::
+  guarda inicio := parse_espera(p, "devolve", "S0-PARSE-RETORNO", "esperado devolve")
+  devolve no_com_filho("retorno", "", "", "", parse_expressao(p), inicio.linha, inicio.coluna)
+fecha
+
+campo parse_diga(p: Parser) -> No ::
+  guarda inicio := parse_espera(p, "diga", "S0-PARSE-DIGA", "esperado diga")
+  devolve no_com_filho("diga", "", "", "", parse_expressao(p), inicio.linha, inicio.coluna)
+fecha
+
+campo parse_falha(p: Parser) -> No ::
+  guarda inicio := parse_espera(p, "falha", "S0-PARSE-FALHA", "esperado falha")
+  solta saida := no("falha", "", "", "", inicio.linha, inicio.coluna)
+  lista_no_coloca(saida.filhos, parse_expressao(p))
+  lista_no_coloca(saida.filhos, parse_expressao(p))
+  devolve saida
+fecha
+
+campo parse_se(p: Parser) -> No ::
+  guarda inicio := parse_espera(p, "veja", "S0-PARSE-SE", "esperado veja")
+  solta saida := no("se", "", "", "", inicio.linha, inicio.coluna)
+  lista_no_coloca(saida.filhos, parse_expressao(p))
+  parse_espera(p, "::", "S0-PARSE-BLOCO", "esperado :: depois da condicao")
+  lista_no_coloca(saida.filhos, parse_bloco(p, sim))
+
+  veja parse_aceita(p, "outro") ::
+    parse_espera(p, "::", "S0-PARSE-BLOCO", "esperado :: depois de outro")
+    lista_no_coloca(saida.filhos, parse_bloco(p, nao))
+  fecha
+
+  parse_espera(p, "fecha", "S0-PARSE-FECHA", "esperado fecha no veja")
+  devolve saida
+fecha
+
+campo parse_enquanto(p: Parser) -> No ::
+  guarda inicio := parse_espera(p, "gira", "S0-PARSE-GIRA", "esperado gira")
+  solta saida := no("enquanto", "", "", "", inicio.linha, inicio.coluna)
+  lista_no_coloca(saida.filhos, parse_expressao(p))
+  parse_espera(p, "::", "S0-PARSE-BLOCO", "esperado :: depois de gira")
+  lista_no_coloca(saida.filhos, parse_bloco(p, nao))
+  parse_espera(p, "fecha", "S0-PARSE-FECHA", "esperado fecha no gira")
+  devolve saida
+fecha
+
+campo parse_para_cada(p: Parser) -> No ::
+  guarda inicio := parse_espera(p, "para", "S0-PARSE-PARA", "esperado para")
+  parse_espera(p, "cada", "S0-PARSE-PARA", "esperado cada")
+  guarda nome := parse_nome(p, "do item").marca
+  parse_espera(p, "em", "S0-PARSE-PARA", "esperado em")
+  solta saida := no("para_cada", nome, "", "", inicio.linha, inicio.coluna)
+  lista_no_coloca(saida.filhos, parse_expressao(p))
+  parse_espera(p, "::", "S0-PARSE-BLOCO", "esperado :: depois de para cada")
+  lista_no_coloca(saida.filhos, parse_bloco(p, nao))
+  parse_espera(p, "fecha", "S0-PARSE-FECHA", "esperado fecha no para cada")
+  devolve saida
+fecha
+
+campo parse_expressao(p: Parser) -> No ::
+  devolve parse_ou(p)
+fecha
+
+campo parse_ou(p: Parser) -> No ::
+  solta expr := parse_e(p)
+  gira parse_aceita(p, "ou") ::
+    vira expr := parse_binario(expr, "ou", parse_e(p))
+  fecha
+  devolve expr
+fecha
+
+campo parse_e(p: Parser) -> No ::
+  solta expr := parse_igualdade(p)
+  gira parse_aceita(p, "e") ::
+    vira expr := parse_binario(expr, "e", parse_igualdade(p))
+  fecha
+  devolve expr
+fecha
+
+campo parse_igualdade(p: Parser) -> No ::
+  solta expr := parse_comparacao(p)
+  gira parse_proximo(p, "==") ou parse_proximo(p, "!=") ::
+    guarda op := parse_avanca(p).marca
+    vira expr := parse_binario(expr, op, parse_comparacao(p))
+  fecha
+  devolve expr
+fecha
+
+campo parse_comparacao(p: Parser) -> No ::
+  solta expr := parse_termo(p)
+  gira parse_proximo(p, "<") ou parse_proximo(p, "<=") ou parse_proximo(p, ">") ou parse_proximo(p, ">=") ::
+    guarda op := parse_avanca(p).marca
+    vira expr := parse_binario(expr, op, parse_termo(p))
+  fecha
+  devolve expr
+fecha
+
+campo parse_termo(p: Parser) -> No ::
+  solta expr := parse_fator(p)
+  gira parse_proximo(p, "+") ou parse_proximo(p, "-") ::
+    guarda op := parse_avanca(p).marca
+    vira expr := parse_binario(expr, op, parse_fator(p))
+  fecha
+  devolve expr
+fecha
+
+campo parse_fator(p: Parser) -> No ::
+  solta expr := parse_unario(p)
+  gira parse_proximo(p, "*") ou parse_proximo(p, "/") ou parse_proximo(p, "%") ::
+    guarda op := parse_avanca(p).marca
+    vira expr := parse_binario(expr, op, parse_unario(p))
+  fecha
+  devolve expr
+fecha
+
+campo parse_unario(p: Parser) -> No ::
+  veja parse_proximo(p, "nao") ou parse_proximo(p, "-") ::
+    guarda op := parse_avanca(p)
+    devolve no_com_filho("unario", "", "", op.marca, parse_unario(p), op.linha, op.coluna)
+  fecha
+  devolve parse_posfixo(p)
+fecha
+
+campo parse_posfixo(p: Parser) -> No ::
+  solta expr := parse_primario(p)
+
+  gira sim ::
+    veja parse_aceita(p, "(") ::
+      solta chamada := no("chamada", expr.nome, "", "", expr.linha, expr.coluna)
+      veja expr.especie != "nome" :: lista_no_coloca(chamada.filhos, expr) fecha
+      veja nao parse_proximo(p, ")") ::
+        lista_no_coloca(chamada.filhos, parse_expressao(p))
+        gira parse_aceita(p, ",") :: lista_no_coloca(chamada.filhos, parse_expressao(p)) fecha
+      fecha
+      parse_espera(p, ")", "S0-PARSE-CHAMADA", "esperado ) na chamada")
+      vira expr := chamada
+    outro ::
+      veja parse_aceita(p, ".") ::
+        guarda membro := parse_nome(p, "depois de .")
+        vira expr := no_com_filho("acesso", membro.marca, "", "", expr, membro.linha, membro.coluna)
+      outro ::
+        veja parse_aceita(p, "[") ::
+          solta indice := no("indice", "", "", "", expr.linha, expr.coluna)
+          lista_no_coloca(indice.filhos, expr)
+          lista_no_coloca(indice.filhos, parse_expressao(p))
+          parse_espera(p, "]", "S0-PARSE-INDICE", "esperado ]")
+          vira expr := indice
         outro ::
-          falha "S0-PARSE-ESPERADO" "esperado item"
+          devolve expr
         fecha
       fecha
     fecha
   fecha
+
+  devolve expr
+fecha
+
+campo parse_primario(p: Parser) -> No ::
+  guarda atual := parse_avanca(p)
+
+  veja atual.tipo == "numero" :: devolve no("numero", "", "", atual.marca, atual.linha, atual.coluna) fecha
+  veja atual.tipo == "texto" :: devolve no("texto", "", "", atual.marca, atual.linha, atual.coluna) fecha
+  veja atual.marca == "sim" :: devolve no("bit", "", "", "1", atual.linha, atual.coluna) fecha
+  veja atual.marca == "nao" :: devolve no("bit", "", "", "0", atual.linha, atual.coluna) fecha
+  veja atual.marca == "nulo" :: devolve no("nulo", "", "", "", atual.linha, atual.coluna) fecha
+
+  veja atual.marca == "(" ::
+    guarda expr := parse_expressao(p)
+    parse_espera(p, ")", "S0-PARSE-GRUPO", "esperado )")
+    devolve expr
+  fecha
+
+  veja atual.tipo == "nome" ou atual.tipo == "palavra" ::
+    solta nome_completo := atual.marca
+    gira parse_aceita(p, ".") ::
+      vira nome_completo := nome_completo + "." + parse_nome(p, "depois de .").marca
+    fecha
+
+    veja parse_generico_de_chamada(p) :: parse_pula_genericos(p) fecha
+
+    veja parse_aceita(p, "{") ::
+      solta objeto := no("objeto", nome_completo, "", "", atual.linha, atual.coluna)
+      veja nao parse_proximo(p, "}") ::
+        lista_no_coloca(objeto.filhos, parse_campo_objeto(p))
+        gira parse_aceita(p, ",") ::
+          veja nao parse_proximo(p, "}") :: lista_no_coloca(objeto.filhos, parse_campo_objeto(p)) fecha
+        fecha
+      fecha
+      parse_espera(p, "}", "S0-PARSE-OBJETO", "esperado } no objeto")
+      devolve objeto
+    fecha
+
+    devolve no("nome", nome_completo, "", "", atual.linha, atual.coluna)
+  fecha
+
+  parse_reporta(p, "S0-PARSE-EXPRESSAO", "expressao invalida")
+  devolve no("nulo", "", "", "", atual.linha, atual.coluna)
+fecha
+
+campo parse_campo_objeto(p: Parser) -> No ::
+  guarda nome := parse_nome(p, "do campo do objeto")
+  parse_espera(p, ":", "S0-PARSE-OBJETO", "esperado : no campo do objeto")
+  devolve no_com_filho("campo_objeto", nome.marca, "", "", parse_expressao(p), nome.linha, nome.coluna)
+fecha
+
+campo parse_generico_de_chamada(p: Parser) -> Bit ::
+  veja nao parse_proximo(p, "<") :: devolve nao fecha
+  solta indice: U64 := 0
+  solta profundidade: Num := 0
+
+  gira p.pos + indice < lista_token_tamanho(p.fluxo.tokens) ::
+    guarda marca := parse_olha(p, indice).marca
+    veja marca == "<" :: vira profundidade := profundidade + 1 fecha
+    veja marca == ">" ::
+      vira profundidade := profundidade - 1
+      veja profundidade == 0 :: devolve parse_olha(p, indice + 1).marca == "(" fecha
+    fecha
+    veja marca == "fim" :: devolve nao fecha
+    vira indice := indice + 1
+  fecha
+
+  devolve nao
+fecha
+
+campo parse_binario(esquerda: No, operador: Texto, direita: No) -> No ::
+  solta saida := no("binario", "", "", operador, esquerda.linha, esquerda.coluna)
+  lista_no_coloca(saida.filhos, esquerda)
+  lista_no_coloca(saida.filhos, direita)
+  devolve saida
 fecha
