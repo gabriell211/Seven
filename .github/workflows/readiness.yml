@@ -20,6 +20,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Verify canonical grammar synchronization
         shell: bash
@@ -117,3 +119,22 @@ jobs:
           grep -q 'rejeita bloco maior que 64 MiB' tests/runtime/svbc_memory.sev
           grep -q 'uninstall' compiler/toolchain/installer.sev
           grep -q '\.sev' compiler/toolchain/installer.sev
+
+      - name: Inspect native bootstrap command implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show 3e84aa820625d13370b833b59a869d4e99d81dae:.github/workflows/regenerate-semantic-seeds.yml > "$RUNNER_TEMP/generator.yml"
+          awk '/seven-bootstrap.c.gz.b64.*B64/{capture=1;next} /^          B64$/{capture=0} capture{sub(/^          /,"");print}' "$RUNNER_TEMP/generator.yml" > "$RUNNER_TEMP/seven-bootstrap.c.gz.b64"
+          base64 --decode "$RUNNER_TEMP/seven-bootstrap.c.gz.b64" | gzip --decompress > "$RUNNER_TEMP/seven-bootstrap.c"
+          BOOTSTRAP_SOURCE="$RUNNER_TEMP/seven-bootstrap.c" python - <<'PY'
+          import os
+          from pathlib import Path
+
+          text = Path(os.environ['BOOTSTRAP_SOURCE']).read_text()
+          for needle in ('static int core_main', 'int core_main', 'static char*read_file', 'static int write_file', 'static int make_dir', 'static int emit_image'):
+              index = text.find(needle)
+              if index >= 0:
+                  print(f'\n===== {needle} =====')
+                  print(text[index:index + 7000])
+          PY
