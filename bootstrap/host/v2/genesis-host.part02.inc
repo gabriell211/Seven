@@ -20,7 +20,6 @@ static Image load_image(const char*path){
 static void vm_fail(VM*vm,const char*msg){vm->failed=1;snprintf(vm->error,sizeof(vm->error),"%s",msg);}
 static void push(VM*vm,Value v){if(vm->sp==vm->stack_cap){vm->stack_cap=vm->stack_cap?vm->stack_cap*2:1024;vm->stack=(Value*)xrealloc(vm->stack,vm->stack_cap*sizeof(Value));}vm->stack[vm->sp++]=v;}
 static Value pop(VM*vm){if(!vm->sp){vm_fail(vm,"stack underflow");return v_null();}return vm->stack[--vm->sp];}
-static int field_index(Image*im,const char*name){for(uint32_t i=0;i<im->field_count;i++)if(str_eq_c(im->fields[i].name,name))return (int)i;return -1;}
 static void frame_push(VM*vm,Frame fr){if(vm->fp==vm->frame_cap){vm->frame_cap=vm->frame_cap?vm->frame_cap*2:256;vm->frames=(Frame*)xrealloc(vm->frames,vm->frame_cap*sizeof(Frame));}vm->frames[vm->fp++]=fr;}
 static String value_key(Value v){return text(v);}
 
