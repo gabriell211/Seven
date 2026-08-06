@@ -167,7 +167,7 @@ campo prepara_payload(sistema: SistemaInstalacao, payload: Texto) -> Resultado<N
     devolve Falha(nova_falha("SV-INSTALLER-COMPILADOR", "compilador nativo ausente: " + compilador))
   fecha
 
-  guarda destino_compilador := payload + "/seven"
+  solta destino_compilador := payload + "/seven"
   veja sistema e WindowsX64 ::
     vira destino_compilador := payload + "/seven.exe"
   fecha
