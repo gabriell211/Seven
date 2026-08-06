@@ -21,68 +21,26 @@ jobs:
           ref: gabriell211/production-readiness
           fetch-depth: 0
 
-      - name: Patch bytecode readiness blockers
+      - name: Fix IR mutability contract
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
 
-          path = Path("compiler/bytecode.sev")
+          path = Path("compiler/ir.sev")
           text = path.read_text()
-
-          old_chama = '''  veja instrucao e IrChama ::
-    guarda deslocamento := emite_argumentos(bytes, instrucao.argumentos, ip)
-    emite_instrucao_svbc(
-      bytes,
-      Chama,
-      indice_campo(unidade.campos, instrucao.campo),
-      U32(lista_tamanho(instrucao.argumentos)),
-      0,
-      ip + deslocamento
-    )
-    emite_instrucao_svbc(bytes, Guarda, instrucao.destino, 0, 0, ip + deslocamento + 1)
-    devolve nulo
-  fecha
+          old = '''  veja comando e CmdCria ::
+    guarda valor := baixa_expressao(comando.valor.valor, contexto)
+    guarda tipo := TipoDesconhecido
 '''
-          new_chama = old_chama.replace("deslocamento", "deslocamento_chamada")
-
-          old_syscall = '''  veja instrucao e IrSyscall ::
-    guarda deslocamento := emite_argumentos(bytes, instrucao.argumentos, ip)
-    emite_instrucao_svbc(
-      bytes,
-      Syscall,
-      indice_nome(unidade.nomes, instrucao.nome),
-      U32(lista_tamanho(instrucao.argumentos)),
-      0,
-      ip + deslocamento
-    )
-    emite_instrucao_svbc(bytes, Guarda, instrucao.destino, 0, 0, ip + deslocamento + 1)
-    devolve nulo
-  fecha
+          new = '''  veja comando e CmdCria ::
+    guarda valor := baixa_expressao(comando.valor.valor, contexto)
+    solta tipo := TipoDesconhecido
 '''
-          new_syscall = old_syscall.replace("deslocamento", "deslocamento_syscall")
-
-          old_fallback = '''  veja operador == ">=" :: devolve MaiorIgual fecha
-  devolve Pare
-fecha
-'''
-          new_fallback = '''  veja operador == ">=" :: devolve MaiorIgual fecha
-  guarda padrao: Opcode := Pare
-  devolve padrao
-fecha
-'''
-
-          for old, new in [
-              (old_chama, new_chama),
-              (old_syscall, new_syscall),
-              (old_fallback, new_fallback),
-          ]:
-              if old not in text:
-                  raise SystemExit("expected bytecode readiness block not found")
-              text = text.replace(old, new, 1)
-
-          path.write_text(text)
+          if old not in text:
+              raise SystemExit("IR mutability target not found")
+          path.write_text(text.replace(old, new, 1))
           PY
 
       - name: Commit repair to readiness branch
@@ -91,9 +49,9 @@ fecha
           set -euo pipefail
           git config user.name gabriell211
           git config user.email 102088315+gabriell211@users.noreply.github.com
-          git add compiler/bytecode.sev
+          git add compiler/ir.sev
           git diff --cached --check
-          git commit -m 'fix final bytecode readiness blockers'
+          git commit -m 'fix IR type mutability during lowering'
           git push origin HEAD:gabriell211/production-readiness
 
-# trigger: 2
+# trigger: ir-mutability
