@@ -9,6 +9,10 @@ usa seven.runtime.svbc0.opcode
 campo svbc0_para_svbc(img0: ImagemSvbc0) -> ImagemSvbc ::
   solta img := imagem_vazia()
 
+  para cada nome em img0.nomes ::
+    lista_coloca(img.nomes, nome)
+  fecha
+
   para cada texto_const em img0.constantes_texto ::
     lista_coloca(img.constantes, VmTexto(texto_const))
   fecha
@@ -17,17 +21,34 @@ campo svbc0_para_svbc(img0: ImagemSvbc0) -> ImagemSvbc ::
     lista_coloca(img.constantes, VmU64(n))
   fecha
 
+  para cada campo0 em img0.campos ::
+    lista_coloca(img.campos, CampoImagem {
+      nome: campo0.nome,
+      entrada: campo0.entrada,
+      locais: campo0.locais,
+      parametros: campo0.parametros,
+      efeitos: lista<Texto>()
+    })
+  fecha
+
+  guarda deslocamento_u32 := U32(lista_tamanho(img0.constantes_texto))
   para cada instr0 em img0.codigo ::
-    lista_coloca(img.codigo, traduz_instrucao(instr0))
+    lista_coloca(img.codigo, traduz_instrucao(instr0, deslocamento_u32))
   fecha
 
   devolve img
 fecha
 
-campo traduz_instrucao(instr0: Instrucao0) -> Instrucao ::
+campo traduz_instrucao(instr0: Instrucao0, deslocamento_u32: U32) -> Instrucao ::
+  solta a := instr0.a
+
+  veja instr0.opcode e ConstU32 ::
+    vira a := deslocamento_u32 + instr0.a
+  fecha
+
   devolve Instrucao {
     opcode: traduz_opcode(instr0.opcode),
-    a: instr0.a,
+    a: a,
     b: instr0.b,
     c: 0,
     ip: instr0.ip
@@ -35,18 +56,25 @@ campo traduz_instrucao(instr0: Instrucao0) -> Instrucao ::
 fecha
 
 campo traduz_opcode(op: Opcode0) -> Opcode ::
-  veja op e Pare0 ::
-    devolve Pare
-  fecha
-  veja op e ConstU32 ::
-    devolve Const
-  fecha
-  veja op e Soma0 ::
-    devolve Soma
-  fecha
-  veja op e Retorna0 ::
-    devolve Volta
-  fecha
+  veja op e Pare0 :: devolve Pare fecha
+  veja op e ConstU32 :: devolve Const fecha
+  veja op e ConstTexto :: devolve Const fecha
+  veja op e LocalLe :: devolve Carrega fecha
+  veja op e LocalGrava :: devolve Guarda fecha
+  veja op e Soma0 :: devolve Soma fecha
+  veja op e Sub0 :: devolve Sub fecha
+  veja op e Mul0 :: devolve Mul fecha
+  veja op e Div0 :: devolve Div fecha
+  veja op e Igual0 :: devolve Igual fecha
+  veja op e Menor0 :: devolve Menor fecha
+  veja op e Salta0 :: devolve Salta fecha
+  veja op e SaltaFalso0 :: devolve SaltaSeNao fecha
+  veja op e Chama0 :: devolve Chama fecha
+  veja op e Retorna0 :: devolve Volta fecha
+  veja op e Caixa0 :: devolve Caixa fecha
+  veja op e MarcaByte0 :: devolve MarcaByte fecha
+  veja op e PegaByte0 :: devolve PegaByte fecha
+  veja op e Efeito0 :: devolve Syscall fecha
 
-  devolve Syscall
+  devolve Pare
 fecha
