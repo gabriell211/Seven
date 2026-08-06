@@ -15,6 +15,23 @@ molde ResultadoFonte ::
 fecha
 
 campo fonte_ler(caminho: Texto) -> ResultadoFonte toca disco ::
+  veja nao sys_arquivo_existe(caminho) ::
+    solta diagnosticos := lista_diagnostico()
+    lista_diagnostico_coloca(diagnosticos, diag(
+      "S0-FONTE-AUSENTE",
+      "arquivo de entrada nao existe",
+      caminho,
+      1,
+      1
+    ))
+
+    devolve ResultadoFonte {
+      ok: nao,
+      valor: Fonte { caminho: caminho, texto: "" },
+      diagnosticos: diagnosticos
+    }
+  fecha
+
   guarda texto_fonte := arquivo_ler(caminho)
 
   devolve ResultadoFonte {
