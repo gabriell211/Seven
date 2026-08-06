@@ -1,0 +1,195 @@
+modulo seven.runtime.platform.native.syscall_io
+
+usa seven.runtime.platform.native.target
+usa seven.runtime.platform.native.win_imports
+usa std.base.lista
+usa std.mem.bytes
+
+campo x64_syscall_io_emite(
+  codigo: Bytes,
+  alvo: AlvoNativo,
+  nome: Texto,
+  aridade: U32
+) -> Bit ::
+  veja nome == "terminal_escreve" e aridade == 1 ::
+    x64_io_terminal(codigo, alvo, nao)
+    devolve sim
+  fecha
+  veja nome == "sys_terminal_escreve" e aridade == 1 ::
+    x64_io_terminal(codigo, alvo, nao)
+    devolve sim
+  fecha
+  veja nome == "terminal_diga" e aridade == 1 ::
+    x64_io_terminal(codigo, alvo, sim)
+    devolve sim
+  fecha
+  veja nome == "diga" e aridade == 1 ::
+    x64_io_terminal(codigo, alvo, sim)
+    devolve sim
+  fecha
+
+  devolve nao
+fecha
+
+campo x64_io_terminal(codigo: Bytes, alvo: AlvoNativo, nova_linha: Bit) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 238)
+  bytes_coloca_byte(codigo, 1)
+
+  veja alvo.formato == "elf" ::
+    x64_io_linux_write_texto(codigo)
+    veja nova_linha :: x64_io_linux_nova_linha(codigo) fecha
+    x64_io_push_nulo(codigo)
+    devolve nulo
+  fecha
+
+  x64_io_windows_stdout(codigo)
+  x64_io_windows_write_texto(codigo)
+  veja nova_linha :: x64_io_windows_nova_linha(codigo) fecha
+  x64_io_push_nulo(codigo)
+fecha
+
+campo x64_io_linux_write_texto(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 246)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 198)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 86)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 191)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+fecha
+
+campo x64_io_linux_nova_linha(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 106)
+  bytes_coloca_byte(codigo, 10)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 230)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 191)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 196)
+  bytes_coloca_byte(codigo, 8)
+fecha
+
+campo x64_io_windows_stdout(codigo: Bytes) -> Nada ::
+  x64_io_win_inicia(codigo, 32)
+  bytes_coloca_byte(codigo, 185)
+  nativo_u32_le(codigo, 4294967285)
+  x64_windows_importa(codigo, WinImportGetStdHandle)
+  x64_io_win_finaliza(codigo)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 199)
+fecha
+
+campo x64_io_windows_write_texto(codigo: Bytes) -> Nada ::
+  x64_io_win_inicia(codigo, 48)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 249)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 86)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 70)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 40)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 32)
+  nativo_u32_le(codigo, 0)
+  x64_windows_importa(codigo, WinImportWriteFile)
+  x64_io_win_finaliza(codigo)
+fecha
+
+campo x64_io_windows_nova_linha(codigo: Bytes) -> Nada ::
+  x64_io_win_inicia(codigo, 48)
+  bytes_coloca_byte(codigo, 198)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 40)
+  bytes_coloca_byte(codigo, 10)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 249)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 84)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 40)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 44)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 32)
+  nativo_u32_le(codigo, 0)
+  x64_windows_importa(codigo, WinImportWriteFile)
+  x64_io_win_finaliza(codigo)
+fecha
+
+campo x64_io_win_inicia(codigo: Bytes, reserva: U64) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 84)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 228)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 228)
+  bytes_coloca_byte(codigo, 240)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 129)
+  bytes_coloca_byte(codigo, 236)
+  nativo_u32_le(codigo, reserva)
+fecha
+
+campo x64_io_win_finaliza(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 228)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 92)
+fecha
+
+campo x64_io_push_nulo(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 80)
+fecha
