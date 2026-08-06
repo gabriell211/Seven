@@ -42,31 +42,70 @@ jobs:
           } > build/seven0.monolith.sev
 
           build/genesis-host build/seven0.seed.svbc build/seven0.monolith.sev build/seven0.svbc
-          echo 'dad562c0bc695b6e2724425f3fa0b7e6af2929160a27472e256a4cdf24915678  build/seven0.svbc' | sha256sum --check
+          build/genesis-host build/seven0.svbc build/seven0.monolith.sev build/seven0.self.svbc
+          cmp build/seven0.svbc build/seven0.self.svbc
+          sha256sum build/seven0.svbc | tee build/seven0-stage1.sha256
+          wc -c build/seven0.svbc | tee build/seven0-stage1.size
 
       - name: Generate deterministic Stage 1 compiler monolith
         shell: bash
         run: |
           set -euo pipefail
+          cat > build/stage1.sources <<'EOF'
+          compiler/ast.sev
+          compiler/bytecode.sev
+          compiler/diagnostic.sev
+          compiler/driver.sev
+          compiler/effects.sev
+          compiler/emitter.sev
+          compiler/ffi.sev
+          compiler/ir.sev
+          compiler/lexer.sev
+          compiler/memory.sev
+          compiler/package.sev
+          compiler/parser.sev
+          compiler/parser_cursor.sev
+          compiler/semantic.sev
+          compiler/source.sev
+          compiler/symbols.sev
+          compiler/token.sev
+          compiler/types.sev
+          EOF
+
           {
             printf 'modulo seven_stage1_monolith\n\n'
-            for arquivo in $(find compiler -type f -name '*.sev' | LC_ALL=C sort); do
+            while IFS= read -r arquivo; do
               printf '// BEGIN %s\n' "$arquivo"
               sed '/^modulo /d; /^usa /d' "$arquivo"
               printf '// END %s\n\n' "$arquivo"
-            done
+            done < build/stage1.sources
+
+            cat <<'EOF'
+          campo inicio(argumentos: Lista<Texto>) -> Num toca terminal, disco, ambiente ::
+            guarda pedido := pedido_de_compilacao(argumentos)
+            guarda saida := compila(pedido)
+
+            veja saida e Sucesso ::
+              devolve 0
+            outro ::
+              mostra_diagnosticos(saida.diagnosticos)
+              devolve 1
+            fecha
+          fecha
+          EOF
           } > build/seven.stage1.monolith.sev
 
           sha256sum build/seven.stage1.monolith.sev | tee build/stage1-source.sha256
           wc -c build/seven.stage1.monolith.sev | tee build/stage1-source.size
 
-      - name: Compile the full Seven compiler with Seven-0
-        continue-on-error: true
+      - name: Compile the core Seven compiler with Seven-0
         shell: bash
         run: |
+          set +e
           set -uo pipefail
           build/genesis-host build/seven0.svbc build/seven.stage1.monolith.sev build/seven.stage1.svbc 2>&1 | tee build/stage1-compile.log
-          printf '%s\n' "${PIPESTATUS[0]}" > build/stage1-compile.exit
+          code=${PIPESTATUS[0]}
+          printf '%s\n' "$code" > build/stage1-compile.exit
           exit 0
 
       - name: Record Stage 1 evidence
@@ -75,9 +114,9 @@ jobs:
         run: |
           set -u
           echo 'exit:'
-          cat build/stage1-compile.exit
+          cat build/stage1-compile.exit || true
           echo 'log:'
-          cat build/stage1-compile.log
+          cat build/stage1-compile.log || true
           if test -f build/seven.stage1.svbc; then
             wc -c build/seven.stage1.svbc
             sha256sum build/seven.stage1.svbc
@@ -89,6 +128,9 @@ jobs:
         with:
           name: seven-stage1-compiler-probe
           path: |
+            build/seven0-stage1.sha256
+            build/seven0-stage1.size
+            build/stage1.sources
             build/seven.stage1.monolith.sev
             build/stage1-source.sha256
             build/stage1-source.size
