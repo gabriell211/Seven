@@ -2,6 +2,10 @@ modulo seven.runtime.seed.svs0
 
 usa seven0.ast
 usa seven0.check
+usa seven0.emit
+usa seven0.parse
+usa seven0.scan
+usa seven0.source
 usa seven0.token
 usa std.fs.file
 usa std.mem.bytes
@@ -40,7 +44,8 @@ selo ValorSeed ::
   SeedU32(valor: U32)
   SeedTexto(valor: Texto)
   SeedBytes(valor: Bytes)
-  SeedTokens(valor: ListaToken)
+  SeedFonte(valor: Fonte)
+  SeedFluxo(valor: Fluxo)
   SeedArvore(valor: Programa)
   SeedUnidade(valor: Unidade)
 fecha
@@ -263,7 +268,12 @@ campo seed_le_arquivo(estado: EstadoSeed) -> Resultado<Nada, Falha> toca disco :
     devolve Falha(conteudo.valor)
   fecha
 
-  lista_coloca(estado.pilha, SeedTexto(conteudo.valor))
+  guarda fonte := Fonte {
+    caminho: caminho,
+    texto: conteudo.valor
+  }
+
+  lista_coloca(estado.pilha, SeedFonte(fonte))
   devolve Valor(nulo)
 fecha
 
@@ -280,26 +290,26 @@ campo seed_grava_arquivo(estado: EstadoSeed) -> Resultado<Nada, Falha> toca disc
 fecha
 
 campo seed_tokeniza(estado: EstadoSeed) -> Resultado<Nada, Falha> ::
-  guarda fonte := valor_seed_texto(sys_lista_pop(estado.pilha))
-  lista_coloca(estado.pilha, SeedTokens(sys_seed_tokeniza(fonte)))
+  guarda fonte := valor_seed_fonte(sys_lista_pop(estado.pilha))
+  lista_coloca(estado.pilha, SeedFluxo(tokenizar(fonte)))
   devolve Valor(nulo)
 fecha
 
 campo seed_monta(estado: EstadoSeed) -> Resultado<Nada, Falha> ::
-  guarda tokens := valor_seed_tokens(sys_lista_pop(estado.pilha))
-  lista_coloca(estado.pilha, SeedArvore(sys_seed_monta(tokens)))
+  guarda fluxo := valor_seed_fluxo(sys_lista_pop(estado.pilha))
+  lista_coloca(estado.pilha, SeedArvore(montar(fluxo)))
   devolve Valor(nulo)
 fecha
 
 campo seed_confere(estado: EstadoSeed) -> Resultado<Nada, Falha> ::
   guarda arvore := valor_seed_arvore(sys_lista_pop(estado.pilha))
-  lista_coloca(estado.pilha, SeedUnidade(sys_seed_confere(arvore)))
+  lista_coloca(estado.pilha, SeedUnidade(conferir(arvore)))
   devolve Valor(nulo)
 fecha
 
 campo seed_emite_svbc0(estado: EstadoSeed) -> Resultado<Nada, Falha> ::
   guarda unidade := valor_seed_unidade(sys_lista_pop(estado.pilha))
-  lista_coloca(estado.pilha, SeedBytes(sys_seed_emite_svbc0(unidade)))
+  lista_coloca(estado.pilha, SeedBytes(emitir_svbc0(unidade)))
   devolve Valor(nulo)
 fecha
 
@@ -325,12 +335,26 @@ campo valor_seed_bytes(valor: ValorSeed) -> Bytes ::
   devolve bytes_novo()
 fecha
 
-campo valor_seed_tokens(valor: ValorSeed) -> ListaToken ::
-  veja valor e SeedTokens ::
+campo valor_seed_fonte(valor: ValorSeed) -> Fonte ::
+  veja valor e SeedFonte ::
     devolve valor.valor
   fecha
 
-  devolve lista_token()
+  devolve Fonte {
+    caminho: "",
+    texto: ""
+  }
+fecha
+
+campo valor_seed_fluxo(valor: ValorSeed) -> Fluxo ::
+  veja valor e SeedFluxo ::
+    devolve valor.valor
+  fecha
+
+  devolve Fluxo {
+    fonte: "",
+    tokens: lista_token()
+  }
 fecha
 
 campo valor_seed_arvore(valor: ValorSeed) -> Programa ::
