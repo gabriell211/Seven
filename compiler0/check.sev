@@ -87,7 +87,22 @@ campo registra_publicos(unidade: Unidade) -> Nada ::
       fecha
     fecha
 
+    veja item.especie == "selo" ::
+      registra_variantes(unidade, item, U32(indice_item))
+    fecha
+
     vira indice_item := indice_item + 1
+  fecha
+fecha
+
+campo registra_variantes(unidade: Unidade, selo: No, indice_selo: U32) -> Nada ::
+  solta indice: U64 := 0
+  gira indice < lista_no_tamanho(selo.filhos) ::
+    guarda variante := lista_no_pega(selo.filhos, indice)
+    veja variante.especie == "variante" ::
+      registra_publico(unidade, variante, indice_selo, U32(lista_no_tamanho(variante.filhos)))
+    fecha
+    vira indice := indice + 1
   fecha
 fecha
 
@@ -246,10 +261,16 @@ campo confere_atribuicao(unidade: Unidade, campo: No, comando: No, locais: Lista
   confere_expressao(unidade, campo, alvo, locais)
 fecha
 
+campo nome_construtor(nome: Texto) -> Bit ::
+  veja texto_tamanho(nome) == 0 :: devolve nao fecha
+  guarda primeiro := texto_byte(nome, 0)
+  devolve primeiro >= 65 e primeiro <= 90
+fecha
+
 campo confere_expressao(unidade: Unidade, campo: No, expr: No, locais: ListaSimbolo) -> Nada ::
   veja expr.especie == "nome" ::
     veja simbolo_indice(locais, expr.nome) < 0 e simbolo_indice(unidade.simbolos, expr.nome) < 0 ::
-      veja nao sys_texto_contem(expr.nome, ".") ::
+      veja nao sys_texto_contem(expr.nome, ".") e nao nome_construtor(expr.nome) ::
         adiciona_diag(unidade, expr, "S0-SEM-NOME", "nome inexistente: " + expr.nome)
       fecha
     fecha
