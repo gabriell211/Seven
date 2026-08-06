@@ -17,6 +17,37 @@ jobs:
           ref: gabriell211/production-readiness
           fetch-depth: 0
 
+      - name: Require symbol tokens for delimiter balance
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/scripts/rebuild-semantic-seeds.sh')
+          text = path.read_text()
+          marker = ']\n\nfor old, new in replacements:'
+          additions = '''    (
+        'if(streq(x->text,"("))par++;',
+        'if(x->kind==TK_SYMBOL&&streq(x->text,"("))par++;',
+    ),
+    (
+        'else if(streq(x->text,")")){',
+        'else if(x->kind==TK_SYMBOL&&streq(x->text,")")){',
+    ),
+    (
+        'else if(streq(x->text,"{"))bra++;',
+        'else if(x->kind==TK_SYMBOL&&streq(x->text,"{"))bra++;',
+    ),
+    (
+        'else if(streq(x->text,"}")){',
+        'else if(x->kind==TK_SYMBOL&&streq(x->text,"}")){',
+    ),
+'''
+          if marker not in text:
+              raise SystemExit('checker replacement list marker not found')
+          path.write_text(text.replace(marker, additions + marker, 1))
+          PY
+
       - name: Build, validate and version semantic seeds
         shell: bash
         run: bash .github/scripts/rebuild-semantic-seeds.sh
