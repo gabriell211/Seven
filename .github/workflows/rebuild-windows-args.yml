@@ -1,9 +1,7 @@
 name: Rebuild Windows Bootstrap Arguments
 
 on:
-  push:
-    branches:
-      - gabriell211/production-readiness
+  pull_request:
     paths:
       - .github/scripts/rebuild-windows-args.sh
       - .github/workflows/rebuild-windows-args.yml
