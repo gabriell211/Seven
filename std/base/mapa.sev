@@ -10,7 +10,7 @@ molde Mapa<K, V> ::
 fecha
 
 campo mapa<K, V>() -> Mapa<K, V> ::
-  devolve Mapa<K, V> {
+  devolve Mapa {
     chaves: lista<K>(),
     valores: lista<V>(),
     tamanho: 0
