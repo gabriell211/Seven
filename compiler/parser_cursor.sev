@@ -66,13 +66,13 @@ campo token_seguinte(cursor: CursorTokens, distancia: U64) -> Token ::
 fecha
 
 campo fim(cursor: CursorTokens) -> Bit ::
-  devolve atual_token(cursor).marca == ""
+  devolve token_final(atual_token(cursor))
 fecha
 
 campo avanca_token(cursor: CursorTokens) -> Token ::
   guarda atual := atual_token(cursor)
 
-  veja nao fim(cursor) ::
+  veja nao token_final(atual) ::
     vira cursor.posicao := cursor.posicao + 1
   fecha
 
@@ -80,11 +80,11 @@ campo avanca_token(cursor: CursorTokens) -> Token ::
 fecha
 
 campo proximo_e(cursor: CursorTokens, marca: Texto) -> Bit ::
-  devolve atual_token(cursor).marca == marca
+  devolve token_e(atual_token(cursor), marca)
 fecha
 
 campo seguinte_e(cursor: CursorTokens, marca: Texto) -> Bit ::
-  devolve token_seguinte(cursor, 1).marca == marca
+  devolve token_e(token_seguinte(cursor, 1), marca)
 fecha
 
 campo aceita(cursor: CursorTokens, marca: Texto) -> Bit ::
@@ -117,7 +117,7 @@ fecha
 campo espera_nome(cursor: CursorTokens, contexto: Texto) -> Token ::
   guarda encontrado := atual_token(cursor)
 
-  veja token_marca_nome(encontrado.marca) ::
+  veja token_nome(encontrado) ::
     devolve avanca_token(cursor)
   fecha
 
@@ -127,10 +127,10 @@ campo espera_nome(cursor: CursorTokens, contexto: Texto) -> Token ::
     encontrado.span.arquivo,
     encontrado.span.linha,
     encontrado.span.coluna,
-    "use um identificador iniciado por letra ou _"
+    "use um identificador que nao seja palavra reservada"
   ))
 
-  veja nao fim(cursor) ::
+  veja nao token_final(encontrado) ::
     avanca_token(cursor)
   fecha
 
@@ -140,7 +140,7 @@ fecha
 campo espera_texto(cursor: CursorTokens, contexto: Texto) -> Token ::
   guarda encontrado := atual_token(cursor)
 
-  veja token_marca_texto(encontrado.marca) ::
+  veja token_texto(encontrado) ::
     devolve avanca_token(cursor)
   fecha
 
@@ -153,7 +153,7 @@ campo espera_texto(cursor: CursorTokens, contexto: Texto) -> Token ::
     "use um literal entre aspas duplas"
   ))
 
-  veja nao fim(cursor) ::
+  veja nao token_final(encontrado) ::
     avanca_token(cursor)
   fecha
 
