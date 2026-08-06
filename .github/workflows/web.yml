@@ -82,7 +82,7 @@ jobs:
           test -s build/web/index.html
           test -s build/web/seven-loader.mjs
           test -s build/web/seven.web.json
-          sha256sum --check build/web/app.wasm.sha256 --directory build/web
+          (cd build/web && sha256sum --check app.wasm.sha256)
           node - build/web/app.wasm <<'JS'
           const fs = require('fs');
           const bytes = fs.readFileSync(process.argv[2]);
