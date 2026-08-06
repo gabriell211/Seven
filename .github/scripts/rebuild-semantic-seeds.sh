@@ -77,6 +77,22 @@ replacements = [
         'if(streq(x->text,"devolve")){',
         'if(x->kind==TK_IDENT&&streq(x->text,"devolve")){',
     ),
+    (
+        'if(streq(x->text,"("))par++;',
+        'if(x->kind==TK_SYMBOL&&streq(x->text,"("))par++;',
+    ),
+    (
+        'else if(streq(x->text,")")){',
+        'else if(x->kind==TK_SYMBOL&&streq(x->text,")")){',
+    ),
+    (
+        'else if(streq(x->text,"{"))bra++;',
+        'else if(x->kind==TK_SYMBOL&&streq(x->text,"{"))bra++;',
+    ),
+    (
+        'else if(streq(x->text,"}")){',
+        'else if(x->kind==TK_SYMBOL&&streq(x->text,"}")){',
+    ),
 ]
 
 for old, new in replacements:
@@ -204,5 +220,5 @@ if git diff --cached --quiet; then
   echo "validated semantic seeds are already current"
   exit 0
 fi
-git commit -m 'rebuild semantic seeds with token-kind-aware checker'
+git commit -m 'rebuild semantic seeds with delimiter-aware checker'
 git push origin HEAD:gabriell211/production-readiness
