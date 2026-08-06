@@ -44,8 +44,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp .github/scripts/rebuild-web-seeds.sh "$RUNNER_TEMP/prepare-web-seeds.sh"
-          PREPARE="$RUNNER_TEMP/prepare-web-seeds.sh" python - <<'PY'
+          PREPARE=.github/scripts/rebuild-web-seeds.sh python - <<'PY'
           import os
           from pathlib import Path
 
@@ -56,7 +55,8 @@ jobs:
               raise SystemExit('seed builder final execution target not found')
           path.write_text(text[:-len(final)])
           PY
-          bash "$RUNNER_TEMP/prepare-web-seeds.sh"
+          bash .github/scripts/run-rebuild-web-seeds.sh
+          test -s .github/scripts/rebuild-semantic-seeds.sh
 
       - name: Use standard Windows CRT and main
         shell: bash
