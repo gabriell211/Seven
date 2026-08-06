@@ -1,0 +1,227 @@
+modulo seven.compiler.parser
+
+usa seven.compiler.token
+usa seven.compiler.ast
+usa seven.compiler.source
+usa seven.compiler.diagnostic
+usa seven.compiler.parser_cursor
+
+campo ler_posfixa(cursor: CursorTokens) -> Expressao ::
+  solta valor := ler_primaria(cursor)
+  solta ativo := sim
+
+  gira ativo ::
+    veja aceita(cursor, ".") ::
+      guarda membro := espera_nome(cursor, "depois de .")
+      vira valor := ExprAcesso(AcessoExpr {
+        base: valor,
+        membro: membro.marca,
+        span: membro.span
+      })
+    outro ::
+      veja aceita(cursor, "[") ::
+        guarda inicio := token_anterior(cursor).span
+        guarda indice := ler_expressao(cursor)
+        guarda fim_span := espera(cursor, "]", "SV-PARSE-INDICE", "esperado ] depois do indice").span
+        vira valor := ExprIndice(IndiceExpr {
+          base: valor,
+          indice: indice,
+          span: span_junta(inicio, fim_span)
+        })
+      outro ::
+        veja aceita(cursor, "@") ::
+          guarda inicio := token_anterior(cursor).span
+          guarda indice := ler_unaria(cursor)
+          vira valor := ExprIndice(IndiceExpr {
+            base: valor,
+            indice: indice,
+            span: span_junta(inicio, token_anterior(cursor).span)
+          })
+        outro ::
+          veja proximo_e(cursor, "<") e parece_especializacao(cursor) ::
+            guarda inicio := avanca_token(cursor).span
+            solta argumentos_tipo := lista<TipoSintaxe>()
+            lista_coloca(argumentos_tipo, ler_tipo(cursor))
+            gira aceita(cursor, ",") ::
+              lista_coloca(argumentos_tipo, ler_tipo(cursor))
+            fecha
+            guarda fim_span := espera(cursor, ">", "SV-PARSE-ESPECIALIZACAO", "esperado > depois da especializacao").span
+            vira valor := ExprEspecializa(EspecializaExpr {
+              alvo: valor,
+              argumentos: argumentos_tipo,
+              span: span_junta(inicio, fim_span)
+            })
+          outro ::
+            veja aceita(cursor, "(") ::
+              guarda inicio := token_anterior(cursor).span
+              solta argumentos := lista<Expressao>()
+
+              veja nao proximo_e(cursor, ")") ::
+                lista_coloca(argumentos, ler_expressao(cursor))
+                gira aceita(cursor, ",") ::
+                  lista_coloca(argumentos, ler_expressao(cursor))
+                fecha
+              fecha
+
+              guarda fim_span := espera(cursor, ")", "SV-PARSE-CHAMADA", "esperado ) depois dos argumentos").span
+              vira valor := ExprChamada(ChamadaExpr {
+                alvo: valor,
+                argumentos: argumentos,
+                span: span_junta(inicio, fim_span)
+              })
+            outro ::
+              vira ativo := nao
+            fecha
+          fecha
+        fecha
+      fecha
+    fecha
+  fecha
+
+  devolve valor
+fecha
+
+campo ler_primaria(cursor: CursorTokens) -> Expressao ::
+  guarda atual := atual_token(cursor)
+
+  veja token_numero(atual) ::
+    avanca_token(cursor)
+    devolve ExprLiteral(LitNum(numero(atual.literal)))
+  fecha
+
+  veja token_texto(atual) ::
+    avanca_token(cursor)
+    devolve ExprLiteral(LitTexto(atual.literal))
+  fecha
+
+  veja aceita(cursor, "sim") ::
+    devolve ExprLiteral(LitBit(sim))
+  fecha
+
+  veja aceita(cursor, "nao") ::
+    devolve ExprLiteral(LitBit(nao))
+  fecha
+
+  veja aceita(cursor, "nulo") ::
+    devolve ExprLiteral(LitNulo)
+  fecha
+
+  veja aceita(cursor, "(") ::
+    guarda valor := ler_expressao(cursor)
+    espera(cursor, ")", "SV-PARSE-GRUPO", "esperado ) depois da expressao")
+    devolve valor
+  fecha
+
+  veja proximo_e(cursor, "campo") e seguinte_e(cursor, "(") ::
+    devolve ExprCampo(ler_campo_anonimo(cursor))
+  fecha
+
+  veja token_nome_contextual(atual) ::
+    avanca_token(cursor)
+    guarda nome_expr := ExprNome(NomeExpr {
+      nome: atual.marca,
+      span: atual.span
+    })
+
+    veja proximo_e(cursor, "<") e parece_especializacao(cursor) ::
+      guarda inicio_tipo := avanca_token(cursor).span
+      solta argumentos_tipo := lista<TipoSintaxe>()
+      lista_coloca(argumentos_tipo, ler_tipo(cursor))
+      gira aceita(cursor, ",") ::
+        lista_coloca(argumentos_tipo, ler_tipo(cursor))
+      fecha
+      guarda fim_tipo := espera(cursor, ">", "SV-PARSE-ESPECIALIZACAO", "esperado > depois da especializacao").span
+
+      veja proximo_e(cursor, "{") ::
+        devolve ler_construcao(cursor, atual.marca, argumentos_tipo, atual.span)
+      fecha
+
+      devolve ExprEspecializa(EspecializaExpr {
+        alvo: nome_expr,
+        argumentos: argumentos_tipo,
+        span: span_junta(inicio_tipo, fim_tipo)
+      })
+    fecha
+
+    veja proximo_e(cursor, "{") ::
+      devolve ler_construcao(cursor, atual.marca, lista<TipoSintaxe>(), atual.span)
+    fecha
+
+    devolve nome_expr
+  fecha
+
+  reporta_atual(
+    cursor,
+    "SV-PARSE-EXPRESSAO",
+    "esperado literal, nome, campo anonimo ou expressao entre parenteses",
+    "verifique se falta um valor antes deste ponto"
+  )
+
+  veja nao fim(cursor) ::
+    avanca_token(cursor)
+  fecha
+
+  devolve ExprLiteral(LitNulo)
+fecha
+
+campo ler_construcao(
+  cursor: CursorTokens,
+  nome: Texto,
+  argumentos_tipo: Lista<TipoSintaxe>,
+  inicio: Span
+) -> Expressao ::
+  espera(cursor, "{", "SV-PARSE-CONSTRUCAO", "esperado { na construcao")
+  solta campos := lista<CampoValor>()
+
+  veja nao proximo_e(cursor, "}") ::
+    lista_coloca(campos, ler_campo_valor(cursor))
+    gira aceita(cursor, ",") ::
+      lista_coloca(campos, ler_campo_valor(cursor))
+    fecha
+  fecha
+
+  guarda fim_span := espera(cursor, "}", "SV-PARSE-CONSTRUCAO", "esperado } depois dos campos").span
+  guarda tipo := TipoSintaxe {
+    nome: nome,
+    argumentos: argumentos_tipo,
+    matriz: nao,
+    span: inicio
+  }
+
+  devolve ExprConstrucao(ConstrucaoExpr {
+    tipo: tipo,
+    campos: campos,
+    span: span_junta(inicio, fim_span)
+  })
+fecha
+
+campo ler_campo_valor(cursor: CursorTokens) -> CampoValor ::
+  guarda inicio := atual_token(cursor).span
+  guarda nome := espera_nome(cursor, "do campo construido").marca
+  espera(cursor, ":", "SV-PARSE-CONSTRUCAO-CAMPO", "esperado : depois do campo")
+  guarda valor := ler_expressao(cursor)
+
+  devolve CampoValor {
+    nome: nome,
+    valor: valor,
+    span: span_junta(inicio, token_anterior(cursor).span)
+  }
+fecha
+
+campo ler_campo_anonimo(cursor: CursorTokens) -> CampoAnonimoExpr ::
+  guarda inicio := espera(cursor, "campo", "SV-PARSE-CAMPO-ANONIMO", "esperado campo").span
+  guarda parametros := ler_parametros(cursor)
+  guarda retorno := ler_retorno(cursor)
+  guarda efeitos := ler_efeitos(cursor)
+  espera(cursor, "::", "SV-PARSE-BLOCO", "esperado :: no campo anonimo")
+  guarda corpo := ler_bloco(cursor, nao)
+  guarda fim_span := espera(cursor, "fecha", "SV-PARSE-FECHA", "esperado fecha no campo anonimo").span
+
+  devolve CampoAnonimoExpr {
+    parametros: parametros,
+    retorno: retorno,
+    efeitos: efeitos,
+    corpo: corpo,
+    span: span_junta(inicio, fim_span)
+  }
+fecha
