@@ -131,7 +131,7 @@ campo executa_comando(contexto: ContextoToolchain, comando: ComandoSeven) -> Sai
   fecha
 
   veja comando e CmdVersao ::
-    diga("Seven 0.1.0")
+    diga("Seven 0.2.0")
     devolve ToolchainOk(0)
   fecha
 
@@ -248,7 +248,7 @@ campo executa_comando(contexto: ContextoToolchain, comando: ComandoSeven) -> Sai
 
   veja comando e CmdInvalido :: devolve ToolchainErro(2, comando.mensagem) fecha
 
-  devolve ToolchainErro(2, "comando fora da superficie estavel da Seven 0.1: " + comando_nome(comando))
+  devolve ToolchainErro(2, "comando fora da superficie estavel da Seven 0.2: " + comando_nome(comando))
 fecha
 
 campo executa_installer(
@@ -297,8 +297,8 @@ campo executa_build_like(
 fecha
 
 campo texto_ajuda() -> Texto ::
-  devolve "seven estavel <check|build|run|doctor>\n" +
-    "seven preview <web|test|bench|fmt|lint|doc|repl|debug|profile|install|uninstall|installer|lsp|pkg|target|serve|release|verify>\n" +
+  devolve "seven estavel <check|build|web build|run|doctor>\n" +
+    "seven preview <test|bench|fmt|lint|doc|repl|debug|profile|install|uninstall|installer|lsp|pkg|target|serve|release|verify>\n" +
     "seven build <seven.pkg> <saida.svbc>\n" +
     "seven web build <entrada.sev> [diretorio]\n" +
     "seven installer windows-x64 [diretorio]\n" +
