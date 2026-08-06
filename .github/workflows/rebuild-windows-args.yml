@@ -1,0 +1,79 @@
+name: Rebuild Windows Bootstrap Arguments
+
+on:
+  push:
+    branches:
+      - gabriell211/production-readiness
+    paths:
+      - .github/workflows/rebuild-windows-args.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: seven-windows-args-rebuild
+  cancel-in-progress: true
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gabriell211/production-readiness
+          fetch-depth: 0
+
+      - name: Recover validated semantic rebuild
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .github/scripts
+          git show e4a709ae6a3f0af55c8b7db84beb8a5d09d49241:.github/scripts/rebuild-semantic-seeds.sh > .github/scripts/rebuild-semantic-seeds.sh
+          git show e4a709ae6a3f0af55c8b7db84beb8a5d09d49241:.github/scripts/enable-generic-fields.py > .github/scripts/enable-generic-fields.py
+          python .github/scripts/enable-generic-fields.py
+
+      - name: Fix Windows command-line parsing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/scripts/rebuild-semantic-seeds.sh')
+          text = path.read_text()
+          marker = '\ngcc -std=c11 -O2 -s -Wall -Wextra -Wno-unused-parameter "$work/seven-bootstrap.c" -o "$work/seven-linux"\n'
+          patch = r'''
+          CHECKER_SOURCE="$work/seven-bootstrap.c" python - <<'PYFIX'
+          import os
+          from pathlib import Path
+
+          path = Path(os.environ["CHECKER_SOURCE"])
+          source = path.read_text()
+          old = 'static int parse_cmdline(char*s,char**argv,int max){int argc=0;while(*s&&argc<max){while(*s==\' \'||*s==\'\\t\')s++;if(!*s)break;char*out=s;argv[argc++]=out;int q=0;while(*s){if(*s==\'"\'){q=!q;s++;continue;}if(!q&&(*s==\' \'||*s==\'\\t\'))break;*out++=*s++;}*out=0;if(*s)s++;}return argc;}'
+          new = 'static int parse_cmdline(char*s,char**argv,int max){int argc=0;while(*s&&argc<max){while(*s==\' \'||*s==\'\\t\')s++;if(!*s)break;char*out=s;argv[argc++]=out;int q=0;while(*s){if(*s==\'"\'){q=!q;s++;continue;}if(!q&&(*s==\' \'||*s==\'\\t\'))break;*out++=*s++;}if(*s)s++;*out=0;}return argc;}'
+          if old not in source:
+              raise SystemExit('Windows parse_cmdline target not found')
+          path.write_text(source.replace(old, new, 1))
+          PYFIX
+          '''
+          if marker not in text:
+              raise SystemExit('semantic compiler build marker not found')
+          text = text.replace(marker, '\n' + patch + marker, 1)
+          text = text.replace(
+              'archive_sha=$(sha256sum "$work/native-seeds.zip" | cut -d\' \' -f1)',
+              'cat seed/native/final/v1/part*.b64 | tr -d \'\\r\\n\\t \' | base64 --decode > "$work/reconstructed.zip"\ncmp "$work/native-seeds.zip" "$work/reconstructed.zip"\narchive_sha=$(sha256sum "$work/reconstructed.zip" | cut -d\' \' -f1)',
+              1,
+          )
+          text = text.replace(
+              "git commit -m 'rebuild semantic seeds with delimiter-aware checker'",
+              "git commit -m 'fix Windows bootstrap command-line parsing'",
+              1,
+          )
+          path.write_text(text)
+          PY
+
+      - name: Rebuild and validate native seeds
+        shell: bash
+        run: bash .github/scripts/rebuild-semantic-seeds.sh
