@@ -27,6 +27,12 @@ if old_ident not in text:
 text = text.replace(old_ident, new_ident, 1)
 text = text.replace("isspace((unsigned char)*p)", "seven_web_espaco((unsigned char)*p)")
 
+workflow_stage = "git add seed/native/final/v1/part*.b64 seed/native/final/v1/SHA256SUMS .github/workflows/foundation.yml .github/workflows/readiness.yml .github/workflows/web.yml"
+seed_stage = "git add seed/native/final/v1/part*.b64 seed/native/final/v1/SHA256SUMS"
+if workflow_stage not in text:
+    raise SystemExit("generated workflow staging target not found")
+text = text.replace(workflow_stage, seed_stage, 1)
+
 start = text.index("old_usage = ")
 marker = "path.write_text(source)\nPYWEB"
 end = text.index(marker, start)
