@@ -12,12 +12,18 @@ from pathlib import Path
 path = Path(os.environ["FIXED_SCRIPT"])
 text = path.read_text()
 
-# The rebuild script generates a second Python program that writes C source.
-# Keep backslashes raw through both layers so C string escapes remain valid.
-text = text.replace("patch = f'''", "patch = rf'''", 1)
+# The rebuild script generates a Python program which then writes C source.
+# Raw interpolation is required so C escapes survive both Python layers.
+needle = "patch = f'''"
+if needle not in text:
+    raise SystemExit("web patch block not found")
+text = text.replace(needle, "patch = rf'''", 1)
+
+# Keep the transition seed compatible with its deliberately small C import set.
 text = text.replace("SIZE_MAX/2", "((size_t)-1)/2")
 text = text.replace("UINT32_MAX", "0xffffffffu")
 text = re.sub(r"\bint32_t\b", "int", text)
+
 old_ident = "static int seven_web_ident(int c){return isalnum((unsigned char)c)||c=='_';}"
 new_ident = """static int seven_web_ascii_alnum(int c){return (c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9');}
 static int seven_web_espaco(int c){return c==' '||c=='\\t'||c=='\\r'||c=='\\n';}
@@ -27,29 +33,13 @@ if old_ident not in text:
 text = text.replace(old_ident, new_ident, 1)
 text = text.replace("isspace((unsigned char)*p)", "seven_web_espaco((unsigned char)*p)")
 
+# The rebuild commits only seed data. Workflow hashes are updated in a normal,
+# reviewable commit after the generated values are known.
 workflow_stage = "git add seed/native/final/v1/part*.b64 seed/native/final/v1/SHA256SUMS .github/workflows/foundation.yml .github/workflows/readiness.yml .github/workflows/web.yml"
 seed_stage = "git add seed/native/final/v1/part*.b64 seed/native/final/v1/SHA256SUMS"
-if workflow_stage not in text:
-    raise SystemExit("generated workflow staging target not found")
-text = text.replace(workflow_stage, seed_stage, 1)
+if workflow_stage in text:
+    text = text.replace(workflow_stage, seed_stage, 1)
 
-start = text.index("old_usage = ")
-marker = "path.write_text(source)\nPYWEB"
-end = text.index(marker, start)
-
-replacement = r'''new_usage = r"""static void usage(void){{puts("Seven " SEVEN_VERSION "\\nCreator: Gabriel Barcelos\\nusage:\\n  seven --version\\n  seven check <file.sev>\\n  seven build <file.sev> [out.svbc]\\n  seven web build <file.sev> [out-dir]\\n  seven run <file.sev>\\n  seven verify <foundation|bootstrap|production>\\n  seven doctor");}}"""
-usage_start = source.index('static void usage(void)')
-usage_end = source.index('\\nstatic int core_main', usage_start)
-source = source[:usage_start] + new_usage + source[usage_end:]
-
-new_core = r"""static int core_main(int argc,char**argv){{if(argc<2||streq(argv[1],"--help")||streq(argv[1],"-h")){{usage();return 0;}}if(streq(argv[1],"--version")){{puts("Seven " SEVEN_VERSION "\\nCreator: Gabriel Barcelos");return 0;}}if(streq(argv[1],"check")&&argc>=3)return cmd_check(argv[2],0);if(streq(argv[1],"build")&&argc>=3)return cmd_build(argv[2],argc>=4?argv[3]:NULL);if(streq(argv[1],"web")&&argc>=4&&streq(argv[2],"build"))return cmd_web_build(argv[3],argc>=5?argv[4]:"build/web");if(streq(argv[1],"run")&&argc>=3)return cmd_run(argv[2]);if(streq(argv[1],"verify")&&argc>=3)return cmd_verify(argv[2]);if(streq(argv[1],"doctor")){{puts("seven doctor: semantic transition seed operational\\nchecks: syntax, names, types, mutability, effects, bounds, deterministic SVBC, direct WebAssembly");return 0;}}printf("unknown or incomplete command\\n");usage();return 2;}}"""
-core_start = source.index('static int core_main')
-core_end = source.index('\\n#ifndef _WIN32', core_start)
-source = source[:core_start] + new_core + source[core_end:]
-path.write_text(source)
-'''
-
-text = text[:start] + replacement + text[end + len("path.write_text(source)\n"):]
 path.write_text(text)
 PY
 
