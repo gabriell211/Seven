@@ -16,12 +16,21 @@ jobs:
           ref: stage1-self-host-clean
           fetch-depth: 0
 
+      - name: Detect pending canonicalization
+        id: pending
+        shell: bash
+        run: |
+          if test -f bootstrap/stage1_finalize.py; then
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+          outro='false'
+          fi
+
       - name: Generate canonical source tree
-        if: ${{ hashFiles('bootstrap/stage1_finalize.py') != '' }}
+        if: ${{ steps.pending.outputs.run == 'true' }}
         run: python bootstrap/stage1_finalize.py
 
       - name: Keep workflow changes for API publication
-        if: ${{ hashFiles('bootstrap/stage1_finalize.py') != '' }}
+        if: ${{ steps.pending.outputs.run == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -30,7 +39,7 @@ jobs:
           git checkout HEAD -- .github/workflows/stage1-canonicalize.yml
 
       - name: Commit canonical sources and Genesis host
-        if: ${{ hashFiles('bootstrap/stage1_finalize.py') != '' }}
+        if: ${{ steps.pending.outputs.run == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
