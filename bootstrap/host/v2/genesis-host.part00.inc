@@ -55,6 +55,7 @@ static void obj_reserve(Object*o,size_t n){ if(n<=o->cap)return;size_t c=o->cap?
 static int obj_index(Object*o,String k){ for(size_t i=0;i<o->len;i++)if(str_eq(o->pairs[i].key,k))return (int)i;return -1; }
 static void obj_set(Object*o,String k,Value v){ int i=obj_index(o,k);if(i>=0){o->pairs[i].value=v;return;}obj_reserve(o,o->len+1);o->pairs[o->len].key=k;o->pairs[o->len].value=v;o->len++; }
 static Value obj_get(Object*o,String k){ int i=obj_index(o,k);return i>=0?o->pairs[i].value:v_null(); }
+static Value obj_get_c(Object*o,const char*k){ size_t n=strlen(k);for(size_t i=0;i<o->len;i++)if(o->pairs[i].key.len==n&&!memcmp(o->pairs[i].key.data,k,n))return o->pairs[i].value;return v_null(); }
 static Value v_obj(Object*o){ Value v={0};v.tag=V_OBJECT;v.as.obj=o;return v; }
 static Bytes *bytes_new(void){ return (Bytes*)xcalloc(1,sizeof(Bytes)); }
 static void bytes_reserve(Bytes*b,size_t n){ if(n<=b->cap)return;size_t c=b->cap?b->cap*2:64;while(c<n)c*=2;b->data=(uint8_t*)xrealloc(b->data,c);b->cap=c; }
