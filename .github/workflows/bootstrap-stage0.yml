@@ -39,14 +39,23 @@ jobs:
           unzip -q build/native-seeds.zip -d build/native-seeds
           chmod +x "build/native-seeds/${{ matrix.seed }}" || true
 
-      - name: Compile and execute Genesis Stage 0 package
+      - name: Produce the one-time Seven-0 seed candidate
         shell: bash
         run: |
           set -euo pipefail
           seven="$PWD/build/native-seeds/${{ matrix.seed }}"
-          "$seven" check bootstrap/stage0.pkg
-          "$seven" build bootstrap/stage0.pkg build/stage0.svbc
-          "$seven" run bootstrap/stage0.pkg
+          "$seven" check compiler0/seven0.sev
+          "$seven" build compiler0/seven0.sev build/seven0.candidate.svbc
+          test -s build/seven0.candidate.svbc
+          sha256sum build/seven0.candidate.svbc > build/seven0.candidate.sha256
+
+      - name: Attempt the autonomous Genesis Stage 0
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$PWD/build/native-seeds/${{ matrix.seed }}"
+          "$seven" run bootstrap/stage0.sev
 
       - name: Inspect generated Stage 0 files
         if: always()
@@ -54,17 +63,21 @@ jobs:
         run: |
           set -u
           ls -la build || true
-          if test -f build/stage0.svbc; then
-            echo 'stage0 package sha256:'
-            sha256sum build/stage0.svbc
-          fi
+          echo 'candidate size:'
+          wc -c build/seven0.candidate.svbc
+          echo 'candidate first 32 bytes:'
+          od -An -tx1 -N32 build/seven0.candidate.svbc
+          echo 'candidate sha256:'
+          cat build/seven0.candidate.sha256
           if test -f build/seven0.svbc; then
-            echo 'seven0 size:'
+            echo 'autonomous seven0 size:'
             wc -c build/seven0.svbc
-            echo 'seven0 first 32 bytes:'
+            echo 'autonomous seven0 first 32 bytes:'
             od -An -tx1 -N32 build/seven0.svbc
-            echo 'seven0 sha256:'
+            echo 'autonomous seven0 sha256:'
             sha256sum build/seven0.svbc
+          else
+            echo 'autonomous seven0 ausente'
           fi
           if test -f build/stage0.provenance; then
             echo 'stage0 provenance:'
@@ -73,26 +86,28 @@ jobs:
             echo 'stage0 provenance ausente'
           fi
 
-      - name: Verify SVBC0 and provenance
+      - name: Upload seed candidate and Stage 0 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seven-stage0-${{ matrix.os }}
+          path: |
+            build/seven0.candidate.svbc
+            build/seven0.candidate.sha256
+            build/seven0.svbc
+            build/stage0.provenance
+          if-no-files-found: error
+
+      - name: Enforce autonomous Stage 0 gate
         shell: bash
         run: |
           set -euxo pipefail
-          test -s build/stage0.svbc
+          test -s build/seven0.candidate.svbc
           test -s build/seven0.svbc
-          test "$(od -An -tx1 -N4 build/seven0.svbc | tr -d ' \n')" = '53564230'
+          cmp build/seven0.candidate.svbc build/seven0.svbc
           test -s build/stage0.provenance
           grep -Fx 'formato seven-bootstrap-provenance-v1' build/stage0.provenance
           grep -Fx 'etapa stage0' build/stage0.provenance
           grep -Fx 'executor seed/genesis.svhex' build/stage0.provenance
           grep -Fx 'entrada compiler0/seven0.sev' build/stage0.provenance
           grep -Fx 'saida build/seven0.svbc' build/stage0.provenance
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: seven-stage0-${{ matrix.os }}
-          path: |
-            build/stage0.svbc
-            build/seven0.svbc
-            build/stage0.provenance
-          if-no-files-found: warn
