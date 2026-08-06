@@ -37,23 +37,22 @@ jobs:
             -type f -name '*.sev' -print | LC_ALL=C sort > "$RUNNER_TEMP/seven.sources"
           cmp seven.sources "$RUNNER_TEMP/seven.sources"
           grep -q '^indice seven.sources$' seven.pkg
-          grep -q 'indice_fontes' compiler/package.sev
           grep -q 'fonte_carrega_indice' compiler/source.sev
 
-      - name: Reconstruct audited semantic bootstrap
+      - name: Reconstruct audited Seven 0.2 transition seeds
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo 'a2d09138008ae7223683681443663da8d4c58b39600cbaf3bef11889c2495ad3  build/native-seeds.zip' | sha256sum --check
+          echo 'b370370c2068ee94b49892cf9d9c1d16936c6bb8f91cb4c6dfd38a89ec664343  build/native-seeds.zip' | sha256sum --check
           unzip -t build/native-seeds.zip
           unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '2f073ab8101742006728a491b3093ddb093d202289002d13cc2a6a03dfa55dcb  build/native-seeds/seven-linux' | sha256sum --check
-          echo 'f9ebcbe747f5646f1f224af0929d19d321a67a241be3844116e42ac2a5207296  build/native-seeds/seven-windows.exe' | sha256sum --check
+          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
+          echo '7a98486cf56ab10e77164ffb2b45ff609d3af8ce2cc2eae000d734475b6aed04  build/native-seeds/seven-windows.exe' | sha256sum --check
           chmod +x build/native-seeds/seven-linux
 
-      - name: Exercise compiler and conformance behavior
+      - name: Exercise compiler, WebAssembly and conformance behavior
         shell: bash
         run: |
           set -uo pipefail
@@ -63,6 +62,7 @@ jobs:
           "$seven" --version || failures=$((failures + 1))
           "$seven" check examples/hello.sev || failures=$((failures + 1))
           "$seven" build examples/hello.sev build/readiness-hello.svbc || failures=$((failures + 1))
+          "$seven" web build examples/hello.sev build/readiness-web || failures=$((failures + 1))
           "$seven" run examples/hello.sev || failures=$((failures + 1))
           "$seven" doctor || failures=$((failures + 1))
 
@@ -79,10 +79,10 @@ jobs:
             fi
           done < <(find conformance -type f -path '*/invalid/*.sev' | sort)
 
-          if [ ! -s build/readiness-hello.svbc ]; then
-            echo 'ERROR: compiler did not emit bytecode'
-            failures=$((failures + 1))
-          fi
+          test -s build/readiness-hello.svbc || failures=$((failures + 1))
+          test -s build/readiness-web/app.wasm || failures=$((failures + 1))
+          test -s build/readiness-web/seven.web.json || failures=$((failures + 1))
+          grep -q '"target": "webassembly"' build/readiness-web/seven.web.json || failures=$((failures + 1))
 
           echo "readiness failures: $failures"
           test "$failures" -eq 0
@@ -117,3 +117,5 @@ jobs:
           grep -q 'rejeita bloco maior que 64 MiB' tests/runtime/svbc_memory.sev
           grep -q 'uninstall' compiler/toolchain/installer.sev
           grep -q '\.sev' compiler/toolchain/installer.sev
+          grep -q 'Seven 0.2.0' compiler/toolchain/cli.sev
+          grep -q '^versao 0.2.0$' seven.pkg
