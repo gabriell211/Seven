@@ -63,7 +63,7 @@ campo intr_cmd_args_verify_production(args: Lista<ValorVm>) -> Resultado<ValorVm
 fecha
 
 campo intr_cmd_help(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca terminal ::
-  svbc_terminal_escreve("seven estavel <check|build|run|test|doctor|install|uninstall|installer|verify>")
+  svbc_terminal_escreve("seven estavel <check|build|run|doctor>")
   devolve Valor(VmNum(0))
 fecha
 

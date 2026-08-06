@@ -38,6 +38,9 @@ seven --version
 seven check seven.pkg
 seven build seven.pkg build/seven.svbc
 seven run seven.pkg
+seven doctor
+
+# Superficie de preview no codigo-fonte
 seven test
 seven fmt
 seven lsp
