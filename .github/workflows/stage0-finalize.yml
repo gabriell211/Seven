@@ -2,13 +2,15 @@ name: Finalize Seven Stage 0 Branch
 
 on:
   push:
+    branches:
+      - agent/stage0-autonomous
 
 permissions:
   contents: write
 
 jobs:
   finalize:
-    if: github.ref == 'refs/heads/agent/stage0-autonomous'
+    if: ${{ !contains(github.event.head_commit.message, '[stage0-finalized]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -17,26 +19,16 @@ jobs:
           ref: agent/stage0-autonomous
           fetch-depth: 0
 
-      - name: Apply audited compiler patches and finalize layout
+      - name: Finalize the audited Stage 0 layout
         shell: bash
         run: |
           set -euo pipefail
 
-          base64 --decode bootstrap/staging/compiler0-patches.tar.gz.b64 | gzip --decompress | tar -xf -
-
           mkdir -p bootstrap/host/v1
           git mv bootstrap/staging/genesis-host.c.gz.b64 bootstrap/host/v1/genesis-host.c.gz.b64
-          rm bootstrap/staging/compiler0-patches.tar.gz.b64
           rmdir bootstrap/staging
 
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('.github/workflows/stage0-fixed-point.yml')
-          text = path.read_text()
-          text = text.replace("          echo '91a7703e2dc5810290a9144d7b88d8dba75e163e3d0b05e0ebbc086c557194f1  bootstrap/staging/compiler0-patches.tar.gz.b64' | sha256sum --check\n          base64 --decode bootstrap/staging/compiler0-patches.tar.gz.b64 | gzip --decompress | tar -xf -\n\n", "")
-          text = text.replace('bootstrap/staging/genesis-host.c.gz.b64', 'bootstrap/host/v1/genesis-host.c.gz.b64')
-          path.write_text(text)
-          PY
+          sed -i 's#bootstrap/staging/genesis-host.c.gz.b64#bootstrap/host/v1/genesis-host.c.gz.b64#g' .github/workflows/stage0-fixed-point.yml
 
           cat > bootstrap/host/v1/SHA256SUMS <<'EOF'
           0d2a905c2fb3211326c3cdf5f164e39f12a708cf1b917bfe99028458cf6e5516  genesis-host.c.gz.b64
@@ -57,11 +49,15 @@ jobs:
 
           ## Artefatos canonicos
 
-          - `bootstrap/host/v1/genesis-host.c.gz.b64`: host Genesis portavel em C11, mantido apenas como raiz bootstrap auditavel.
-          - `bootstrap/seed/v2/part*.b64`: imagem Seven-0 inicial compactada e dividida em partes.
-          - `.github/workflows/stage0-fixed-point.yml`: prova de fixed point e proveniencia.
+          - `bootstrap/host/v1/genesis-host.c.gz.b64`: raiz Genesis portavel em C11, usada somente para iniciar a cadeia.
+          - `bootstrap/seed/v2/part*.b64`: imagem Seven-0 inicial compactada e dividida em partes auditaveis.
+          - `.github/workflows/stage0-fixed-point.yml`: prova Windows/Linux de fixed point e proveniencia.
 
-          O host Genesis nao faz parte da implementacao normal da linguagem. Depois do fixed point, a cadeia prossegue usando o Seven-0 reconstruido.
+          ## Fronteira de confianca
+
+          O host Genesis nao faz parte da implementacao normal da linguagem. Ele executa somente o formato SVBC0.
+          Depois do primeiro rebuild, a imagem Seven-0 reconstruida precisa recompilar o mesmo monolito e produzir bytes identicos.
+          Nenhum artefato pode ser promovido apenas por possuir magic bytes ou por conter texto-fonte embalado.
           EOF
 
           rm -rf bootstrap/probes
@@ -78,5 +74,5 @@ jobs:
           git config user.name 'seven-bootstrap-bot'
           git config user.email 'actions@users.noreply.github.com'
           git add -A
-          git commit -m 'Finalize autonomous Seven Stage 0'
+          git commit -m '[stage0-finalized] Finalize autonomous Seven Stage 0'
           git push origin HEAD:agent/stage0-autonomous
