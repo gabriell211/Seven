@@ -19,6 +19,14 @@ campo suite_wasm() -> Suite ::
     espera(bytes_pega(resultado.valor, 4) == 1, "versao Wasm incorreta")
   fecha)
 
+  testa(s, "codifica i32 const com LEB128 assinado", campo() -> Nada ::
+    solta dados := bytes_novo()
+    wasm_sleb_positivo(dados, 127)
+    espera(dados.tamanho == 2, "127 precisa de dois bytes em signed LEB128")
+    espera(bytes_pega(dados, 0) == 255, "primeiro byte signed LEB128 incorreto")
+    espera(bytes_pega(dados, 1) == 0, "terminador signed LEB128 incorreto")
+  fecha)
+
   testa(s, "exige campo inicio", campo() -> Nada ::
     guarda resultado := emite_wasm(UnidadeIr {
       nomes: lista<Texto>(),
