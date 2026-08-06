@@ -1,63 +1,226 @@
-name: Finalize Seven Stage 1 Sources
+name: Seven Self-Hosting Fixed Point
 
 on:
   push:
-    branches:
-      - stage1-self-host-clean
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: seven-stage1-finalizer
+  group: seven-self-hosting-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  finalize:
+  fixed-point:
+    name: Seven-0 -> Stage 1 -> Stage 2 -> Stage 2 self
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
+
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: stage1-self-host-clean
 
-      - name: Publish one clean canonical commit
+      - name: Reconstruct audited bootstrap inputs
         shell: bash
         run: |
           set -euo pipefail
-          archive="$RUNNER_TEMP/final-stage1.tar.gz"
-          base64 --decode bootstrap/final-stage1.tar.gz.b64 > "$archive"
-          echo '22f44e9dfeed0f676ae3583e47ce550ef0f79bfd712f17c9f3eaec025d6b3548  '"$archive" | sha256sum --check
-
-          git reset --hard 0575069a270a7b5864919b4d0b8699e0321ea840
-          tar -xzf "$archive"
-
+          mkdir -p build
+          cat bootstrap/seed/v2/part*.b64 | tr -d '\r\n\t ' | base64 --decode | gzip --decompress > build/seven0.seed.svbc
+          echo '123f5b513bcae7774671898f471441b3c71efd570acad91fa634cbc5f33bb223  build/seven0.seed.svbc' | sha256sum --check
           (cd bootstrap/host/v2 && sha256sum --check SHA256SUMS)
-          ! grep -R -n -E 'stage1 argumentos|parser pos|parser token|ChatGPT|chatgpt|OpenAI|assistente' \
-            compiler compiler0 std bootstrap/host/v2
+          gcc -O2 -std=c11 -Wall -Wextra -Werror bootstrap/host/v2/genesis-host.c -o build/genesis-host
+          chmod +x build/genesis-host
 
-          git add \
-            bootstrap/host/v2 \
-            compiler0/parse.sev \
-            compiler/ast.sev \
-            compiler/effects.sev \
-            compiler/ir.sev \
-            compiler/lexer.sev \
-            compiler/memory.sev \
-            compiler/parser.sev \
-            compiler/parser_cursor.sev \
-            compiler/source.sev \
-            compiler/token.sev \
-            compiler/types.sev \
-            std/base/lista.sev \
-            std/base/mapa.sev \
-            std/base/texto.sev
+      - name: Build Seven-0 from the frozen seed
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf 'modulo seven0_bootstrap_monolith\n\n'
+            for arquivo in $(find compiler0 -maxdepth 1 -type f -name '*.sev' | LC_ALL=C sort); do
+              nome=$(basename "$arquivo")
+              printf '// BEGIN %s\n' "$nome"
+              sed '/^modulo /d; /^usa /d' "$arquivo"
+              printf '// END %s\n\n' "$nome"
+            done
+          } > build/seven0.monolith.sev
 
-          git diff --cached --check
-          git config user.name 'Gabriel Barcelos'
-          git config user.email '102088315+gabriell211@users.noreply.github.com'
-          git commit -m 'Complete Seven Stage 1 self-hosting'
-          git push --force origin HEAD:stage1-self-host-clean
+          ./build/genesis-host build/seven0.seed.svbc build/seven0.monolith.sev build/seven0.svbc
+          ./build/genesis-host build/seven0.svbc build/seven0.monolith.sev build/seven0.self.svbc
+          cmp build/seven0.svbc build/seven0.self.svbc
+
+      - name: Generate the deterministic compiler closure
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          : > build/module-map.tsv
+          while IFS= read -r arquivo; do
+            modulo=$(sed -n 's/^modulo[[:space:]]\+//p' "$arquivo" | head -n 1)
+            if [ -n "$modulo" ]; then
+              printf '%s\t%s\n' "$modulo" "$arquivo" >> build/module-map.tsv
+            fi
+          done < seven.sources
+
+          printf '%s\n' compiler/seven.sev > build/compiler.queue
+          : > build/compiler.files
+
+          while [ -s build/compiler.queue ]; do
+            arquivo=$(head -n 1 build/compiler.queue)
+            tail -n +2 build/compiler.queue > build/compiler.queue.next || true
+            mv build/compiler.queue.next build/compiler.queue
+
+            if grep -Fqx "$arquivo" build/compiler.files; then
+              continue
+            fi
+            printf '%s\n' "$arquivo" >> build/compiler.files
+
+            while IFS= read -r dependencia; do
+              [ -n "$dependencia" ] || continue
+              caminho=$(awk -F '\t' -v modulo="$dependencia" '$1 == modulo { print $2; exit }' build/module-map.tsv)
+              if [ -z "$caminho" ]; then
+                echo "unresolved module in self-host closure: $dependencia (from $arquivo)" >&2
+                exit 1
+              fi
+              if ! grep -Fqx "$caminho" build/compiler.files; then
+                printf '%s\n' "$caminho" >> build/compiler.queue
+              fi
+            done < <(sed -n 's/^usa[[:space:]]\+//p' "$arquivo")
+          done
+
+          LC_ALL=C sort -u build/compiler.files -o build/compiler.files
+
+          {
+            printf 'modulo seven_selfhost\n\n'
+            while IFS= read -r arquivo; do
+              printf '// BEGIN %s\n' "$arquivo"
+              sed '/^modulo /d; /^usa /d' "$arquivo"
+              printf '// END %s\n\n' "$arquivo"
+            done < build/compiler.files
+          } > build/seven.compiler.monolith.sev
+
+          cat > build/selfhost.sources <<'EOF'
+          build/seven.compiler.monolith.sev
+          EOF
+
+          cat > build/selfhost.pkg <<'EOF'
+          pacote seven-selfhost
+          versao 0.2.0
+          criador Gabriel Barcelos
+          entrada seven_selfhost.inicio
+          alvo svbc
+          indice build/selfhost.sources
+          EOF
+
+          test -s build/seven.compiler.monolith.sev
+          sha256sum build/compiler.files build/seven.compiler.monolith.sev build/selfhost.pkg build/selfhost.sources
+
+      - name: Compile Stage 1 with Seven-0
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./build/genesis-host build/seven0.svbc build/seven.compiler.monolith.sev build/seven.stage1.svbc
+          test "$(od -An -tx1 -N4 build/seven.stage1.svbc | tr -d ' \n')" = '53564230'
+
+      - name: Compile Stage 2 with Stage 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./build/genesis-host build/seven.stage1.svbc build build/selfhost.pkg build/seven.stage2.svbc
+          test "$(od -An -tx1 -N4 build/seven.stage2.svbc | tr -d ' \n')" = '53564230'
+
+      - name: Recompile Stage 2 with itself
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./build/genesis-host build/seven.stage2.svbc build build/selfhost.pkg build/seven.stage2.self.svbc
+          cmp build/seven.stage2.svbc build/seven.stage2.self.svbc
+
+      - name: Compile and execute a fresh package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > build/fixed-point-proof.sev <<'EOF'
+          modulo fixed_point_proof
+
+          campo inicio() -> Num ::
+            devolve 42
+          fecha
+          EOF
+
+          cat > build/proof.sources <<'EOF'
+          build/fixed-point-proof.sev
+          EOF
+
+          cat > build/proof.pkg <<'EOF'
+          pacote fixed-point-proof
+          versao 1.0.0
+          criador Seven
+          entrada fixed_point_proof.inicio
+          alvo svbc
+          indice build/proof.sources
+          EOF
+
+          ./build/genesis-host build/seven.stage1.svbc build build/proof.pkg build/proof.stage1.svbc
+          ./build/genesis-host build/seven.stage2.svbc build build/proof.pkg build/proof.stage2.svbc
+          cmp build/proof.stage1.svbc build/proof.stage2.svbc
+
+          set +e
+          ./build/genesis-host build/proof.stage2.svbc
+          proof_exit=$?
+          set -e
+          test "$proof_exit" -eq 42
+
+      - name: Record self-hosting provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          host_sources_hash=$(cat bootstrap/host/v2/genesis-host.c bootstrap/host/v2/genesis-host.part*.inc | sha256sum | awk '{print $1}')
+          seed_hash=$(sha256sum build/seven0.seed.svbc | awk '{print $1}')
+          seven0_source_hash=$(sha256sum build/seven0.monolith.sev | awk '{print $1}')
+          seven0_hash=$(sha256sum build/seven0.svbc | awk '{print $1}')
+          compiler_source_hash=$(sha256sum build/seven.compiler.monolith.sev | awk '{print $1}')
+          stage1_hash=$(sha256sum build/seven.stage1.svbc | awk '{print $1}')
+          stage2_hash=$(sha256sum build/seven.stage2.svbc | awk '{print $1}')
+          stage2_self_hash=$(sha256sum build/seven.stage2.self.svbc | awk '{print $1}')
+          proof_hash=$(sha256sum build/proof.stage2.svbc | awk '{print $1}')
+
+          test "$stage2_hash" = "$stage2_self_hash"
+
+          cat > build/self-hosting.provenance <<EOF
+          formato seven-bootstrap-provenance-v3
+          cadeia Seven-0 -> Stage-1 -> Stage-2 -> Stage-2-self
+          genesis_fontes_sha256 $host_sources_hash
+          seven0_seed_sha256 $seed_hash
+          seven0_fontes_sha256 $seven0_source_hash
+          seven0_sha256 $seven0_hash
+          compiler_fontes_sha256 $compiler_source_hash
+          stage1_executor build/seven0.svbc
+          stage1_sha256 $stage1_hash
+          stage2_executor build/seven.stage1.svbc
+          stage2_sha256 $stage2_hash
+          stage2_self_executor build/seven.stage2.svbc
+          stage2_self_sha256 $stage2_self_hash
+          proof_sha256 $proof_hash
+          proof_exit 42
+          fixed_point_byte_a_byte sim
+          EOF
+
+          cat build/self-hosting.provenance
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-self-hosting-fixed-point
+          path: |
+            build/compiler.files
+            build/seven0.svbc
+            build/seven0.self.svbc
+            build/seven.compiler.monolith.sev
+            build/seven.stage1.svbc
+            build/seven.stage2.svbc
+            build/seven.stage2.self.svbc
+            build/proof.stage1.svbc
+            build/proof.stage2.svbc
+            build/self-hosting.provenance
+          if-no-files-found: error
