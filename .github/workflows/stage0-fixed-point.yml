@@ -38,9 +38,9 @@ jobs:
           cat bootstrap/seed/v2/part*.b64 | tr -d '\r\n\t ' | base64 --decode | gzip --decompress > build/seven0.seed.svbc
           echo '123f5b513bcae7774671898f471441b3c71efd570acad91fa634cbc5f33bb223  build/seven0.seed.svbc' | sha256sum --check
 
-          echo 'f9fa97455aa738851f89442470f51a9c0aa57b1b6b496d2bdfc1661456c02c3f  bootstrap/staging/genesis-host.c.gz.b64' | sha256sum --check
+          echo 'a6199eb4b40b8ae18c1bdf80aca9d3e3a4c1ded6dd8d6c97a038d1ff1718eb0a  bootstrap/staging/genesis-host.c.gz.b64' | sha256sum --check
           base64 --decode bootstrap/staging/genesis-host.c.gz.b64 | gzip --decompress > build/genesis-host.c
-          echo 'b868ca9178bd8757208c086062aa88ab02f6da9377b683c1927675d9de99029d  build/genesis-host.c' | sha256sum --check
+          echo '02c5f7b3b579af450be1267ad7ea67834f5d156632c87bba9bde1dc65ffabd03  build/genesis-host.c' | sha256sum --check
 
       - name: Generate deterministic Seven-0 monolith
         shell: bash
