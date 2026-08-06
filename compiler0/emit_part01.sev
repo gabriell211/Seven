@@ -1,0 +1,199 @@
+modulo seven0.emit
+
+usa std.base.lista
+usa seven0.primitives
+usa seven0.ast
+usa seven0.check
+usa seven0.svbc0
+
+campo emite_se(contexto: ContextoCampo, comando: No) -> Nada ::
+  emite_expressao(contexto, lista_no_pega(comando.filhos, 0))
+  guarda salto_falso := emite_instrucao(contexto.emissao, OpSaltaFalso, 0, 0)
+  emite_bloco(contexto, lista_no_pega(comando.filhos, 1))
+
+  veja lista_no_tamanho(comando.filhos) > 2 ::
+    guarda salto_fim := emite_instrucao(contexto.emissao, OpSalta, 0, 0)
+    corrige_a(contexto.emissao, salto_falso, U32(lista_tamanho(contexto.emissao.codigo)))
+    emite_bloco(contexto, lista_no_pega(comando.filhos, 2))
+    corrige_a(contexto.emissao, salto_fim, U32(lista_tamanho(contexto.emissao.codigo)))
+  outro ::
+    corrige_a(contexto.emissao, salto_falso, U32(lista_tamanho(contexto.emissao.codigo)))
+  fecha
+fecha
+
+campo emite_enquanto(contexto: ContextoCampo, comando: No) -> Nada ::
+  guarda inicio := U32(lista_tamanho(contexto.emissao.codigo))
+  emite_expressao(contexto, lista_no_pega(comando.filhos, 0))
+  guarda salto_fim := emite_instrucao(contexto.emissao, OpSaltaFalso, 0, 0)
+  emite_bloco(contexto, lista_no_pega(comando.filhos, 1))
+  emite_instrucao(contexto.emissao, OpSalta, inicio, 0)
+  corrige_a(contexto.emissao, salto_fim, U32(lista_tamanho(contexto.emissao.codigo)))
+fecha
+
+campo emite_para_cada(contexto: ContextoCampo, comando: No) -> Nada ::
+  guarda iterador := local_adiciona(contexto, "__iter_" + comando.nome + "_" + texto_u64(contexto.proximo_local), sim)
+  solta item := local_indice_opcional(contexto, comando.nome)
+  veja item < 0 :: vira item := Num(local_adiciona(contexto, comando.nome, sim)) fecha
+
+  emite_expressao(contexto, lista_no_pega(comando.filhos, 0))
+  emite_syscall(contexto, "sys_iterador_novo", 1)
+  emite_instrucao(contexto.emissao, OpLocalGrava, iterador, 0)
+
+  guarda inicio := U32(lista_tamanho(contexto.emissao.codigo))
+  emite_instrucao(contexto.emissao, OpLocalLe, iterador, 0)
+  emite_syscall(contexto, "sys_iterador_tem", 1)
+  guarda salto_fim := emite_instrucao(contexto.emissao, OpSaltaFalso, 0, 0)
+
+  emite_instrucao(contexto.emissao, OpLocalLe, iterador, 0)
+  emite_syscall(contexto, "sys_iterador_atual", 1)
+  emite_instrucao(contexto.emissao, OpLocalGrava, U32(item), 0)
+
+  emite_bloco(contexto, lista_no_pega(comando.filhos, 1))
+
+  emite_instrucao(contexto.emissao, OpLocalLe, iterador, 0)
+  emite_syscall(contexto, "sys_iterador_avanca", 1)
+  emite_instrucao(contexto.emissao, OpLocalGrava, iterador, 0)
+  emite_instrucao(contexto.emissao, OpSalta, inicio, 0)
+  corrige_a(contexto.emissao, salto_fim, U32(lista_tamanho(contexto.emissao.codigo)))
+fecha
+
+campo emite_expressao(contexto: ContextoCampo, expr: No) -> Nada ::
+  veja expr.especie == "numero" ::
+    emite_const_u32(contexto, U32(numero(expr.valor)))
+    devolve nulo
+  fecha
+
+  veja expr.especie == "texto" ::
+    emite_const_texto(contexto, expr.valor)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "bit" ::
+    emite_const_u32(contexto, U32(numero(expr.valor)))
+    devolve nulo
+  fecha
+
+  veja expr.especie == "nulo" ::
+    emite_const_u32(contexto, 0)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "nome" ::
+    emite_nome(contexto, expr.nome)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "acesso" ::
+    emite_expressao(contexto, lista_no_pega(expr.filhos, 0))
+    emite_const_texto(contexto, expr.nome)
+    emite_syscall(contexto, "sys_obj_pega", 2)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "indice" ::
+    emite_expressao(contexto, lista_no_pega(expr.filhos, 0))
+    emite_expressao(contexto, lista_no_pega(expr.filhos, 1))
+    emite_syscall(contexto, "sys_indice_pega", 2)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "objeto" ::
+    emite_objeto(contexto, expr)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "chamada" ::
+    emite_chamada(contexto, expr)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "binario" ::
+    emite_binario(contexto, expr)
+    devolve nulo
+  fecha
+
+  veja expr.especie == "unario" ::
+    emite_unario(contexto, expr)
+    devolve nulo
+  fecha
+
+  emite_const_u32(contexto, 0)
+fecha
+
+campo emite_nome(contexto: ContextoCampo, nome: Texto) -> Nada ::
+  guarda local := local_indice_opcional(contexto, nome)
+  veja local >= 0 ::
+    emite_instrucao(contexto.emissao, OpLocalLe, U32(local), 0)
+    devolve nulo
+  fecha
+
+  guarda constante := constante_por_nome(contexto.emissao.unidade.programa, nome)
+  veja constante.especie == "const" ::
+    emite_expressao(contexto, lista_no_pega(constante.filhos, 0))
+    devolve nulo
+  fecha
+
+  veja sys_texto_contem(nome, ".") ::
+    emite_nome_composto(contexto, nome)
+    devolve nulo
+  fecha
+
+  veja nome_maiusculo(nome) ::
+    emite_objeto_vazio(contexto, nome)
+    devolve nulo
+  fecha
+
+  emite_const_u32(contexto, 0)
+fecha
+
+campo emite_nome_composto(contexto: ContextoCampo, nome: Texto) -> Nada ::
+  guarda ponto := texto_indice(nome, ".")
+  veja ponto < 0 :: emite_nome(contexto, nome) devolve nulo fecha
+
+  guarda base := texto_fatia(nome, 0, U64(ponto))
+  emite_nome(contexto, base)
+  solta inicio := U64(ponto) + 1
+
+  gira inicio < texto_tamanho(nome) ::
+    guarda resto := texto_fatia(nome, inicio, texto_tamanho(nome))
+    guarda proximo := texto_indice(resto, ".")
+    solta campo := resto
+    veja proximo >= 0 :: vira campo := texto_fatia(resto, 0, U64(proximo)) fecha
+    emite_const_texto(contexto, campo)
+    emite_syscall(contexto, "sys_obj_pega", 2)
+    veja proximo < 0 :: devolve nulo fecha
+    vira inicio := inicio + U64(proximo) + 1
+  fecha
+fecha
+
+campo emite_objeto(contexto: ContextoCampo, expr: No) -> Nada ::
+  emite_const_texto(contexto, "__tipo")
+  emite_const_texto(contexto, expr.nome)
+  emite_const_texto(contexto, "tag")
+  emite_const_texto(contexto, expr.nome)
+  solta argumentos: U32 := 4
+
+  para cada campo em expr.filhos ::
+    emite_const_texto(contexto, campo.nome)
+    emite_expressao(contexto, lista_no_pega(campo.filhos, 0))
+    vira argumentos := argumentos + 2
+  fecha
+
+  emite_syscall(contexto, "sys_obj_novo", argumentos)
+fecha
+
+campo emite_objeto_vazio(contexto: ContextoCampo, tipo: Texto) -> Nada ::
+  emite_const_texto(contexto, "__tipo")
+  emite_const_texto(contexto, tipo)
+  emite_const_texto(contexto, "tag")
+  emite_const_texto(contexto, tipo)
+  emite_syscall(contexto, "sys_obj_novo", 4)
+fecha
+
+campo emite_lista_nova(contexto: ContextoCampo) -> Nada ::
+  emite_const_texto(contexto, "__tipo")
+  emite_const_texto(contexto, "lista")
+  emite_const_texto(contexto, "tag")
+  emite_const_texto(contexto, "lista")
+  emite_syscall(contexto, "sys_obj_novo", 4)
+fecha

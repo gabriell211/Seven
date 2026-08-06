@@ -1,0 +1,197 @@
+modulo seven.compiler.types
+
+usa seven.compiler.ast
+usa seven.compiler.symbols
+usa seven.compiler.source
+usa seven.compiler.diagnostic
+
+campo confere_campo(campo: Campo, programa: Programa, simbolos: TabelaSimbolos, tabela: TabelaTipos) -> Nada ::
+  solta locais := mapa<Texto, VinculoTipo>()
+
+  para cada parametro em campo.parametros ::
+    registra_local(locais, VinculoTipo {
+      nome: parametro.nome,
+      tipo: resolve_tipo(parametro.tipo, campo.genericos, tabela),
+      mutavel: nao,
+      span: parametro.span
+    }, tabela)
+  fecha
+
+  guarda retorno := resolve_tipo(campo.retorno, campo.genericos, tabela)
+  guarda sempre_retorna := confere_bloco(campo.corpo, locais, retorno, programa, simbolos, tabela)
+
+  veja retorno != TipoNada e nao sempre_retorna ::
+    lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+      "SV-TIPO-RETORNO",
+      "campo '" + campo.nome + "' pode terminar sem devolver valor",
+      campo.span.arquivo,
+      campo.span.linha,
+      campo.span.coluna,
+      "adicione devolve em todos os caminhos ou use retorno Nada"
+    ))
+  fecha
+fecha
+
+campo confere_bloco(
+  comandos: Lista<Comando>,
+  locais_pai: Mapa<Texto, VinculoTipo>,
+  retorno: Tipo,
+  programa: Programa,
+  simbolos: TabelaSimbolos,
+  tabela: TabelaTipos
+) -> Bit ::
+  guarda locais := sys_mapa_copia(locais_pai)
+  solta sempre_retorna := nao
+
+  para cada comando em comandos ::
+    veja confere_comando(comando, locais, retorno, programa, simbolos, tabela) ::
+      vira sempre_retorna := sim
+    fecha
+  fecha
+
+  devolve sempre_retorna
+fecha
+
+campo confere_comando(
+  comando: Comando,
+  locais: Mapa<Texto, VinculoTipo>,
+  retorno: Tipo,
+  programa: Programa,
+  simbolos: TabelaSimbolos,
+  tabela: TabelaTipos
+) -> Bit ::
+  veja comando e CmdCria ::
+    guarda recebido := infere_expressao(comando.valor.valor, locais, programa, simbolos, tabela)
+    solta declarado := recebido
+    veja comando.valor.tipo.nome != "" ::
+      vira declarado := resolve_tipo(comando.valor.tipo, lista<Texto>(), tabela)
+      exige_compativel(tabela, declarado, recebido, comando.valor.span, "inicializacao")
+    fecha
+    registra_local(locais, VinculoTipo {
+      nome: comando.valor.nome,
+      tipo: declarado,
+      mutavel: comando.valor.mutavel,
+      span: comando.valor.span
+    }, tabela)
+    devolve nao
+  fecha
+
+  veja comando e CmdVira ::
+    guarda esperado := tipo_alvo(comando.valor.alvo, locais, programa, simbolos, tabela)
+    guarda recebido := infere_expressao(comando.valor.valor, locais, programa, simbolos, tabela)
+    exige_compativel(tabela, esperado, recebido, comando.valor.span, "atribuicao")
+    devolve nao
+  fecha
+
+  veja comando e CmdDiga ::
+    infere_expressao(comando.valor.valor, locais, programa, simbolos, tabela)
+    devolve nao
+  fecha
+
+  veja comando e CmdVeja ::
+    guarda condicao := infere_expressao(comando.valor.condicao, locais, programa, simbolos, tabela)
+    exige_compativel(tabela, TipoBase("Bit"), condicao, comando.valor.span, "condicao de veja")
+    guarda entao_retorna := confere_bloco(comando.valor.entao, locais, retorno, programa, simbolos, tabela)
+    guarda senao_retorna := confere_bloco(comando.valor.senao, locais, retorno, programa, simbolos, tabela)
+    devolve entao_retorna e lista_tamanho(comando.valor.senao) > 0 e senao_retorna
+  fecha
+
+  veja comando e CmdGira ::
+    guarda condicao := infere_expressao(comando.valor.condicao, locais, programa, simbolos, tabela)
+    exige_compativel(tabela, TipoBase("Bit"), condicao, comando.valor.span, "condicao de gira")
+    confere_bloco(comando.valor.corpo, locais, retorno, programa, simbolos, tabela)
+    devolve nao
+  fecha
+
+  veja comando e CmdParaCada ::
+    guarda colecao := infere_expressao(comando.valor.colecao, locais, programa, simbolos, tabela)
+    guarda escopo := sys_mapa_copia(locais)
+    registra_local(escopo, VinculoTipo {
+      nome: comando.valor.nome,
+      tipo: tipo_item(colecao),
+      mutavel: nao,
+      span: comando.valor.span
+    }, tabela)
+    confere_bloco(comando.valor.corpo, escopo, retorno, programa, simbolos, tabela)
+    devolve nao
+  fecha
+
+  veja comando e CmdDevolve ::
+    guarda recebido := infere_expressao(comando.valor.valor, locais, programa, simbolos, tabela)
+    exige_compativel(tabela, retorno, recebido, comando.valor.span, "retorno")
+    devolve sim
+  fecha
+
+  veja comando e CmdZona ::
+    confere_bloco(comando.valor.corpo, locais, retorno, programa, simbolos, tabela)
+    devolve nao
+  fecha
+
+  veja comando e CmdFalha ::
+    devolve sim
+  fecha
+
+  veja comando e CmdCaixa ::
+    infere_expressao(comando.valor.tamanho, locais, programa, simbolos, tabela)
+    devolve nao
+  fecha
+
+  veja comando e CmdMarca ::
+    infere_expressao(comando.valor.indice, locais, programa, simbolos, tabela)
+    infere_expressao(comando.valor.valor, locais, programa, simbolos, tabela)
+    devolve nao
+  fecha
+
+  veja comando e CmdPega ::
+    infere_expressao(comando.valor.indice, locais, programa, simbolos, tabela)
+    devolve nao
+  fecha
+
+  veja comando e CmdExpressao ::
+    infere_expressao(comando.valor.valor, locais, programa, simbolos, tabela)
+  fecha
+
+  devolve nao
+fecha
+
+campo registra_local(locais: Mapa<Texto, VinculoTipo>, vinculo: VinculoTipo, tabela: TabelaTipos) -> Nada ::
+  veja mapa_tem(locais, vinculo.nome) ::
+    reporta_tipo(tabela, "SV-NOME-DUPLICADO", "nome local '" + vinculo.nome + "' ja existe", vinculo.span)
+  outro ::
+    mapa_coloca(locais, vinculo.nome, vinculo)
+  fecha
+fecha
+
+campo resolve_tipo(sintaxe: TipoSintaxe, genericos: Lista<Texto>, tabela: TabelaTipos) -> Tipo ::
+  para cada generico em genericos ::
+    veja sintaxe.nome == generico ::
+      devolve TipoGenerico(generico)
+    fecha
+  fecha
+
+  solta argumentos := lista<Tipo>()
+  para cada argumento em sintaxe.argumentos ::
+    lista_coloca(argumentos, resolve_tipo(argumento, genericos, tabela))
+  fecha
+
+  veja sintaxe.nome == "Lista" e lista_tamanho(argumentos) == 1 ::
+    devolve TipoLista(lista_pega(argumentos, 0))
+  fecha
+  veja sintaxe.nome == "Fatia" e lista_tamanho(argumentos) == 1 ::
+    devolve TipoFatia(lista_pega(argumentos, 0))
+  fecha
+  veja sintaxe.nome == "Ptr" e lista_tamanho(argumentos) == 1 ::
+    devolve TipoPonteiro(lista_pega(argumentos, 0))
+  fecha
+  veja lista_tamanho(argumentos) > 0 ::
+    devolve TipoAplicado(sintaxe.nome, argumentos)
+  fecha
+
+  guarda encontrado := mapa_pega(tabela.tipos, sintaxe.nome)
+  veja encontrado e Algo ::
+    devolve encontrado.valor
+  fecha
+
+  reporta_tipo(tabela, "SV-TIPO-INEXISTENTE", "tipo '" + sintaxe.nome + "' nao foi encontrado", sintaxe.span)
+  devolve TipoDesconhecido
+fecha

@@ -1,0 +1,173 @@
+modulo seven.compiler.types
+
+usa seven.compiler.ast
+usa seven.compiler.symbols
+usa seven.compiler.source
+usa seven.compiler.diagnostic
+
+campo infere_expressao(
+  expressao: Expressao,
+  locais: Mapa<Texto, VinculoTipo>,
+  programa: Programa,
+  simbolos: TabelaSimbolos,
+  tabela: TabelaTipos
+) -> Tipo ::
+  veja expressao e ExprLiteral ::
+    veja expressao.valor e LitNum :: devolve TipoBase("Num") fecha
+    veja expressao.valor e LitTexto :: devolve TipoBase("Texto") fecha
+    veja expressao.valor e LitBit :: devolve TipoBase("Bit") fecha
+    devolve TipoNada
+  fecha
+
+  veja expressao e ExprNome ::
+    guarda local := mapa_pega(locais, expressao.valor.nome)
+    veja local e Algo ::
+      devolve local.valor.tipo
+    fecha
+
+    guarda assinatura := mapa_pega(tabela.campos, expressao.valor.nome)
+    veja assinatura e Algo ::
+      veja lista_tamanho(assinatura.valor.parametros) == 0 e nome_tipo_maiusculo(expressao.valor.nome) ::
+        devolve assinatura.valor.retorno
+      fecha
+      devolve TipoCampo(assinatura.valor.parametros, assinatura.valor.retorno)
+    fecha
+
+    guarda global := simbolo_busca(simbolos, programa.modulo, expressao.valor.nome)
+    veja global e Algo ::
+      devolve TipoDesconhecido
+    fecha
+
+    reporta_tipo(tabela, "SV-NOME-INEXISTENTE", "nome '" + expressao.valor.nome + "' nao existe", expressao.valor.span)
+    devolve TipoDesconhecido
+  fecha
+
+  veja expressao e ExprUnaria ::
+    guarda direita := infere_expressao(expressao.valor.direita, locais, programa, simbolos, tabela)
+    veja expressao.valor.operador == "nao" ::
+      exige_compativel(tabela, TipoBase("Bit"), direita, expressao.valor.span, "operador nao")
+      devolve TipoBase("Bit")
+    fecha
+    veja nao tipo_numerico(direita) ::
+      reporta_tipo(tabela, "SV-TIPO-OPERADOR", "operador - exige numero", expressao.valor.span)
+    fecha
+    devolve direita
+  fecha
+
+  veja expressao e ExprBinaria ::
+    guarda operador := expressao.valor.operador
+
+    veja operador == "e" ::
+      veja expressao.valor.direita e ExprNome ::
+        veja nome_tipo_maiusculo(expressao.valor.direita.valor.nome) ::
+          infere_expressao(expressao.valor.esquerda, locais, programa, simbolos, tabela)
+          devolve TipoBase("Bit")
+        fecha
+      fecha
+    fecha
+
+    guarda esquerda := infere_expressao(expressao.valor.esquerda, locais, programa, simbolos, tabela)
+    guarda direita := infere_expressao(expressao.valor.direita, locais, programa, simbolos, tabela)
+
+    veja operador == "==" ou operador == "!=" ::
+      exige_compativel(tabela, esquerda, direita, expressao.valor.span, "comparacao")
+      devolve TipoBase("Bit")
+    fecha
+    veja operador == "<" ou operador == "<=" ou operador == ">" ou operador == ">=" ::
+      veja (nao tipo_numerico(esquerda) ou nao tipo_numerico(direita)) e (nao tipo_texto(esquerda) ou nao tipo_texto(direita)) ::
+        reporta_tipo(tabela, "SV-TIPO-COMPARACAO", "comparacao de ordem exige numeros ou textos", expressao.valor.span)
+      fecha
+      devolve TipoBase("Bit")
+    fecha
+    veja operador == "e" ou operador == "ou" ::
+      exige_compativel(tabela, TipoBase("Bit"), esquerda, expressao.valor.span, "operador logico")
+      exige_compativel(tabela, TipoBase("Bit"), direita, expressao.valor.span, "operador logico")
+      devolve TipoBase("Bit")
+    fecha
+    veja operador == "+" e (tipo_texto(esquerda) ou tipo_texto(direita)) ::
+      devolve TipoBase("Texto")
+    fecha
+    veja nao tipo_numerico(esquerda) ou nao tipo_numerico(direita) ::
+      reporta_tipo(tabela, "SV-TIPO-ARITMETICA", "operacao aritmetica exige numeros", expressao.valor.span)
+      devolve TipoDesconhecido
+    fecha
+    devolve esquerda
+  fecha
+
+  veja expressao e ExprChamada ::
+    veja expressao.valor.alvo e ExprNome ::
+      guarda nome_chamado := expressao.valor.alvo.valor.nome
+      veja chamada_intrinseca(nome_chamado) ::
+        para cada argumento em expressao.valor.argumentos ::
+          infere_expressao(argumento, locais, programa, simbolos, tabela)
+        fecha
+        devolve retorno_intrinseco(nome_chamado)
+      fecha
+    fecha
+
+    guarda alvo := infere_expressao(expressao.valor.alvo, locais, programa, simbolos, tabela)
+    veja alvo e TipoCampo ::
+      confere_argumentos(expressao.valor.argumentos, alvo.parametros, locais, programa, simbolos, tabela, expressao.valor.span)
+      devolve alvo.retorno
+    fecha
+    reporta_tipo(tabela, "SV-TIPO-CHAMADA", "valor chamado nao e um campo", expressao.valor.span)
+    devolve TipoDesconhecido
+  fecha
+
+  veja expressao e ExprConstrucao ::
+    para cada campo em expressao.valor.campos ::
+      infere_expressao(campo.valor, locais, programa, simbolos, tabela)
+    fecha
+    devolve resolve_tipo(expressao.valor.tipo, lista<Texto>(), tabela)
+  fecha
+
+  veja expressao e ExprAcesso ::
+    guarda base := infere_expressao(expressao.valor.base, locais, programa, simbolos, tabela)
+    solta nome_base := ""
+    veja base e TipoMolde :: vira nome_base := base.nome fecha
+    veja base e TipoAplicado :: vira nome_base := base.nome fecha
+    veja nome_base != "" ::
+      guarda membro := mapa_pega(tabela.membros, nome_base + "." + expressao.valor.membro)
+      veja membro e Algo ::
+        devolve membro.valor
+      fecha
+    fecha
+    devolve TipoDesconhecido
+  fecha
+
+  veja expressao e ExprIndice ::
+    guarda indice := infere_expressao(expressao.valor.indice, locais, programa, simbolos, tabela)
+    veja nao tipo_numerico(indice) ::
+      reporta_tipo(tabela, "SV-TIPO-INDICE", "indice precisa ser numerico", expressao.valor.span)
+    fecha
+    devolve tipo_item(infere_expressao(expressao.valor.base, locais, programa, simbolos, tabela))
+  fecha
+
+  veja expressao e ExprEspecializa ::
+    devolve infere_expressao(expressao.valor.alvo, locais, programa, simbolos, tabela)
+  fecha
+
+  veja expressao e ExprCampo ::
+    solta parametros := lista<Tipo>()
+    para cada parametro em expressao.valor.parametros ::
+      lista_coloca(parametros, resolve_tipo(parametro.tipo, lista<Texto>(), tabela))
+    fecha
+    devolve TipoCampo(parametros, resolve_tipo(expressao.valor.retorno, lista<Texto>(), tabela))
+  fecha
+
+  devolve TipoDesconhecido
+fecha
+
+campo chamada_intrinseca(nome: Texto) -> Bit ::
+  devolve texto_comeca(nome, "sys_") ou nome == "arquivo_ler" ou nome == "sha256_texto" ou nome == "numero" ou nome == "texto" ou nome == "texto_u64" ou nome == "U32" ou nome == "U64" ou nome == "Num" ou nome == "Byte" ou nome == "Real64"
+fecha
+
+campo retorno_intrinseco(nome: Texto) -> Tipo ::
+  veja nome == "texto" ou nome == "texto_u64" ou nome == "sha256_texto" :: devolve TipoBase("Texto") fecha
+  veja nome == "U32" :: devolve TipoBase("U32") fecha
+  veja nome == "U64" :: devolve TipoBase("U64") fecha
+  veja nome == "Num" ou nome == "numero" :: devolve TipoBase("Num") fecha
+  veja nome == "Byte" :: devolve TipoBase("Byte") fecha
+  veja nome == "Real64" :: devolve TipoBase("Real64") fecha
+  devolve TipoDesconhecido
+fecha

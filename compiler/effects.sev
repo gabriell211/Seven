@@ -279,7 +279,7 @@ campo efeito_por_texto(nome: Texto) -> Talvez<Efeito> ::
   veja nome == "teste" ::
     devolve Algo(Teste)
   fecha
-  devolve Nada
+  devolve Vazio
 fecha
 
 campo efeito_intrinseco(nome: Texto) -> Talvez<Efeito> ::
@@ -304,7 +304,7 @@ campo efeito_intrinseco(nome: Texto) -> Talvez<Efeito> ::
   veja texto_comeca(nome, "frontend_") ou texto_comeca(nome, "sys_frontend_") ::
     devolve Algo(Frontend)
   fecha
-  devolve Nada
+  devolve Vazio
 fecha
 
 campo lista_contem_efeito(efeitos: Lista<Efeito>, procurado: Efeito) -> Bit ::

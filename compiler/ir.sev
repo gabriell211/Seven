@@ -51,6 +51,7 @@ molde ConstanteIr ::
 fecha
 
 molde ContextoIr ::
+  programa: Programa
   unidade: UnidadeIr
   campo: CampoIr
   bloco: BlocoIr
@@ -88,12 +89,12 @@ campo baixa_programa(
     fecha
 
     veja item e ItemCampo ::
-      baixa_campo(item.valor, tipos, efeitos, unidade)
+      baixa_campo(item.valor, programa, tipos, efeitos, unidade)
     fecha
   fecha
 fecha
 
-campo baixa_campo(campo: Campo, tipos: TabelaTipos, efeitos: TabelaEfeitos, unidade: UnidadeIr) -> Nada ::
+campo baixa_campo(campo: Campo, programa: Programa, tipos: TabelaTipos, efeitos: TabelaEfeitos, unidade: UnidadeIr) -> Nada ::
   solta campo_ir := CampoIr {
     nome: campo.nome,
     parametros: U32(lista_tamanho(campo.parametros)),
@@ -109,6 +110,7 @@ campo baixa_campo(campo: Campo, tipos: TabelaTipos, efeitos: TabelaEfeitos, unid
   registra_nome(unidade, campo.nome)
 
   solta contexto := ContextoIr {
+    programa: programa,
     unidade: unidade,
     campo: campo_ir,
     bloco: entrada,
@@ -129,8 +131,8 @@ campo baixa_campo(campo: Campo, tipos: TabelaTipos, efeitos: TabelaEfeitos, unid
   fecha
 
   veja nao bloco_terminado(contexto.bloco) ::
-    guarda nulo := emite_constante(contexto, ValorNulo)
-    emite(contexto, IrRetorna(nulo))
+    guarda valor_nulo := emite_constante(contexto, ValorNulo)
+    emite(contexto, IrRetorna(valor_nulo))
   fecha
 
   lista_coloca(unidade.campos, campo_ir)
@@ -365,6 +367,12 @@ campo baixa_expressao(expressao: Expressao, contexto: ContextoIr) -> U32 ::
   fecha
 
   veja expressao e ExprNome ::
+    veja nao mapa_tem(contexto.locais, expressao.valor.nome) ::
+      guarda variante_nome := encontra_variante(contexto.programa, expressao.valor.nome)
+      veja variante_nome e Algo e lista_tamanho(variante_nome.valor.carga) == 0 ::
+        devolve emite_variante_ir(contexto, variante_nome.valor, lista<Expressao>())
+      fecha
+    fecha
     devolve local_ou_constante(contexto, expressao.valor.nome)
   fecha
 
@@ -382,6 +390,24 @@ campo baixa_expressao(expressao: Expressao, contexto: ContextoIr) -> U32 ::
   fecha
 
   veja expressao e ExprBinaria ::
+    veja expressao.valor.operador == "e" ::
+      veja expressao.valor.direita e ExprNome ::
+        guarda variante_padrao := encontra_variante(contexto.programa, expressao.valor.direita.valor.nome)
+        veja variante_padrao e Algo ::
+          guarda base_padrao := baixa_expressao(expressao.valor.esquerda, contexto)
+          guarda chave_tag := emite_constante(contexto, ValorTexto("tag"))
+          solta args_tag := lista<U32>()
+          lista_coloca(args_tag, base_padrao)
+          lista_coloca(args_tag, chave_tag)
+          guarda tag_atual := emite_syscall(contexto, "sys_obj_pega", args_tag)
+          guarda tag_esperada := emite_constante(contexto, ValorTexto(expressao.valor.direita.valor.nome))
+          guarda destino_padrao := novo_local(contexto, TipoBase("Bit"))
+          emite(contexto, IrBin(destino_padrao, "==", tag_atual, tag_esperada))
+          devolve destino_padrao
+        fecha
+      fecha
+    fecha
+
     guarda esquerda := baixa_expressao(expressao.valor.esquerda, contexto)
     guarda direita := baixa_expressao(expressao.valor.direita, contexto)
 
@@ -398,12 +424,17 @@ campo baixa_expressao(expressao: Expressao, contexto: ContextoIr) -> U32 ::
   fecha
 
   veja expressao e ExprChamada ::
+    guarda nome := nome_alvo(expressao.valor.alvo)
+    guarda variante_chamada := encontra_variante(contexto.programa, nome)
+    veja variante_chamada e Algo ::
+      devolve emite_variante_ir(contexto, variante_chamada.valor, expressao.valor.argumentos)
+    fecha
+
     solta argumentos := lista<U32>()
     para cada argumento em expressao.valor.argumentos ::
       lista_coloca(argumentos, baixa_expressao(argumento, contexto))
     fecha
 
-    guarda nome := nome_alvo(expressao.valor.alvo)
     veja mapa_tem(contexto.tipos.campos, nome) ::
       guarda destino := novo_local(contexto, TipoDesconhecido)
       emite(contexto, IrChama(destino, nome, argumentos))
@@ -437,8 +468,10 @@ campo baixa_expressao(expressao: Expressao, contexto: ContextoIr) -> U32 ::
 
   veja expressao e ExprConstrucao ::
     solta argumentos := lista<U32>()
-    guarda tipo_nome := emite_constante(contexto, ValorTexto(expressao.valor.tipo.nome))
-    lista_coloca(argumentos, tipo_nome)
+    lista_coloca(argumentos, emite_constante(contexto, ValorTexto("__tipo")))
+    lista_coloca(argumentos, emite_constante(contexto, ValorTexto(expressao.valor.tipo.nome)))
+    lista_coloca(argumentos, emite_constante(contexto, ValorTexto("tag")))
+    lista_coloca(argumentos, emite_constante(contexto, ValorTexto(expressao.valor.tipo.nome)))
     para cada campo em expressao.valor.campos ::
       lista_coloca(argumentos, emite_constante(contexto, ValorTexto(campo.nome)))
       lista_coloca(argumentos, baixa_expressao(campo.valor, contexto))
@@ -454,6 +487,43 @@ campo baixa_expressao(expressao: Expressao, contexto: ContextoIr) -> U32 ::
   fecha
 
   devolve emite_constante(contexto, ValorNulo)
+fecha
+
+
+campo encontra_variante(programa: Programa, nome: Texto) -> Talvez<Variante> ::
+  para cada item em programa.itens ::
+    veja item e ItemSelo ::
+      para cada variante em item.valor.variantes ::
+        veja variante.nome == nome ::
+          devolve Algo(variante)
+        fecha
+      fecha
+    fecha
+  fecha
+  devolve Vazio
+fecha
+
+campo emite_variante_ir(contexto: ContextoIr, variante: Variante, valores: Lista<Expressao>) -> U32 ::
+  solta argumentos := lista<U32>()
+  lista_coloca(argumentos, emite_constante(contexto, ValorTexto("__tipo")))
+  lista_coloca(argumentos, emite_constante(contexto, ValorTexto(variante.nome)))
+  lista_coloca(argumentos, emite_constante(contexto, ValorTexto("tag")))
+  lista_coloca(argumentos, emite_constante(contexto, ValorTexto(variante.nome)))
+
+  solta indice: U64 := 0
+  para cada valor em valores ::
+    solta nome_campo := ""
+    veja indice < lista_tamanho(variante.carga) ::
+      vira nome_campo := lista_pega(variante.carga, indice).nome
+    fecha
+    veja nome_campo == "" e lista_tamanho(valores) == 1 :: vira nome_campo := "valor" fecha
+    veja nome_campo == "" :: vira nome_campo := texto(indice) fecha
+    lista_coloca(argumentos, emite_constante(contexto, ValorTexto(nome_campo)))
+    lista_coloca(argumentos, baixa_expressao(valor, contexto))
+    vira indice := indice + 1
+  fecha
+
+  devolve emite_syscall(contexto, "sys_obj_novo", argumentos)
 fecha
 
 campo emite_constante(contexto: ContextoIr, valor: ValorIr) -> U32 ::

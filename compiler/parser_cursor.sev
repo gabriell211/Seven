@@ -72,7 +72,7 @@ fecha
 campo avanca_token(cursor: CursorTokens) -> Token ::
   guarda atual := atual_token(cursor)
 
-  veja nao fim(cursor) ::
+  veja atual.tipo != Fim ::
     vira cursor.posicao := cursor.posicao + 1
   fecha
 
@@ -117,7 +117,7 @@ fecha
 campo espera_nome(cursor: CursorTokens, contexto: Texto) -> Token ::
   guarda encontrado := atual_token(cursor)
 
-  veja encontrado.tipo == Nome ::
+  veja token_nome_contextual(encontrado) ::
     devolve avanca_token(cursor)
   fecha
 
@@ -127,7 +127,7 @@ campo espera_nome(cursor: CursorTokens, contexto: Texto) -> Token ::
     encontrado.span.arquivo,
     encontrado.span.linha,
     encontrado.span.coluna,
-    "use um identificador iniciado por letra ou _"
+    "use um identificador ou uma palavra contextual valida"
   ))
 
   veja nao fim(cursor) ::
@@ -140,7 +140,7 @@ fecha
 campo espera_texto(cursor: CursorTokens, contexto: Texto) -> Token ::
   guarda encontrado := atual_token(cursor)
 
-  veja encontrado.tipo == TextoLit ::
+  veja token_texto(encontrado) ::
     devolve avanca_token(cursor)
   fecha
 

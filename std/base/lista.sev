@@ -48,6 +48,23 @@ campo lista_vazia<T>(itens: Lista<T>) -> Bit ::
   devolve itens.tamanho == 0
 fecha
 
+campo lista_junta<T>(destino: Lista<T>, origem: Lista<T>) -> Lista<T> ::
+  solta indice: U64 := 0
+  gira indice < lista_tamanho(origem) ::
+    lista_coloca(destino, lista_pega(origem, indice))
+    vira indice := indice + 1
+  fecha
+  devolve destino
+fecha
+
 campo reverso<T>(itens: Lista<T>) -> Lista<T> ::
-  devolve sys_lista_reverso(itens)
+  solta saida := lista<T>()
+  solta indice := lista_tamanho(itens)
+
+  gira indice > 0 ::
+    vira indice := indice - 1
+    lista_coloca(saida, lista_pega(itens, indice))
+  fecha
+
+  devolve saida
 fecha

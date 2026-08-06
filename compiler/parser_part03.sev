@@ -1,0 +1,172 @@
+modulo seven.compiler.parser
+
+usa seven.compiler.token
+usa seven.compiler.ast
+usa seven.compiler.source
+usa seven.compiler.diagnostic
+usa seven.compiler.parser_cursor
+
+campo ler_zona(cursor: CursorTokens) -> Zona ::
+  guarda inicio := espera(cursor, "zona", "SV-PARSE-ZONA", "esperado zona").span
+  guarda efeito := espera_nome(cursor, "da zona").marca
+  espera(cursor, "::", "SV-PARSE-BLOCO", "esperado :: depois da zona")
+  guarda corpo := ler_bloco(cursor, nao)
+  guarda fim_span := espera(cursor, "fecha", "SV-PARSE-FECHA", "esperado fecha para encerrar zona").span
+
+  devolve Zona {
+    efeito: efeito,
+    corpo: corpo,
+    span: span_junta(inicio, fim_span)
+  }
+fecha
+
+campo ler_falha(cursor: CursorTokens) -> FalhaCmd ::
+  guarda inicio := espera(cursor, "falha", "SV-PARSE-FALHA", "esperado falha").span
+  guarda codigo := espera_texto(cursor, "com o codigo da falha").literal
+  guarda mensagem := espera_texto(cursor, "com a mensagem da falha").literal
+
+  devolve FalhaCmd {
+    codigo: codigo,
+    mensagem: mensagem,
+    span: span_junta(inicio, token_anterior(cursor).span)
+  }
+fecha
+
+campo ler_expressao(cursor: CursorTokens) -> Expressao ::
+  devolve ler_ou(cursor)
+fecha
+
+campo ler_ou(cursor: CursorTokens) -> Expressao ::
+  solta esquerda := ler_e(cursor)
+
+  gira aceita(cursor, "ou") ::
+    guarda operador := token_anterior(cursor)
+    guarda direita := ler_e(cursor)
+    vira esquerda := ExprBinaria(BinariaExpr {
+      esquerda: esquerda,
+      operador: operador.marca,
+      direita: direita,
+      span: operador.span
+    })
+  fecha
+
+  devolve esquerda
+fecha
+
+campo ler_e(cursor: CursorTokens) -> Expressao ::
+  solta esquerda := ler_igualdade(cursor)
+
+  gira aceita(cursor, "e") ::
+    guarda operador := token_anterior(cursor)
+    guarda direita := ler_igualdade(cursor)
+    vira esquerda := ExprBinaria(BinariaExpr {
+      esquerda: esquerda,
+      operador: operador.marca,
+      direita: direita,
+      span: operador.span
+    })
+  fecha
+
+  devolve esquerda
+fecha
+
+campo ler_igualdade(cursor: CursorTokens) -> Expressao ::
+  solta esquerda := ler_comparacao(cursor)
+
+  gira proximo_e(cursor, "==") ou proximo_e(cursor, "!=") ::
+    guarda operador := avanca_token(cursor)
+    guarda direita := ler_comparacao(cursor)
+    vira esquerda := ExprBinaria(BinariaExpr {
+      esquerda: esquerda,
+      operador: operador.marca,
+      direita: direita,
+      span: operador.span
+    })
+  fecha
+
+  devolve esquerda
+fecha
+
+campo ler_comparacao(cursor: CursorTokens) -> Expressao ::
+  solta esquerda := ler_termo(cursor)
+
+  gira proximo_e(cursor, "<") ou proximo_e(cursor, "<=") ou proximo_e(cursor, ">") ou proximo_e(cursor, ">=") ::
+    veja proximo_e(cursor, "<") e parece_especializacao(cursor) ::
+      devolve esquerda
+    fecha
+
+    guarda operador := avanca_token(cursor)
+    guarda direita := ler_termo(cursor)
+    vira esquerda := ExprBinaria(BinariaExpr {
+      esquerda: esquerda,
+      operador: operador.marca,
+      direita: direita,
+      span: operador.span
+    })
+  fecha
+
+  devolve esquerda
+fecha
+
+campo ler_termo(cursor: CursorTokens) -> Expressao ::
+  solta esquerda := ler_fator(cursor)
+
+  gira proximo_e(cursor, "+") ou proximo_e(cursor, "-") ::
+    guarda operador := avanca_token(cursor)
+    guarda direita := ler_fator(cursor)
+    vira esquerda := ExprBinaria(BinariaExpr {
+      esquerda: esquerda,
+      operador: operador.marca,
+      direita: direita,
+      span: operador.span
+    })
+  fecha
+
+  devolve esquerda
+fecha
+
+campo ler_fator(cursor: CursorTokens) -> Expressao ::
+  solta esquerda := ler_unaria(cursor)
+
+  gira proximo_e(cursor, "*") ou proximo_e(cursor, "/") ou proximo_e(cursor, "%") ::
+    guarda operador := avanca_token(cursor)
+    guarda direita := ler_unaria(cursor)
+    vira esquerda := ExprBinaria(BinariaExpr {
+      esquerda: esquerda,
+      operador: operador.marca,
+      direita: direita,
+      span: operador.span
+    })
+  fecha
+
+  devolve esquerda
+fecha
+
+campo nao_unario(cursor: CursorTokens) -> Bit ::
+  veja nao proximo_e(cursor, "nao") ::
+    devolve nao
+  fecha
+
+  guarda atual_nao := atual_token(cursor)
+  guarda seguinte := token_seguinte(cursor, 1)
+  veja seguinte.tipo == Fim ou seguinte.span.linha > atual_nao.span.linha ::
+    devolve nao
+  fecha
+
+  guarda marca_seguinte := seguinte.marca
+  devolve marca_seguinte != "," e marca_seguinte != ")" e marca_seguinte != "]" e marca_seguinte != "}" e marca_seguinte != "::" e marca_seguinte != "fecha" e marca_seguinte != "outro" e marca_seguinte != "guarda" e marca_seguinte != "solta" e marca_seguinte != "vira" e marca_seguinte != "devolve" e marca_seguinte != "diga" e marca_seguinte != "veja" e marca_seguinte != "gira" e marca_seguinte != "para" e marca_seguinte != "falha"
+fecha
+
+campo ler_unaria(cursor: CursorTokens) -> Expressao ::
+  veja nao_unario(cursor) ou proximo_e(cursor, "-") ::
+    guarda operador := avanca_token(cursor)
+    guarda direita := ler_unaria(cursor)
+    devolve ExprUnaria(UnariaExpr {
+      operador: operador.marca,
+      direita: direita,
+      span: operador.span
+    })
+  fecha
+
+  devolve ler_posfixa(cursor)
+fecha

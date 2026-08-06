@@ -267,6 +267,7 @@ campo le_texto(estado: EstadoVarredura) -> Nada ::
   guarda linha := estado.linha
   guarda coluna := estado.coluna
   solta fechado := nao
+  solta conteudo := ""
   avanca(estado)
 
   gira nao varredura_fim(estado) e nao fechado ::
@@ -279,23 +280,46 @@ campo le_texto(estado: EstadoVarredura) -> Nada ::
         veja varredura_fim(estado) ::
           reporta_lex(estado, "SV-LEX-ESCAPE", "sequencia de escape incompleta", estado.linha, estado.coluna)
         outro ::
-          veja nao escape_valido(atual(estado)) ::
-            lista_coloca(estado.diagnosticos.itens, aviso(
-              "SV-LEX-ESCAPE-DESCONHECIDO",
-              "sequencia de escape desconhecida",
-              estado.fonte.caminho,
-              estado.linha,
-              estado.coluna
-            ))
+          guarda escape := avanca(estado)
+          veja escape == "n" ::
+            vira conteudo := conteudo + "\n"
+          outro ::
+            veja escape == "r" ::
+              vira conteudo := conteudo + "\r"
+            outro ::
+              veja escape == "t" ::
+                vira conteudo := conteudo + "\t"
+              outro ::
+                veja escape == "0" ::
+                  vira conteudo := conteudo + "\0"
+                outro ::
+                  veja escape == "\"" ::
+                    vira conteudo := conteudo + "\""
+                  outro ::
+                    veja escape == "\\" ::
+                      vira conteudo := conteudo + "\\"
+                    outro ::
+                      lista_coloca(estado.diagnosticos.itens, aviso(
+                        "SV-LEX-ESCAPE-DESCONHECIDO",
+                        "sequencia de escape desconhecida",
+                        estado.fonte.caminho,
+                        estado.linha,
+                        estado.coluna
+                      ))
+                      vira conteudo := conteudo + escape
+                    fecha
+                  fecha
+                fecha
+              fecha
+            fecha
           fecha
-          avanca(estado)
         fecha
       outro ::
         veja atual(estado) == "\n" ::
           reporta_lex(estado, "SV-LEX-TEXTO-LINHA", "texto foi quebrado antes de fechar aspas", linha, coluna)
           vira fechado := sim
         outro ::
-          avanca(estado)
+          vira conteudo := conteudo + avanca(estado)
         fecha
       fecha
     fecha
@@ -306,8 +330,7 @@ campo le_texto(estado: EstadoVarredura) -> Nada ::
     reporta_lex(estado, "SV-LEX-TEXTO", "literal de texto nao foi fechado", linha, coluna)
     publica(estado, Invalido, marca, "", inicio, linha, coluna)
   outro ::
-    guarda literal := sys_texto_fatia(marca, 1, sys_texto_tamanho(marca) - 1)
-    publica(estado, TextoLit, marca, literal, inicio, linha, coluna)
+    publica(estado, TextoLit, marca, conteudo, inicio, linha, coluna)
   fecha
 fecha
 

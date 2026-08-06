@@ -1,0 +1,221 @@
+modulo seven.compiler.parser
+
+usa seven.compiler.token
+usa seven.compiler.ast
+usa seven.compiler.source
+usa seven.compiler.diagnostic
+usa seven.compiler.parser_cursor
+
+campo ler_selo(cursor: CursorTokens) -> Selo ::
+  guarda inicio := espera(cursor, "selo", "SV-PARSE-SELO", "esperado selo").span
+  guarda nome := espera_nome(cursor, "do selo").marca
+  guarda genericos := ler_genericos_declaracao(cursor)
+  solta variantes := lista<Variante>()
+
+  espera(cursor, "::", "SV-PARSE-BLOCO", "esperado :: para abrir o selo")
+
+  gira nao fim(cursor) e nao proximo_e(cursor, "fecha") ::
+    guarda variante_inicio := atual_token(cursor).span
+    guarda variante_nome := espera_nome(cursor, "da variante").marca
+    solta carga := lista<Parametro>()
+
+    veja aceita(cursor, "(") ::
+      veja nao proximo_e(cursor, ")") ::
+        lista_coloca(carga, ler_carga_variante(cursor))
+        gira aceita(cursor, ",") ::
+          lista_coloca(carga, ler_carga_variante(cursor))
+        fecha
+      fecha
+      espera(cursor, ")", "SV-PARSE-VARIANTE", "esperado ) depois da carga da variante")
+    fecha
+
+    lista_coloca(variantes, Variante {
+      nome: variante_nome,
+      carga: carga,
+      span: span_junta(variante_inicio, token_anterior(cursor).span)
+    })
+  fecha
+
+  guarda fim_span := espera(cursor, "fecha", "SV-PARSE-FECHA", "esperado fecha para encerrar o selo").span
+
+  devolve Selo {
+    nome: nome,
+    genericos: genericos,
+    variantes: variantes,
+    span: span_junta(inicio, fim_span)
+  }
+fecha
+
+campo ler_carga_variante(cursor: CursorTokens) -> Parametro ::
+  guarda inicio := atual_token(cursor).span
+  solta nome := ""
+  veja token_nome_contextual(atual_token(cursor)) e seguinte_e(cursor, ":") ::
+    vira nome := avanca_token(cursor).marca
+    espera(cursor, ":", "SV-PARSE-VARIANTE-CAMPO", "esperado : no campo da variante")
+  fecha
+  guarda tipo := ler_tipo(cursor)
+  devolve Parametro {
+    nome: nome,
+    tipo: tipo,
+    span: span_junta(inicio, token_anterior(cursor).span)
+  }
+fecha
+
+campo ler_constante(cursor: CursorTokens) -> Constante ::
+  guarda inicio := espera(cursor, "const", "SV-PARSE-CONST", "esperado const").span
+  guarda nome := espera_nome(cursor, "da constante").marca
+  espera(cursor, ":", "SV-PARSE-CONST-TIPO", "esperado : depois da constante")
+  guarda tipo := ler_tipo(cursor)
+  espera(cursor, ":=", "SV-PARSE-CONST-VALOR", "esperado := antes do valor da constante")
+  guarda valor := ler_expressao(cursor)
+
+  devolve Constante {
+    nome: nome,
+    tipo: tipo,
+    valor: valor,
+    span: span_junta(inicio, token_anterior(cursor).span)
+  }
+fecha
+
+campo ler_genericos_declaracao(cursor: CursorTokens) -> Lista<Texto> ::
+  solta nomes := lista<Texto>()
+
+  veja nao aceita(cursor, "<") ::
+    devolve nomes
+  fecha
+
+  lista_coloca(nomes, espera_nome(cursor, "do parametro generico").marca)
+  gira aceita(cursor, ",") ::
+    lista_coloca(nomes, espera_nome(cursor, "do parametro generico").marca)
+  fecha
+
+  espera(cursor, ">", "SV-PARSE-GENERICO", "esperado > para encerrar parametros genericos")
+  devolve nomes
+fecha
+
+campo ler_parametros(cursor: CursorTokens) -> Lista<Parametro> ::
+  solta parametros := lista<Parametro>()
+  espera(cursor, "(", "SV-PARSE-PARAMETROS", "esperado ( antes dos parametros")
+
+  veja nao proximo_e(cursor, ")") ::
+    lista_coloca(parametros, ler_parametro(cursor))
+    gira aceita(cursor, ",") ::
+      lista_coloca(parametros, ler_parametro(cursor))
+    fecha
+  fecha
+
+  espera(cursor, ")", "SV-PARSE-PARAMETROS", "esperado ) depois dos parametros")
+  devolve parametros
+fecha
+
+campo ler_parametro(cursor: CursorTokens) -> Parametro ::
+  guarda inicio := atual_token(cursor).span
+  guarda nome := espera_nome(cursor, "do parametro").marca
+  espera(cursor, ":", "SV-PARSE-PARAMETRO-TIPO", "esperado : depois do parametro")
+  guarda tipo := ler_tipo(cursor)
+
+  devolve Parametro {
+    nome: nome,
+    tipo: tipo,
+    span: span_junta(inicio, token_anterior(cursor).span)
+  }
+fecha
+
+campo ler_retorno(cursor: CursorTokens) -> TipoSintaxe ::
+  veja aceita(cursor, "->") ::
+    devolve ler_tipo(cursor)
+  fecha
+
+  devolve TipoSintaxe {
+    nome: "Nada",
+    argumentos: lista<TipoSintaxe>(),
+    matriz: nao,
+    span: atual_token(cursor).span
+  }
+fecha
+
+campo ler_efeitos(cursor: CursorTokens) -> Lista<Texto> ::
+  solta efeitos := lista<Texto>()
+
+  veja nao aceita(cursor, "toca") ::
+    devolve efeitos
+  fecha
+
+  lista_coloca(efeitos, espera_nome(cursor, "do efeito").marca)
+  gira aceita(cursor, ",") ::
+    lista_coloca(efeitos, espera_nome(cursor, "do efeito").marca)
+  fecha
+
+  devolve efeitos
+fecha
+
+campo ler_tipo(cursor: CursorTokens) -> TipoSintaxe ::
+  guarda inicio := atual_token(cursor).span
+  guarda nome := ler_caminho(cursor, "do tipo")
+  solta argumentos := lista<TipoSintaxe>()
+  solta matriz := nao
+
+  veja aceita(cursor, "<") ::
+    lista_coloca(argumentos, ler_tipo(cursor))
+    gira aceita(cursor, ",") ::
+      lista_coloca(argumentos, ler_tipo(cursor))
+    fecha
+    espera(cursor, ">", "SV-PARSE-TIPO-GENERICO", "esperado > depois dos argumentos do tipo")
+  fecha
+
+  veja aceita(cursor, "[") ::
+    veja nao proximo_e(cursor, "]") ::
+      ler_expressao(cursor)
+    fecha
+    espera(cursor, "]", "SV-PARSE-TIPO-MATRIZ", "esperado ] depois do tamanho da matriz")
+    vira matriz := sim
+  fecha
+
+  devolve TipoSintaxe {
+    nome: nome,
+    argumentos: argumentos,
+    matriz: matriz,
+    span: span_junta(inicio, token_anterior(cursor).span)
+  }
+fecha
+
+campo tipo_ausente(local: Span) -> TipoSintaxe ::
+  devolve TipoSintaxe {
+    nome: "",
+    argumentos: lista<TipoSintaxe>(),
+    matriz: nao,
+    span: local
+  }
+fecha
+
+campo ler_caminho(cursor: CursorTokens, contexto: Texto) -> Texto ::
+  solta caminho := espera_nome(cursor, contexto).marca
+
+  gira aceita(cursor, ".") ::
+    vira caminho := caminho + "." + espera_nome(cursor, "depois de .").marca
+  fecha
+
+  devolve caminho
+fecha
+
+campo ler_bloco(cursor: CursorTokens, para_senao: Bit) -> Lista<Comando> ::
+  solta comandos := lista<Comando>()
+
+  gira nao fim(cursor) e nao proximo_e(cursor, "fecha") e (nao para_senao ou nao proximo_e(cursor, "outro")) ::
+    guarda antes := cursor.posicao
+    lista_coloca(comandos, ler_comando(cursor))
+
+    veja cursor.posicao == antes ::
+      reporta_atual(
+        cursor,
+        "SV-PARSE-COMANDO",
+        "nao foi possivel reconhecer o comando",
+        "inicie o comando com uma palavra valida ou use uma chamada"
+      )
+      avanca_token(cursor)
+      sincroniza_comando(cursor)
+    fecha
+  fecha
+
+  devolve comandos
+fecha
