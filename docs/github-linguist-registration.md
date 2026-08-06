@@ -16,11 +16,23 @@ Seven:
   language_id: <assigned-by-linguist>
 ```
 
-The syntax grammar is maintained at:
+## Canonical grammar
+
+The authoritative TextMate grammar is maintained at:
 
 ```text
 syntax/seven.tmLanguage.json
 ```
+
+The VS Code copy must remain byte-for-byte identical at:
+
+```text
+editors/vscode/seven-language/syntaxes/seven.tmLanguage.json
+```
+
+The canonical grammar follows the primitive types declared by
+`compiler/types.sev` and models Seven's nested block comments. CI must reject a
+change when the two grammar files diverge.
 
 ## Upstream issue body
 
@@ -69,8 +81,7 @@ After the request is accepted for implementation:
 3. Register `source.seven` in `grammars.yml` using the grammar repository or
    vendored grammar source requested by Linguist maintainers.
 4. Add representative `.sev` files under `samples/Seven/`.
-5. Generate or obtain an unused `language_id` according to Linguist's current
-   contribution workflow.
+5. Generate the language ID with Linguist's current `script/update-ids` flow.
 6. Run the Linguist test suite and generated-file checks.
 7. Open a pull request titled `Add Seven programming language`.
 
