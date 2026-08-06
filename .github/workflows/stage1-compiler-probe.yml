@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - stage1-self-host-clean
+  pull_request:
   workflow_dispatch:
 
 permissions:
