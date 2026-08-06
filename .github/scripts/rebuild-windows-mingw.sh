@@ -36,16 +36,19 @@ source = source.replace(old_entry, new_entry, 1)
 
 io_pattern = re.compile(r'#ifdef _WIN32\n(?:(?!#else).)*GetFileAttributesA(?:(?!#else).)*#else', re.S)
 new_io = '''#ifdef _WIN32
-#include <io.h>
-#include <direct.h>
-static int exists(const char*p){return _access(p,0)==0;}
-static int make_dir(const char*p){if(exists(p))return 1;return _mkdir(p)==0;}
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <string.h>
+#include <ctype.h>
+#include <windows.h>
 #define strtoll _strtoi64
 #define snprintf _snprintf
 #else'''
 source, count = io_pattern.subn(new_io, source, count=1)
 if count != 1:
-    raise SystemExit(f'Windows native IO block count was {count}')
+    raise SystemExit(f'Windows native import block count was {count}')
 path.write_text(source)
 PYENTRY
 """
