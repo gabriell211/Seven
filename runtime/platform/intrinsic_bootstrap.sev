@@ -1,0 +1,104 @@
+modulo seven.runtime.platform.intrinsic_bootstrap
+
+usa seven.runtime.platform.intrinsic
+usa seven.runtime.platform.svbc.sandbox
+usa seven.runtime.svbc.value
+
+campo intrinsecos_bootstrap() -> Lista<Intrinseco> ::
+  solta itens := lista<Intrinseco>()
+
+  lista_coloca(itens, intrinseco("sys_texto_caractere", "puro", intr_boot_texto_caractere))
+  lista_coloca(itens, intrinseco("sys_texto_fatia", "puro", intr_boot_texto_fatia))
+  lista_coloca(itens, intrinseco("sys_texto_contem", "puro", intr_boot_texto_contem))
+  lista_coloca(itens, intrinseco("sys_bytes_coloca_byte", "puro", intr_boot_bytes_coloca_byte))
+  lista_coloca(itens, intrinseco("sys_bytes_coloca_u32_be", "puro", intr_boot_bytes_coloca_u32))
+  lista_coloca(itens, intrinseco("sys_bytes_coloca_u64_be", "puro", intr_boot_bytes_coloca_u64))
+  lista_coloca(itens, intrinseco("sys_bytes_coloca_texto", "puro", intr_boot_bytes_coloca_texto))
+  lista_coloca(itens, intrinseco("sys_arquivo_grava_bytes", "disco", intr_boot_arquivo_grava_bytes))
+
+  devolve itens
+fecha
+
+campo intr_boot_texto_caractere(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  guarda texto_entrada := valor_texto(lista_pega(args, 0))
+  guarda indice := valor_u64_seguro(lista_pega(args, 1))
+
+  veja indice >= tamanho(texto_entrada) ::
+    devolve Valor(VmTexto("\0"))
+  fecha
+
+  devolve Valor(VmTexto(sys_texto_caractere(texto_entrada, indice)))
+fecha
+
+campo intr_boot_texto_fatia(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  guarda texto_entrada := valor_texto(lista_pega(args, 0))
+  guarda inicio := valor_u64_seguro(lista_pega(args, 1))
+  guarda fim := valor_u64_seguro(lista_pega(args, 2))
+
+  veja inicio > fim ou fim > tamanho(texto_entrada) ::
+    devolve Falha(nova_falha("SVBC-TEXTO-FATIA", "limites invalidos para fatia de texto"))
+  fecha
+
+  devolve Valor(VmTexto(sys_texto_fatia(texto_entrada, inicio, fim)))
+fecha
+
+campo intr_boot_texto_contem(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(VmBit(sys_texto_contem(
+    valor_texto(lista_pega(args, 0)),
+    valor_texto(lista_pega(args, 1))
+  )))
+fecha
+
+campo intr_boot_bytes_coloca_byte(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  guarda alvo := lista_pega(args, 0)
+  guarda valor := valor_u64_seguro(lista_pega(args, 1))
+
+  veja alvo e VmBytes ::
+    veja valor > 255 ::
+      devolve Falha(nova_falha("SVBC-BYTE", "valor nao cabe em Byte"))
+    fecha
+    sys_bytes_coloca_byte(alvo.valor, Byte(valor))
+    devolve Valor(alvo)
+  fecha
+
+  devolve Falha(nova_falha("SVBC-TIPO", "esperado Bytes"))
+fecha
+
+campo intr_boot_bytes_coloca_u32(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  guarda alvo := lista_pega(args, 0)
+  veja alvo e VmBytes ::
+    sys_bytes_coloca_u32_be(alvo.valor, U32(valor_u64_seguro(lista_pega(args, 1))))
+    devolve Valor(alvo)
+  fecha
+  devolve Falha(nova_falha("SVBC-TIPO", "esperado Bytes"))
+fecha
+
+campo intr_boot_bytes_coloca_u64(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  guarda alvo := lista_pega(args, 0)
+  veja alvo e VmBytes ::
+    sys_bytes_coloca_u64_be(alvo.valor, valor_u64_seguro(lista_pega(args, 1)))
+    devolve Valor(alvo)
+  fecha
+  devolve Falha(nova_falha("SVBC-TIPO", "esperado Bytes"))
+fecha
+
+campo intr_boot_bytes_coloca_texto(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  guarda alvo := lista_pega(args, 0)
+  veja alvo e VmBytes ::
+    sys_bytes_coloca_texto(alvo.valor, valor_texto(lista_pega(args, 1)))
+    devolve Valor(alvo)
+  fecha
+  devolve Falha(nova_falha("SVBC-TIPO", "esperado Bytes"))
+fecha
+
+campo intr_boot_arquivo_grava_bytes(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco ::
+  guarda caminho := valor_texto(lista_pega(args, 0))
+  guarda conteudo := lista_pega(args, 1)
+
+  veja conteudo e VmBytes ::
+    svbc_arquivo_virtual_grava(caminho, conteudo.valor)
+    devolve Valor(VmNada)
+  fecha
+
+  devolve Falha(nova_falha("SVBC-TIPO", "esperado Bytes para gravacao"))
+fecha
