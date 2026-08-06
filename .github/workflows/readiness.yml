@@ -46,11 +46,11 @@ jobs:
           set -euo pipefail
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo '59ee731203136a87c72ea58ea02a55221f09f7dcdae4c1b143758cdd2df605b1  build/native-seeds.zip' | sha256sum --check
+          echo 'a2d09138008ae7223683681443663da8d4c58b39600cbaf3bef11889c2495ad3  build/native-seeds.zip' | sha256sum --check
           unzip -t build/native-seeds.zip
           unzip -q build/native-seeds.zip -d build/native-seeds
           echo '2f073ab8101742006728a491b3093ddb093d202289002d13cc2a6a03dfa55dcb  build/native-seeds/seven-linux' | sha256sum --check
-          echo '0f1f1c994eb2dcf8a8412b8cf33751371f0832937f2556ba3c7405f49fa984aa  build/native-seeds/seven-windows.exe' | sha256sum --check
+          echo 'f9ebcbe747f5646f1f224af0929d19d321a67a241be3844116e42ac2a5207296  build/native-seeds/seven-windows.exe' | sha256sum --check
           chmod +x build/native-seeds/seven-linux
 
       - name: Exercise compiler and conformance behavior
