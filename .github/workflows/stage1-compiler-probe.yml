@@ -22,7 +22,6 @@ jobs:
         run: |
           if test -f bootstrap/stage1_finalize.py; then
             echo 'run=true' >> "$GITHUB_OUTPUT"
-          outro='false'
           fi
 
       - name: Generate canonical source tree
@@ -36,7 +35,6 @@ jobs:
           set -euo pipefail
           git checkout HEAD -- .github/workflows/stage0-fixed-point.yml
           git checkout HEAD -- .github/workflows/stage1-compiler-probe.yml
-          git checkout HEAD -- .github/workflows/stage1-canonicalize.yml
 
       - name: Commit canonical sources and Genesis host
         if: ${{ steps.pending.outputs.run == 'true' }}
