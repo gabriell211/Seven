@@ -45,7 +45,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git rm -f .github/workflows/repair-windows-seed.yml .github/workflows/finalize-windows-seed.yml
+          git rm -f \
+            .github/workflows/fix-windows-seed.yml \
+            .github/workflows/repair-windows-seed.yml \
+            .github/workflows/finalize-windows-seed.yml
           git add .github/workflows/foundation.yml .github/workflows/readiness.yml .github/workflows/web.yml
           git config user.name gabriell211
           git config user.email 102088315+gabriell211@users.noreply.github.com
