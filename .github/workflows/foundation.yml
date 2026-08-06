@@ -28,12 +28,13 @@ jobs:
             exit /b 1
           )
 
-      - name: Reconstruct and verify audited seeds
+      - name: Verify audited native seed archive
         shell: bash
         run: |
           set -euo pipefail
+          test -f seed/native/native-seeds.zip
           mkdir -p build/native-seeds
-          cat seed/native/archive/native-seeds.b64.* | tr -cd 'A-Za-z0-9+/=' | base64 --decode > build/native-seeds.zip
+          cp seed/native/native-seeds.zip build/native-seeds.zip
           echo 'fa83be6c949b4e303a74dfe441883316e285baa1388f5b4370312f3c3c506464  build/native-seeds.zip' | sha256sum --check
           unzip -q build/native-seeds.zip -d build/native-seeds
           cd build/native-seeds
@@ -124,12 +125,13 @@ jobs:
             exit 1
           fi
 
-      - name: Reconstruct and verify audited seeds
+      - name: Verify audited native seed archive
         shell: bash
         run: |
           set -euo pipefail
+          test -f seed/native/native-seeds.zip
           mkdir -p build/native-seeds
-          cat seed/native/archive/native-seeds.b64.* | tr -cd 'A-Za-z0-9+/=' | base64 --decode > build/native-seeds.zip
+          cp seed/native/native-seeds.zip build/native-seeds.zip
           echo 'fa83be6c949b4e303a74dfe441883316e285baa1388f5b4370312f3c3c506464  build/native-seeds.zip' | sha256sum --check
           unzip -q build/native-seeds.zip -d build/native-seeds
           echo 'f91edfecd7620922109609d89be16426f6f1535e02b03631b4bcd5c174e5405f  build/native-seeds/seven-linux' | sha256sum --check
