@@ -42,5 +42,14 @@ campo suite_memoria_svbc() -> Suite ::
     espera(escrita.erro.codigo == "SVBC-TIPO", "codigo de tipo incorreto")
   fecha)
 
+  testa(s, "rejeita bloco maior que 64 MiB", campo() -> Nada ::
+    solta blocos := lista<BlocoMemoria>()
+    guarda criado := memoria_cria(blocos, LimiteBlocoMemoria + 1)
+
+    espera(criado e Falha, "alocacao excessiva foi aceita")
+    espera(criado.erro.codigo == "SVBC-MEM-TAMANHO", "codigo de tamanho incorreto")
+    espera(lista_tamanho(blocos) == 0, "bloco invalido foi registrado")
+  fecha)
+
   devolve s
 fecha
