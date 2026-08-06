@@ -22,16 +22,40 @@ from pathlib import Path
 
 path = Path(os.environ["CHECKER_SOURCE"])
 source = path.read_text()
-old = '''#ifndef _WIN32
+old_entry = '''#ifndef _WIN32
 int main(int argc,char**argv){return core_main(argc,argv);}
 #else
 static int parse_cmdline(char*s,char**argv,int max){int argc=0;while(*s&&argc<max){while(*s==' '||*s=='\\t')s++;if(!*s)break;char*out=s;argv[argc++]=out;int q=0;while(*s){if(*s=='"'){q=!q;s++;continue;}if(!q&&(*s==' '||*s=='\\t'))break;*out++=*s++;}*out=0;if(*s)s++;}return argc;}
 void mainCRTStartup(void){char*cmd=GetCommandLineA();char*argv[128];int argc=parse_cmdline(cmd,argv,128);ExitProcess((unsigned)core_main(argc,argv));}
 #endif'''
-new = 'int main(int argc,char**argv){return core_main(argc,argv);}'
-if old not in source:
+new_entry = 'int main(int argc,char**argv){return core_main(argc,argv);}'
+if old_entry not in source:
     raise SystemExit('Windows CRT entrypoint target not found')
-path.write_text(source.replace(old, new, 1))
+source = source.replace(old_entry, new_entry, 1)
+
+old_io = '''#ifdef _WIN32
+typedef unsigned long DWORD;
+extern char *GetCommandLineA(void);
+extern void ExitProcess(unsigned long);
+extern DWORD GetFileAttributesA(const char*);
+extern int CreateDirectoryA(const char*,void*);
+static int exists(const char*p){return GetFileAttributesA(p)!=0xffffffffu;}
+static int make_dir(const char*p){if(exists(p))return 1;return CreateDirectoryA(p,NULL)!=0;}
+#define strtoll _strtoi64
+#define snprintf _snprintf
+#else'''
+new_io = '''#ifdef _WIN32
+#include <io.h>
+#include <direct.h>
+static int exists(const char*p){return _access(p,0)==0;}
+static int make_dir(const char*p){if(exists(p))return 1;return _mkdir(p)==0;}
+#define strtoll _strtoi64
+#define snprintf _snprintf
+#else'''
+if old_io not in source:
+    raise SystemExit('Windows native IO target not found')
+source = source.replace(old_io, new_io, 1)
+path.write_text(source)
 PYENTRY
 """
 if build_marker not in text:
