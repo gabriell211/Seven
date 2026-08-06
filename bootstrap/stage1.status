@@ -1,8 +1,9 @@
 formato seven-bootstrap-stage1-v1
-estado diagnostico-parser
+estado igualdade-estrutural
 entrada seven0-fixed-point
 alvo compiler-core-svbc0
 adaptacao fontes-canônicas
 biblioteca std-core-real
-prova imprimir-diagnostico-sintatico-e-restaurar-ir
+host variantes-e-objetos-por-valor
+prova parser-produz-ir-e-stage2-deterministico
 criterio seven-stage1-executa-e-reconstroi-stage2
