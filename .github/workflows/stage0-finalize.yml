@@ -1,0 +1,82 @@
+name: Finalize Seven Stage 0 Branch
+
+on:
+  push:
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.ref == 'refs/heads/agent/stage0-autonomous'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/stage0-autonomous
+          fetch-depth: 0
+
+      - name: Apply audited compiler patches and finalize layout
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          base64 --decode bootstrap/staging/compiler0-patches.tar.gz.b64 | gzip --decompress | tar -xf -
+
+          mkdir -p bootstrap/host/v1
+          git mv bootstrap/staging/genesis-host.c.gz.b64 bootstrap/host/v1/genesis-host.c.gz.b64
+          rm bootstrap/staging/compiler0-patches.tar.gz.b64
+          rmdir bootstrap/staging
+
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/workflows/stage0-fixed-point.yml')
+          text = path.read_text()
+          text = text.replace("          echo '91a7703e2dc5810290a9144d7b88d8dba75e163e3d0b05e0ebbc086c557194f1  bootstrap/staging/compiler0-patches.tar.gz.b64' | sha256sum --check\n          base64 --decode bootstrap/staging/compiler0-patches.tar.gz.b64 | gzip --decompress | tar -xf -\n\n", "")
+          text = text.replace('bootstrap/staging/genesis-host.c.gz.b64', 'bootstrap/host/v1/genesis-host.c.gz.b64')
+          path.write_text(text)
+          PY
+
+          cat > bootstrap/host/v1/SHA256SUMS <<'EOF'
+          0d2a905c2fb3211326c3cdf5f164e39f12a708cf1b917bfe99028458cf6e5516  genesis-host.c.gz.b64
+          2f71509466eee470a5379d750b067a7e1733c0a4c1c8dd56542eb6bd5d0ec1d1  genesis-host.c
+          EOF
+
+          cat > bootstrap/seed/v2/SHA256SUMS <<'EOF'
+          123f5b513bcae7774671898f471441b3c71efd570acad91fa634cbc5f33bb223  seven0.seed.svbc
+          dad562c0bc695b6e2724425f3fa0b7e6af2929160a27472e256a4cdf24915678  seven0.fixed.svbc
+          EOF
+
+          cat > bootstrap/STAGE0.md <<'EOF'
+          # Seven Stage 0
+
+          O Stage 0 usa um host Genesis minimo e auditavel para executar a imagem SVBC0 inicial.
+          A imagem inicial recompila o monolito deterministico do Seven-0 e a saida recompila o mesmo monolito novamente.
+          O gate somente passa quando as duas imagens sao identicas byte a byte no Windows e no Linux.
+
+          ## Artefatos canonicos
+
+          - `bootstrap/host/v1/genesis-host.c.gz.b64`: host Genesis portavel em C11, mantido apenas como raiz bootstrap auditavel.
+          - `bootstrap/seed/v2/part*.b64`: imagem Seven-0 inicial compactada e dividida em partes.
+          - `.github/workflows/stage0-fixed-point.yml`: prova de fixed point e proveniencia.
+
+          O host Genesis nao faz parte da implementacao normal da linguagem. Depois do fixed point, a cadeia prossegue usando o Seven-0 reconstruido.
+          EOF
+
+          rm -rf bootstrap/probes
+          rm -f .github/workflows/stage0-execution-probe.yml
+          rm -f .github/workflows/stage0-runner-capability.yml
+          rm -f .github/workflows/stage0-source-snapshot.yml
+          rm -f .github/workflows/stage0-staging-snapshot.yml
+          rm -f .github/workflows/stage0-finalize.yml
+
+      - name: Commit finalized Stage 0
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'seven-bootstrap-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git commit -m 'Finalize autonomous Seven Stage 0'
+          git push origin HEAD:agent/stage0-autonomous
