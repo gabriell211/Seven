@@ -27,9 +27,9 @@ jobs:
           set -euo pipefail
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo 'a2d09138008ae7223683681443663da8d4c58b39600cbaf3bef11889c2495ad3  build/native-seeds.zip' | sha256sum --check
+          echo 'b370370c2068ee94b49892cf9d9c1d16936c6bb8f91cb4c6dfd38a89ec664343  build/native-seeds.zip' | sha256sum --check
           unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '2f073ab8101742006728a491b3093ddb093d202289002d13cc2a6a03dfa55dcb  build/native-seeds/seven-linux' | sha256sum --check
+          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
           chmod +x build/native-seeds/seven-linux
 
       - name: Validate Seven WebAssembly sources
@@ -70,3 +70,41 @@ jobs:
           grep -q 'extensao_fonte: ".sev"' runtime/platform/web/target.sev
           ! grep -R -n 'app.svbc\|seven-runtime.js\|sys_web_empacota' \
             compiler/wasm.sev compiler/toolchain/web_build.sev runtime/platform/web
+
+      - name: Build and execute a Seven web application
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven=build/native-seeds/seven-linux
+          "$seven" web build examples/hello.sev build/web
+          test -s build/web/app.wasm
+          test -s build/web/app.wasm.sha256
+          test -s build/web/index.html
+          test -s build/web/seven-loader.mjs
+          test -s build/web/seven.web.json
+          sha256sum --check build/web/app.wasm.sha256 --directory build/web
+          node - build/web/app.wasm <<'JS'
+          const fs = require('fs');
+          const bytes = fs.readFileSync(process.argv[2]);
+          if (!WebAssembly.validate(bytes)) throw new Error('app.wasm invalido');
+
+          (async () => {
+            let memory;
+            let output = '';
+            const { instance } = await WebAssembly.instantiate(bytes, {
+              seven: {
+                terminal_diga(ptr, len) {
+                  output += Buffer.from(memory.buffer, ptr, len).toString('utf8') + '\n';
+                }
+              }
+            });
+            memory = instance.exports.memory;
+            const code = instance.exports.seven_start();
+            if (code !== 0) throw new Error(`codigo inesperado: ${code}`);
+            if (output !== 'Seven nasceu.\n') throw new Error(`saida inesperada: ${JSON.stringify(output)}`);
+            console.log(output.trim());
+          })().catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
+          JS
