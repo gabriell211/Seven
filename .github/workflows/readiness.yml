@@ -1,0 +1,93 @@
+name: Seven Production Readiness
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seven-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  readiness:
+    name: Compiler, conformance and source contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify canonical grammar synchronization
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmp syntax/seven.tmLanguage.json editors/vscode/seven-language/syntaxes/seven.tmLanguage.json
+          grep -q '"fileTypes": \["sev"\]' syntax/seven.tmLanguage.json
+          grep -q '"scopeName": "source.seven"' syntax/seven.tmLanguage.json
+
+      - name: Reconstruct audited Linux bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo '15bf6101addc76c36fa9637ca467bf4df13b3f717bd16210dfe6b57e5b30b39b  build/native-seeds.zip' | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          echo 'f91edfecd7620922109609d89be16426f6f1535e02b03631b4bcd5c174e5405f  build/native-seeds/seven-linux' | sha256sum --check
+          chmod +x build/native-seeds/seven-linux
+
+      - name: Exercise compiler and conformance behavior
+        shell: bash
+        run: |
+          set -uo pipefail
+          seven="$PWD/build/native-seeds/seven-linux"
+          failures=0
+
+          "$seven" --version || failures=$((failures + 1))
+          "$seven" check examples/hello.sev || failures=$((failures + 1))
+          "$seven" build examples/hello.sev build/readiness-hello.svbc || failures=$((failures + 1))
+          "$seven" run examples/hello.sev || failures=$((failures + 1))
+          "$seven" doctor || failures=$((failures + 1))
+
+          while IFS= read -r file; do
+            echo "valid: $file"
+            "$seven" check "$file" || failures=$((failures + 1))
+          done < <(find conformance -type f -path '*/valid/*.sev' | sort)
+
+          while IFS= read -r file; do
+            echo "invalid: $file"
+            if "$seven" check "$file"; then
+              echo "ERROR: invalid conformance file was accepted: $file"
+              failures=$((failures + 1))
+            fi
+          done < <(find conformance -type f -path '*/invalid/*.sev' | sort)
+
+          if [ ! -s build/readiness-hello.svbc ]; then
+            echo 'ERROR: compiler did not emit bytecode'
+            failures=$((failures + 1))
+          fi
+
+          echo "readiness failures: $failures"
+          test "$failures" -eq 0
+
+      - name: Reject production placeholders
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -n -E 'comando ainda nao implementado|intrinseco puro ainda nao ligado' compiler runtime std; then
+            echo 'Production placeholders remain in the public compiler/runtime surface.'
+            exit 1
+          fi
+
+      - name: Verify memory and installer regression coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'LimiteBlocoMemoria' runtime/svbc/memory.sev
+          grep -q 'rejeita bloco maior que 64 MiB' tests/runtime/svbc_memory.sev
+          grep -q 'uninstall' compiler/toolchain/installer.sev
+          grep -q '\.sev' compiler/toolchain/installer.sev
