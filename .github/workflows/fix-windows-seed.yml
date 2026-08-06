@@ -1,0 +1,66 @@
+name: Fix Seven Windows Transition Seed
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/fix-windows-seed.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: seven-windows-seed-fix
+  cancel-in-progress: true
+
+jobs:
+  rebuild:
+    name: Rebuild transition seeds with Windows argv fix
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/seven-web-build
+          fetch-depth: 0
+
+      - name: Recover audited one-shot seed builder
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .github/scripts
+          git show d786cf8b432e72283163a5dc43bfc8d5f4d7105b:.github/scripts/rebuild-web-seeds.sh > .github/scripts/rebuild-web-seeds.sh
+          git show d786cf8b432e72283163a5dc43bfc8d5f4d7105b:.github/scripts/run-rebuild-web-seeds.sh > .github/scripts/run-rebuild-web-seeds.sh
+          chmod +x .github/scripts/rebuild-web-seeds.sh .github/scripts/run-rebuild-web-seeds.sh
+
+      - name: Patch Windows command-line parser
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/scripts/rebuild-web-seeds.sh')
+          text = path.read_text()
+          needle = 'path.write_text(source)\nPYWEB'
+          patch = r'''import re
+          novo_parser = r'''static int parse_cmdline(char*s,char**argv,int max){int argc=0;while(*s&&argc<max){while(*s==' '||*s=='\t')s++;if(!*s)break;char*out=s;argv[argc++]=out;int q=0;while(*s){if(*s=='"'){q=!q;s++;continue;}if(!q&&(*s==' '||*s=='\t'))break;*out++=*s++;}char*next=*s?s+1:s;*out=0;s=next;}return argc;}'''
+          source, parser_count = re.subn(
+              r'static int parse_cmdline\(char\*s,char\*\*argv,int max\)\{.*?return argc;\}',
+              lambda _: novo_parser,
+              source,
+              count=1,
+              flags=re.S,
+          )
+          if parser_count != 1:
+              raise SystemExit(f'Windows parser replacements: {parser_count}')
+          path.write_text(source)
+          PYWEB'''
+          if needle not in text:
+              raise SystemExit('inner bootstrap patch target not found')
+          path.write_text(text.replace(needle, patch, 1))
+          PY
+
+      - name: Rebuild, validate and publish audited seeds
+        shell: bash
+        run: bash .github/scripts/run-rebuild-web-seeds.sh
