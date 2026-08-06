@@ -1,0 +1,71 @@
+name: Seven Genesis Stage 0
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seven-genesis-stage0-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stage0:
+    name: Genesis Stage 0 (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            seed: seven-linux
+          - os: windows-latest
+            seed: seven-windows.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct audited transition executables
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          chmod +x "build/native-seeds/${{ matrix.seed }}" || true
+
+      - name: Compile and execute Genesis Stage 0
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$PWD/build/native-seeds/${{ matrix.seed }}"
+          "$seven" check runtime/seed/svs0.sev
+          "$seven" check bootstrap/provenance.sev
+          "$seven" check bootstrap/stage0.sev
+          "$seven" run bootstrap/stage0.sev
+
+      - name: Verify SVBC0 and provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s build/seven0.svbc
+          test "$(od -An -tx1 -N4 build/seven0.svbc | tr -d ' \n')" = '53564230'
+          test -s build/stage0.provenance
+          grep -Fx 'formato seven-bootstrap-provenance-v1' build/stage0.provenance
+          grep -Fx 'etapa stage0' build/stage0.provenance
+          grep -Fx 'executor seed/genesis.svhex' build/stage0.provenance
+          grep -Fx 'entrada compiler0/seven0.sev' build/stage0.provenance
+          grep -Fx 'saida build/seven0.svbc' build/stage0.provenance
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-stage0-${{ matrix.os }}
+          path: |
+            build/seven0.svbc
+            build/stage0.provenance
+          if-no-files-found: error
