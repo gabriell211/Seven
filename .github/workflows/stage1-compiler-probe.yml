@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: seven-stage1-self-hosting-${{ github.ref }}
+  group: seven-stage1-self-hosting-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -100,36 +100,6 @@ jobs:
             cat <<'EOF'
           campo inicio(argumentos: Lista<Texto>) -> Num toca terminal, disco, ambiente ::
             guarda pedido := pedido_de_compilacao(argumentos)
-            guarda fontes := fonte_carrega_pacote(pedido.pacote)
-            guarda fluxos := varre_unidade(fontes)
-            guarda fluxo_debug := lista_pega(fluxos, 0)
-            guarda cursor_debug := cursor_tokens(fluxo_debug)
-            diga("parser pos inicial=" + texto(cursor_debug.posicao))
-            diga("parser token inicial=" + atual_token(cursor_debug).marca)
-            guarda modulo_debug := ler_modulo_opcional(cursor_debug)
-            diga("parser modulo=" + modulo_debug)
-            diga("parser pos modulo=" + texto(cursor_debug.posicao))
-            diga("parser token modulo=" + atual_token(cursor_debug).marca)
-            guarda usos_debug := ler_usos(cursor_debug)
-            diga("parser usos=" + texto(lista_tamanho(usos_debug)))
-            diga("parser pos usos=" + texto(cursor_debug.posicao))
-            diga("parser token item=" + atual_token(cursor_debug).marca)
-            guarda item_debug := ler_item(cursor_debug)
-            diga("parser item tag=" + item_debug.tag)
-            diga("parser pos item=" + texto(cursor_debug.posicao))
-            solta itens_debug := lista<Item>()
-            lista_coloca(itens_debug, item_debug)
-            diga("parser lista itens=" + texto(lista_tamanho(itens_debug)))
-            guarda sintaxe := monta_unidade(fluxos)
-            diga("parser programas=" + texto(lista_tamanho(sintaxe.programas)))
-            diga("parser diagnosticos=" + texto(lista_tamanho(sintaxe.diagnosticos)))
-            solta total_itens: U64 := 0
-            para cada programa em sintaxe.programas ::
-              diga("parser programa=" + programa.modulo)
-              diga("parser campo itens=" + texto(programa.itens))
-              vira total_itens := total_itens + lista_tamanho(programa.itens)
-            fecha
-            diga("parser itens=" + texto(total_itens))
             guarda saida := compila(pedido)
             veja saida e Sucesso ::
               devolve 0
@@ -179,7 +149,7 @@ jobs:
           set -e
           test "$proof_exit" -eq 42
 
-      - name: Rebuild the compiler with the generated compiler
+      - name: Rebuild the compiler to the Stage 2 fixed point
         shell: bash
         run: |
           set -euo pipefail
@@ -236,7 +206,6 @@ jobs:
           cat build/stage1.provenance
 
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: seven-stage1-self-hosting
           path: |
@@ -249,4 +218,4 @@ jobs:
             build/stage1-proof.svbc
             build/stage2-proof.svbc
             build/stage1.provenance
-          if-no-files-found: warn
+          if-no-files-found: error
