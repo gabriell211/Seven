@@ -43,18 +43,31 @@ jobs:
           "$seven" check runtime/platform/web/manifest.sev
           "$seven" check tests/compiler/wasm.sev
 
-      - name: Enforce zero foreign-language implementation
+      - name: Enforce Seven-only implementation outside Genesis
         shell: bash
         run: |
           set -euo pipefail
-          if find compiler compiler0 runtime std bootstrap tests/compiler \
+          foreign='-name *.c -o -name *.cc -o -name *.cpp -o -name *.cxx -o -name *.rs -o -name *.go -o -name *.py -o -name *.js -o -name *.mjs -o -name *.ts -o -name *.cs -o -name *.java'
+
+          if find compiler compiler0 runtime std tests/compiler \
             -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' \
             -o -name '*.rs' -o -name '*.go' -o -name '*.py' -o -name '*.js' \
             -o -name '*.mjs' -o -name '*.ts' -o -name '*.cs' -o -name '*.java' \) \
             -print -quit | grep -q .; then
-            echo 'Foreign-language implementation source detected.'
+            echo 'Foreign-language implementation source detected outside Genesis.'
             exit 1
           fi
+
+          if find bootstrap -type f \
+            \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' \
+            -o -name '*.rs' -o -name '*.go' -o -name '*.py' -o -name '*.js' \
+            -o -name '*.mjs' -o -name '*.ts' -o -name '*.cs' -o -name '*.java' \) \
+            ! -path 'bootstrap/host/v2/genesis-host.c' -print -quit | grep -q .; then
+            echo 'Unexpected foreign-language bootstrap source detected.'
+            exit 1
+          fi
+
+          (cd bootstrap/host/v2 && sha256sum --check SHA256SUMS)
 
       - name: Verify direct WebAssembly contract
         shell: bash

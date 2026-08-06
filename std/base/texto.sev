@@ -14,6 +14,31 @@ campo tamanho(valor: Texto) -> U64 ::
   devolve sys_texto_tamanho(valor)
 fecha
 
+campo linhas(valor: Texto) -> Lista<Texto> ::
+  solta saida := lista<Texto>()
+  solta atual := ""
+  solta indice: U64 := 0
+
+  gira indice < sys_texto_tamanho(valor) ::
+    guarda caractere := sys_texto_caractere(valor, indice)
+    veja caractere == "\n" ::
+      lista_coloca(saida, atual)
+      vira atual := ""
+    outro ::
+      veja caractere != "\r" ::
+        vira atual := atual + caractere
+      fecha
+    fecha
+    vira indice := indice + 1
+  fecha
+
+  veja atual != "" ou sys_texto_tamanho(valor) == 0 ::
+    lista_coloca(saida, atual)
+  fecha
+
+  devolve saida
+fecha
+
 campo url_encode(valor: Texto) -> Texto ::
   devolve sys_url_encode(valor)
 fecha
@@ -31,7 +56,22 @@ campo junta_com(separador: Texto, valores: Lista<Texto>) -> Texto ::
 fecha
 
 campo texto_comeca(valor: Texto, prefixo: Texto) -> Bit ::
-  devolve sys_texto_comeca(valor, prefixo)
+  guarda tamanho_valor := sys_texto_tamanho(valor)
+  guarda tamanho_prefixo := sys_texto_tamanho(prefixo)
+
+  veja tamanho_prefixo > tamanho_valor ::
+    devolve nao
+  fecha
+
+  solta indice: U64 := 0
+  gira indice < tamanho_prefixo ::
+    veja sys_texto_caractere(valor, indice) != sys_texto_caractere(prefixo, indice) ::
+      devolve nao
+    fecha
+    vira indice := indice + 1
+  fecha
+
+  devolve sim
 fecha
 
 campo texto_contem(valor: Texto, trecho: Texto) -> Bit ::

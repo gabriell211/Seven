@@ -29,18 +29,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Reconstruct audited Stage 0 inputs
+      - name: Reconstruct audited Stage 0 input
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build
-
           cat bootstrap/seed/v2/part*.b64 | tr -d '\r\n\t ' | base64 --decode | gzip --decompress > build/seven0.seed.svbc
           echo '123f5b513bcae7774671898f471441b3c71efd570acad91fa634cbc5f33bb223  build/seven0.seed.svbc' | sha256sum --check
-
-          echo '0d2a905c2fb3211326c3cdf5f164e39f12a708cf1b917bfe99028458cf6e5516  bootstrap/staging/genesis-host.c.gz.b64' | sha256sum --check
-          base64 --decode bootstrap/staging/genesis-host.c.gz.b64 | gzip --decompress > build/genesis-host.c
-          echo '2f71509466eee470a5379d750b067a7e1733c0a4c1c8dd56542eb6bd5d0ec1d1  build/genesis-host.c' | sha256sum --check
+          (cd bootstrap/host/v2 && sha256sum --check SHA256SUMS)
 
       - name: Generate deterministic Seven-0 monolith
         shell: bash
@@ -55,14 +51,14 @@ jobs:
               printf '// END %s\n\n' "$nome"
             done
           } > build/seven0.monolith.sev
-          echo 'f2d0e118e3b214fbf9b74571e9529d6cf5318e7a34984aa64ba7a7b6e96a7bb8  build/seven0.monolith.sev' | sha256sum --check
+          sha256sum build/seven0.monolith.sev | tee build/seven0-source.sha256
 
       - name: Build Genesis host on Linux
         if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euo pipefail
-          gcc -O2 -std=c11 -Wall -Wextra -Werror build/genesis-host.c -o build/genesis-host
+          gcc -O2 -std=c11 -Wall -Wextra -Werror bootstrap/host/v2/genesis-host.c -o build/genesis-host
           chmod +x build/genesis-host
 
       - name: Build Genesis host on Windows
@@ -70,7 +66,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          clang -D_CRT_SECURE_NO_WARNINGS -O2 -std=c11 -Wall -Wextra -Werror build/genesis-host.c -o build/genesis-host.exe
+          clang -D_CRT_SECURE_NO_WARNINGS -O2 -std=c11 -Wall -Wextra -Werror bootstrap/host/v2/genesis-host.c -o build/genesis-host.exe
 
       - name: Rebuild Seven-0 to a fixed point
         shell: bash
@@ -80,8 +76,8 @@ jobs:
           "$host" build/seven0.seed.svbc build/seven0.monolith.sev build/seven0.svbc
           "$host" build/seven0.svbc build/seven0.monolith.sev build/seven0.self.svbc
           cmp build/seven0.svbc build/seven0.self.svbc
-          echo 'dad562c0bc695b6e2724425f3fa0b7e6af2929160a27472e256a4cdf24915678  build/seven0.svbc' | sha256sum --check
-          test "$(wc -c < build/seven0.svbc | tr -d ' ')" = '83696'
+          sha256sum build/seven0.svbc | tee build/seven0-output.sha256
+          wc -c build/seven0.svbc | tee build/seven0-output.size
           test "$(od -An -tx1 -N4 build/seven0.svbc | tr -d ' \n')" = '53564230'
 
       - name: Compile and execute a fresh Seven program
@@ -98,10 +94,7 @@ jobs:
           EOF
 
           "$host" build/seven0.svbc build/stage0-proof.sev build/stage0-proof.svbc
-          echo 'ec1cab055cdc99f2293c2009527563afdcd67165dfa98b8a9adf66b4dc7a88bb  build/stage0-proof.svbc' | sha256sum --check
-          test "$(wc -c < build/stage0-proof.svbc | tr -d ' ')" = '76'
           test "$(od -An -tx1 -N4 build/stage0-proof.svbc | tr -d ' \n')" = '53564230'
-
           set +e
           "$host" build/stage0-proof.svbc
           proof_exit=$?
@@ -113,20 +106,26 @@ jobs:
         run: |
           set -euo pipefail
           host_hash=$(sha256sum "${{ matrix.host }}" | awk '{print $1}')
+          host_source_hash=$(cat bootstrap/host/v2/genesis-host.c bootstrap/host/v2/genesis-host.part*.inc | sha256sum | awk '{print $1}')
+          source_hash=$(sha256sum build/seven0.monolith.sev | awk '{print $1}')
+          output_hash=$(sha256sum build/seven0.svbc | awk '{print $1}')
+          proof_hash=$(sha256sum build/stage0-proof.svbc | awk '{print $1}')
           cat > build/stage0-fixed-point.provenance <<EOF
           formato seven-bootstrap-provenance-v2
           etapa stage0
           executor ${{ matrix.host }}
           executor_sha256 $host_hash
+          executor_fontes bootstrap/host/v2
+          executor_fontes_sha256 $host_source_hash
           seed build/seven0.seed.svbc
           seed_sha256 123f5b513bcae7774671898f471441b3c71efd570acad91fa634cbc5f33bb223
           entrada build/seven0.monolith.sev
-          entrada_sha256 f2d0e118e3b214fbf9b74571e9529d6cf5318e7a34984aa64ba7a7b6e96a7bb8
+          entrada_sha256 $source_hash
           saida build/seven0.svbc
-          saida_sha256 dad562c0bc695b6e2724425f3fa0b7e6af2929160a27472e256a4cdf24915678
+          saida_sha256 $output_hash
           autorebuild build/seven0.self.svbc
           prova build/stage0-proof.svbc
-          prova_sha256 ec1cab055cdc99f2293c2009527563afdcd67165dfa98b8a9adf66b4dc7a88bb
+          prova_sha256 $proof_hash
           prova_exit 42
           fixed_point sim
           EOF

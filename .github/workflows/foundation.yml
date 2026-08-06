@@ -24,14 +24,18 @@ jobs:
         shell: cmd
         run: |
           for /r %%F in (*.ps1 *.psm1 *.c *.cc *.cpp *.cxx *.rs *.go *.py *.js *.ts *.cs) do (
-            echo forbidden implementation source: %%F
-            exit /b 1
+            echo %%~fF | findstr /i /c:"\bootstrap\host\v2\genesis-host.c" >nul
+            if errorlevel 1 (
+              echo forbidden implementation source: %%F
+              exit /b 1
+            )
           )
 
       - name: Reconstruct and verify audited Windows seeds
         shell: bash
         run: |
           set -euo pipefail
+          (cd bootstrap/host/v2 && sha256sum --check SHA256SUMS)
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
           echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
@@ -129,7 +133,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if find . -type f \( -name '*.ps1' -o -name '*.psm1' -o -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' -o -name '*.rs' -o -name '*.go' -o -name '*.py' -o -name '*.js' -o -name '*.ts' -o -name '*.cs' \) -print -quit | grep -q .; then
+          if find . -type f \( -name '*.ps1' -o -name '*.psm1' -o -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' -o -name '*.rs' -o -name '*.go' -o -name '*.py' -o -name '*.js' -o -name '*.ts' -o -name '*.cs' \) ! -path './bootstrap/host/v2/genesis-host.c' -print -quit | grep -q .; then
             exit 1
           fi
 
@@ -137,6 +141,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          (cd bootstrap/host/v2 && sha256sum --check SHA256SUMS)
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
           echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check

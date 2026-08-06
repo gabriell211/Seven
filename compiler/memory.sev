@@ -1,7 +1,6 @@
 modulo seven.compiler.memory
 
-usa seven.compiler.ast
-usa seven.compiler.diagnostic
+
 
 molde CaixaMemoria ::
   nome: Texto
@@ -151,5 +150,5 @@ campo literal_num(expr: Expressao) -> Talvez<U64> ::
     fecha
   fecha
 
-  devolve Nada
+  devolve Vazio
 fecha

@@ -76,7 +76,7 @@ fecha
 
 molde Variante ::
   nome: Texto
-  carga: Lista<TipoSintaxe>
+  carga: Lista<Parametro>
   span: Span
 fecha
 

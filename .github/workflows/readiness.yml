@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: seven-readiness-${{ github.event_name }}-${{ github.ref }}
+  group: seven-readiness-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -119,17 +119,3 @@ jobs:
           grep -q '\.sev' compiler/toolchain/installer.sev
           grep -q 'Seven 0.2.0' compiler/toolchain/cli.sev
           grep -q '^versao 0.2.0$' seven.pkg
-
-  promote-stage1:
-    name: Verify and promote Stage 1 fixed point
-    if: github.event_name == 'pull_request' && github.head_ref == 'stage1-self-host-final'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: stage1-self-host-final
-          fetch-depth: 0
-      - name: Verify and promote canonical sources
-        shell: bash
-        run: bash bootstrap/promote-stage1.sh

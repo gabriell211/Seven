@@ -30,9 +30,12 @@ campo fonte_de_texto(caminho: Texto, conteudo: Texto) -> Fonte ::
   }
 fecha
 
+campo fonte_carrega_obrigatoria(caminho: Texto) -> Fonte toca disco ::
+  devolve fonte_de_texto(caminho, arquivo_ler(caminho))
+fecha
+
 campo fonte_carrega(caminho: Texto) -> Resultado<Fonte, Diagnostico> toca disco ::
-  guarda conteudo := arquivo_ler(caminho)
-  devolve Valor(fonte_de_texto(caminho, conteudo))
+  devolve Valor(fonte_carrega_obrigatoria(caminho))
 fecha
 
 campo fonte_carrega_pacote(pacote: Pacote) -> UnidadeFonte toca disco ::
@@ -44,16 +47,11 @@ campo fonte_carrega_pacote(pacote: Pacote) -> UnidadeFonte toca disco ::
 
   para cada caminho em pacote.fontes ::
     veja texto_contem(caminho, ".sev") ::
-      guarda fonte := fonte_carrega(caminho)
-      veja fonte e Valor ::
-        lista_coloca(arquivos, fonte.valor)
-      fecha
+      lista_coloca(arquivos, fonte_carrega_obrigatoria(caminho))
     fecha
   fecha
 
-  devolve UnidadeFonte {
-    arquivos: arquivos
-  }
+  devolve UnidadeFonte { arquivos: arquivos }
 fecha
 
 campo fonte_carrega_indice(caminho_indice: Texto) -> UnidadeFonte toca disco ::
@@ -62,49 +60,33 @@ campo fonte_carrega_indice(caminho_indice: Texto) -> UnidadeFonte toca disco ::
 
   para cada linha em linhas(conteudo) ::
     guarda caminho := texto_apara_manifesto(linha)
-
     veja caminho != "" e nao texto_comeca(caminho, "#") ::
-      guarda fonte := fonte_carrega(caminho)
-      veja fonte e Valor ::
-        lista_coloca(arquivos, fonte.valor)
-      fecha
+      lista_coloca(arquivos, fonte_carrega_obrigatoria(caminho))
     fecha
   fecha
 
-  devolve UnidadeFonte {
-    arquivos: arquivos
-  }
+  devolve UnidadeFonte { arquivos: arquivos }
 fecha
 
 campo unidade_fonte_de(fonte: Fonte) -> UnidadeFonte ::
   solta arquivos := lista<Fonte>()
   lista_coloca(arquivos, fonte)
-  devolve UnidadeFonte {
-    arquivos: arquivos
-  }
+  devolve UnidadeFonte { arquivos: arquivos }
 fecha
 
 campo mapa_linhas(conteudo: Texto) -> Lista<U64> ::
   solta linhas := lista<U64>()
   lista_coloca(linhas, 0)
   solta indice: U64 := 0
-
   gira indice < sys_texto_tamanho(conteudo) ::
     veja sys_texto_caractere(conteudo, indice) == "\n" ::
       lista_coloca(linhas, indice + 1)
     fecha
     vira indice := indice + 1
   fecha
-
   devolve linhas
 fecha
 
 campo span_texto(fonte: Fonte, inicio: U64, fim: U64, linha: U32, coluna: U32) -> Span ::
-  devolve Span {
-    arquivo: fonte.caminho,
-    inicio: inicio,
-    fim: fim,
-    linha: linha,
-    coluna: coluna
-  }
+  devolve Span { arquivo: fonte.caminho, inicio: inicio, fim: fim, linha: linha, coluna: coluna }
 fecha
