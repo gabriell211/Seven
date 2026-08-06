@@ -1,0 +1,57 @@
+modulo seven.runtime.platform.native.syscall_objects
+
+usa seven.runtime.platform.native.objects
+usa seven.runtime.platform.native.target
+usa std.base.lista
+usa std.mem.bytes
+
+campo x64_syscall_objeto_emite(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo,
+  nome: Texto,
+  aridade: U32
+) -> Bit ::
+  veja nome == "sys_obj_novo" ::
+    x64_obj_novo(codigo, virtual_alloc_patches, alvo, aridade)
+    devolve sim
+  fecha
+  veja nome == "sys_obj_pega" e aridade == 2 ::
+    x64_obj_pega(codigo)
+    devolve sim
+  fecha
+  veja nome == "sys_obj_define" e aridade == 3 ::
+    x64_obj_define(codigo)
+    devolve sim
+  fecha
+  veja nome == "sys_lista_coloca" e aridade == 2 ::
+    x64_lista_coloca(codigo, virtual_alloc_patches, alvo)
+    devolve sim
+  fecha
+  veja nome == "lista_coloca" e aridade == 2 ::
+    x64_lista_coloca(codigo, virtual_alloc_patches, alvo)
+    devolve sim
+  fecha
+  veja nome == "sys_lista_pega" e aridade == 2 ::
+    x64_lista_pega(codigo)
+    devolve sim
+  fecha
+  veja nome == "lista_pega" e aridade == 2 ::
+    x64_lista_pega(codigo)
+    devolve sim
+  fecha
+  veja nome == "sys_lista_define" e aridade == 3 ::
+    x64_lista_define(codigo)
+    devolve sim
+  fecha
+  veja nome == "lista_define" e aridade == 3 ::
+    x64_lista_define(codigo)
+    devolve sim
+  fecha
+  veja nome == "sys_lista_pop" e aridade == 1 ::
+    x64_lista_pop(codigo)
+    devolve sim
+  fecha
+
+  devolve nao
+fecha
