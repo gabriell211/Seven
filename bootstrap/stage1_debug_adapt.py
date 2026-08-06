@@ -32,6 +32,31 @@ fecha'''
     cursor.write_text(text, encoding="utf-8")
 
 
+def patch_cursor_trace() -> None:
+    path = Path("compiler/parser_cursor.sev")
+    text = path.read_text(encoding="utf-8")
+    replacement = '''campo avanca_token(cursor: CursorTokens) -> Token ::
+  guarda atual := atual_token(cursor)
+
+  veja cursor.posicao < 5 ::
+    diga "stage1-cursor-antes=" + texto(cursor.posicao) + ":" + atual.marca
+  fecha
+
+  veja nao fim(cursor) ::
+    vira cursor.posicao := cursor.posicao + 1
+  fecha
+
+  veja cursor.posicao < 6 ::
+    diga "stage1-cursor-depois=" + texto(cursor.posicao) + ":" + atual_token(cursor).marca
+  fecha
+
+  devolve atual
+fecha'''
+    if "stage1-cursor-antes=" not in text:
+        text = replace_function(text, "avanca_token", replacement)
+    path.write_text(text, encoding="utf-8")
+
+
 def patch_pipeline_trace() -> None:
     path = Path("compiler/driver.sev")
     text = path.read_text(encoding="utf-8")
@@ -70,4 +95,5 @@ def patch_pipeline_trace() -> None:
 
 
 patch_text_token_detection()
+patch_cursor_trace()
 patch_pipeline_trace()
