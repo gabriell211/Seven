@@ -15,7 +15,7 @@ concurrency:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -111,26 +111,90 @@ jobs:
       - name: Compile the core Seven compiler with Seven-0
         shell: bash
         run: |
+          set -euo pipefail
+          build/genesis-host build/seven0.svbc build/seven.stage1.monolith.sev build/seven.stage1.svbc
+          test -s build/seven.stage1.svbc
+          test "$(od -An -tx1 -N4 build/seven.stage1.svbc | tr -d ' \n')" = '53564230'
+          sha256sum build/seven.stage1.svbc | tee build/stage1-compiler.sha256
+          wc -c build/seven.stage1.svbc | tee build/stage1-compiler.size
+
+      - name: Execute Stage 1 against a fresh package
+        shell: bash
+        run: |
           set +e
           set -uo pipefail
-          build/genesis-host build/seven0.svbc build/seven.stage1.monolith.sev build/seven.stage1.svbc 2>&1 | tee build/stage1-compile.log
+          cat > build/stage1-proof.sev <<'EOF'
+          modulo stage1.prova
+
+          campo inicio() -> Num ::
+            devolve 42
+          fecha
+          EOF
+          printf '%s\n' 'build/stage1-proof.sev' > build/stage1-proof.sources
+          cat > build/stage1-proof.pkg <<'EOF'
+          pacote stage1-proof
+          versao 0.0.1
+          criador Gabriel Barcelos
+          entrada stage1.prova.inicio
+          alvo svbc
+          indice build/stage1-proof.sources
+          EOF
+
+          build/genesis-host build/seven.stage1.svbc build/stage1-proof.pkg build/stage1-proof.svbc 2>&1 | tee build/stage1-proof-compile.log
           code=${PIPESTATUS[0]}
-          printf '%s\n' "$code" > build/stage1-compile.exit
+          printf '%s\n' "$code" > build/stage1-proof-compile.exit
           exit 0
 
-      - name: Record Stage 1 evidence
+      - name: Execute Stage 1 self-rebuild probe
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          printf '%s\n' 'build/seven.stage1.monolith.sev' > build/stage2.sources
+          cat > build/stage2.pkg <<'EOF'
+          pacote seven-stage2
+          versao 0.0.1
+          criador Gabriel Barcelos
+          entrada seven_stage1_monolith.inicio
+          alvo svbc
+          indice build/stage2.sources
+          EOF
+
+          build/genesis-host build/seven.stage1.svbc build/stage2.pkg build/seven.stage2.svbc 2>&1 | tee build/stage2-compile.log
+          code=${PIPESTATUS[0]}
+          printf '%s\n' "$code" > build/stage2-compile.exit
+
+          if test "$code" -eq 0 && test -s build/seven.stage2.svbc; then
+            build/genesis-host build/seven.stage1.svbc build/stage2.pkg build/seven.stage2.repeat.svbc 2>&1 | tee build/stage2-repeat.log
+            repeat_code=${PIPESTATUS[0]}
+            printf '%s\n' "$repeat_code" > build/stage2-repeat.exit
+            if test "$repeat_code" -eq 0; then
+              cmp build/seven.stage2.svbc build/seven.stage2.repeat.svbc
+            fi
+          fi
+          exit 0
+
+      - name: Record Stage 1 and Stage 2 evidence
         if: always()
         shell: bash
         run: |
           set -u
-          echo 'exit:'
-          cat build/stage1-compile.exit || true
-          echo 'log:'
-          cat build/stage1-compile.log || true
-          if test -f build/seven.stage1.svbc; then
-            wc -c build/seven.stage1.svbc
-            sha256sum build/seven.stage1.svbc
-            od -An -tx1 -N16 build/seven.stage1.svbc
+          echo 'Stage 1 proof exit:'
+          cat build/stage1-proof-compile.exit || true
+          cat build/stage1-proof-compile.log || true
+          if test -f build/stage1-proof.svbc; then
+            wc -c build/stage1-proof.svbc
+            sha256sum build/stage1-proof.svbc
+            od -An -tx1 -N16 build/stage1-proof.svbc
+          fi
+
+          echo 'Stage 2 exit:'
+          cat build/stage2-compile.exit || true
+          cat build/stage2-compile.log || true
+          if test -f build/seven.stage2.svbc; then
+            wc -c build/seven.stage2.svbc
+            sha256sum build/seven.stage2.svbc
+            od -An -tx1 -N16 build/seven.stage2.svbc
           fi
 
       - uses: actions/upload-artifact@v4
@@ -144,7 +208,11 @@ jobs:
             build/seven.stage1.monolith.sev
             build/stage1-source.sha256
             build/stage1-source.size
-            build/stage1-compile.log
-            build/stage1-compile.exit
+            build/stage1-compiler.sha256
+            build/stage1-compiler.size
             build/seven.stage1.svbc
+            build/stage1-proof.*
+            build/stage2.*
+            build/seven.stage2.svbc
+            build/seven.stage2.repeat.svbc
           if-no-files-found: warn
