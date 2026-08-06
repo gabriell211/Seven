@@ -1,22 +1,21 @@
 # Seven native transition seeds
 
-Esta pasta guarda o primeiro seed nativo auditavel usado para aposentar a ponte
-PowerShell e validar a distribuicao da Seven em Windows e Linux.
+Esta pasta guarda os seeds nativos auditaveis usados para iniciar e validar a
+distribuicao da Seven em Windows x64 e Linux x64.
 
-## Conteudo
+## Arquivo versionado
 
-O arquivo ZIP e reconstruido pela concatenacao dos fragmentos:
+O arquivo `native-seeds.zip` e reconstruido pela concatenacao dos fragmentos:
 
 ```text
-seed/native/archive/native-seeds.b64.00
-seed/native/archive/native-seeds.b64.01
-seed/native/archive/native-seeds.b64.02
-seed/native/archive/native-seeds.b64.03
-seed/native/archive/native-seeds.b64.04
-seed/native/archive/native-seeds.b64.05
+seed/native/final/v1/part01.b64
+seed/native/final/v1/part02.b64
+seed/native/final/v1/part03.b64
+seed/native/final/v1/part04.b64
+seed/native/final/v1/part05.b64
 ```
 
-Depois da decodificacao, o arquivo `native-seeds.zip` contem:
+O ZIP contem:
 
 ```text
 seven-windows.exe
@@ -25,64 +24,81 @@ seven-linux
 seven-installer-linux
 ```
 
-Os hashes oficiais estao em `seed/native/checksums.sha256`.
+Os hashes do arquivo e de cada membro ficam em:
 
-## Funcao
+```text
+seed/native/final/v1/SHA256SUMS
+```
 
-Os seeds existem para romper a dependencia operacional da ponte PowerShell:
+## Comportamento verificado
 
-- `seven-windows.exe` e `seven-linux` oferecem a interface minima de bootstrap;
-- os instaladores copiam um payload preparado pela toolchain;
-- o instalador Windows e um PE x64 com recurso de icone da marca Seven;
-- o payload Windows inclui o `brand/seven.ico` completo para atalho,
-  associacao `.sev` e desinstalacao;
-- o Linux instala `brand/seven-mark.svg` no tema de icones e preserva o ICO no
-  payload oficial.
+Os compiladores de transicao para Windows e Linux fornecem a superficie minima
+necessaria para validar a linguagem enquanto o self-hosting completo e fechado:
 
-## Preparacao do instalador Windows
+```text
+seven --version
+seven check <arquivo.sev>
+seven build <arquivo.sev> <saida.svbc>
+seven run <arquivo.sev>
+seven doctor
+```
 
-O seed PE preservado no ZIP possui `SizeOfStackCommit` de 4 KiB. O instalador
-usa um frame inicial maior, portanto o CI aplica uma correcao deterministica no
-cabecalho PE antes do empacotamento:
+O checker nativo executa analise estrutural e semantica suficiente para os gates
+atuais, incluindo:
 
-- valida o SHA-256 original do executavel;
-- altera somente os 8 bytes de `SizeOfStackCommit` para 128 KiB;
-- valida o SHA-256 do executavel preparado;
-- executa instalacao, integracao do sistema e desinstalacao no runner Windows.
+- comentarios de bloco aninhados;
+- delimitadores e blocos balanceados;
+- nomes duplicados e nomes inexistentes;
+- incompatibilidades basicas de tipos;
+- mutabilidade;
+- retornos obrigatorios;
+- propagacao de efeitos;
+- limites constantes de memoria;
+- validacao de magic SVBC constante.
 
-Os hashes anterior e posterior estao registrados em `checksums.sha256`. Essa
-preparacao nao introduz outra linguagem de implementacao e nao modifica o codigo
-do instalador.
+O workflow de prontidao exige que todos os programas em diretorios `valid`
+sejam aceitos e todos os programas em diretorios `invalid` sejam rejeitados.
+Um seed nao pode ser promovido apenas por responder a comandos ou produzir um
+arquivo com cabecalho SVBC.
+
+## Instaladores
+
+Os instaladores permanecem membros do mesmo arquivo auditado. O CI monta os
+payloads, instala, executa e remove a distribuicao nas duas plataformas.
+
+No Windows, o instalador registra PATH, associacao `.sev`, atalho e entrada de
+desinstalacao. No Linux, instala o compilador, link em `~/.local/bin`, desktop,
+MIME e icone.
 
 ## Fronteira de confianca
 
-Estes arquivos sao **artefatos binarios de transicao**, nao a implementacao
-fonte da linguagem. Nenhum fonte C, C++, Rust, Go, Python, JavaScript,
-TypeScript, C# ou PowerShell e armazenado nesta pasta ou usado como fonte
-oficial da Seven.
+Os executaveis desta pasta sao **artefatos binarios de transicao**, nao a prova
+final de self-hosting. A implementacao oficial continua definida em `.sev`:
 
-O compilador, runtime, VM, instalador, CLI e bibliotecas permanecem definidos em
-`.sev`. A cadeia considerada self-hosted continua sendo:
+```text
+compiler/
+compiler0/
+runtime/
+std/
+```
+
+A cadeia de producao permanece:
 
 ```text
 seed -> seven0 -> seven -> seven.self
 ```
 
-A existencia destes seeds, isoladamente, nao prova self-hosting. Eles devem ser
-substituidos por binarios reproduzidos pela propria toolchain assim que o backend
-nativo Seven conseguir gerar PE e ELF equivalentes.
+A existencia dos seeds nao prova que `seven` recompila a si mesmo. Essa prova so
+existe quando a toolchain Seven gera novamente os executaveis e bytecodes com
+resultado deterministico equivalente.
 
-## Reproducibilidade
+## Regra de alteracao
 
-O CI:
+Qualquer mudanca exige, no mesmo pull request:
 
-1. concatena os fragmentos Base64;
-2. reconstrói `native-seeds.zip`;
-3. valida o SHA-256 do ZIP e de cada membro;
-4. prepara e valida o instalador PE para Windows;
-5. monta os payloads usando somente arquivos do repositorio e imagens SVBC;
-6. executa instalacao e desinstalacao em runners Windows e Linux;
-7. publica os bundles resultantes como artifacts.
-
-Qualquer alteracao em um seed ou na preparacao de plataforma exige atualizar
-`checksums.sha256` e explicar a mudanca no pull request.
+1. recompilar os alvos Windows e Linux;
+2. executar os casos validos e invalidos;
+3. reconstruir o ZIP de forma deterministica;
+4. atualizar os fragmentos Base64 e `SHA256SUMS`;
+5. atualizar os hashes em `foundation.yml` e `readiness.yml`;
+6. executar instalacao e desinstalacao nos dois sistemas.
