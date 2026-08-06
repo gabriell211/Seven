@@ -23,7 +23,8 @@ new_field = '''static int is_field_decl(Tokens*t,int i){
   }
  }
  return j<t->n&&streq(t->v[j].text,"(");
-}'''
+}
+static int is_anonymous_field(Tokens*t,int i){return i>=0&&i+1<t->n&&t->v[i].kind==TK_IDENT&&streq(t->v[i].text,"campo")&&t->v[i+1].kind==TK_SYMBOL&&streq(t->v[i+1].text,"(");}'''
 if old_field not in source:
     raise SystemExit('generic field declaration target not found')
 source = source.replace(old_field, new_field, 1)
@@ -39,7 +40,7 @@ static int is_keyword_block(Tokens*t,int i){
  if(streq(t->v[i].text,"para"))return i+1<t->n&&t->v[i+1].kind==TK_IDENT&&streq(t->v[i+1].text,"cada");
  return 1;
 }
-static int is_open_at(Tokens*t,int i){return is_field_decl(t,i)||is_keyword_block(t,i);}'''
+static int is_open_at(Tokens*t,int i){return is_field_decl(t,i)||is_anonymous_field(t,i)||is_keyword_block(t,i);}'''
 if old_open not in source:
     raise SystemExit('contextual block opener target not found')
 source = source.replace(old_open, new_open, 1)
