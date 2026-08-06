@@ -1,4 +1,4 @@
-name: Seven Genesis Stage 0
+name: Seven Genesis Bootstrap Audit
 
 on:
   push:
@@ -9,12 +9,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: seven-genesis-stage0-${{ github.ref }}
+  group: seven-genesis-bootstrap-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  stage0:
-    name: Genesis Stage 0 (${{ matrix.os }})
+  audit:
+    name: Genesis audit (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -39,75 +39,51 @@ jobs:
           unzip -q build/native-seeds.zip -d build/native-seeds
           chmod +x "build/native-seeds/${{ matrix.seed }}" || true
 
-      - name: Produce the one-time Seven-0 seed candidate
+      - name: Check the Genesis implementation surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$PWD/build/native-seeds/${{ matrix.seed }}"
+          "$seven" check runtime/seed/svs0.sev
+          "$seven" check runtime/seed/runner.sev
+          "$seven" check bootstrap/provenance.sev
+          "$seven" check bootstrap/stage0.sev
+
+      - name: Audit the current transition output
         shell: bash
         run: |
           set -euo pipefail
           seven="$PWD/build/native-seeds/${{ matrix.seed }}"
           "$seven" check compiler0/seven0.sev
-          "$seven" build compiler0/seven0.sev build/seven0.candidate.svbc
-          test -s build/seven0.candidate.svbc
-          sha256sum build/seven0.candidate.svbc > build/seven0.candidate.sha256
+          "$seven" build compiler0/seven0.sev build/seven0.transition.svbc
+          test -s build/seven0.transition.svbc
+          test "$(wc -c < build/seven0.transition.svbc | tr -d ' ')" = '373'
+          test "$(od -An -tx1 -N4 build/seven0.transition.svbc | tr -d ' \n')" = '53564243'
+          echo 'cfd129ec6a11b9ccc83e42bc73a4f479bf86294a0fd07b1fc26a5359d119c0b9  build/seven0.transition.svbc' | sha256sum --check
+          grep -a -q '^modulo seven0$' build/seven0.transition.svbc
+          if test -e build/seven0.svbc; then
+            echo 'transition output was incorrectly promoted to autonomous Seven-0'
+            exit 1
+          fi
 
-      - name: Attempt the autonomous Genesis Stage 0
-        continue-on-error: true
+      - name: Record the audited blocker
         shell: bash
         run: |
           set -euo pipefail
-          seven="$PWD/build/native-seeds/${{ matrix.seed }}"
-          "$seven" run bootstrap/stage0.sev
+          cat > build/genesis-audit.txt <<'EOF'
+          formato seven-genesis-audit-v1
+          status bloqueado
+          motivo transition-output-contains-source-text
+          tamanho 373
+          sha256 cfd129ec6a11b9ccc83e42bc73a4f479bf86294a0fd07b1fc26a5359d119c0b9
+          proximo_gate real-svbc0-emitter-and-vm
+          EOF
+          cat build/genesis-audit.txt
 
-      - name: Inspect generated Stage 0 files
-        if: always()
-        shell: bash
-        run: |
-          set -u
-          ls -la build || true
-          echo 'candidate size:'
-          wc -c build/seven0.candidate.svbc
-          echo 'candidate first 32 bytes:'
-          od -An -tx1 -N32 build/seven0.candidate.svbc
-          echo 'candidate sha256:'
-          cat build/seven0.candidate.sha256
-          if test -f build/seven0.svbc; then
-            echo 'autonomous seven0 size:'
-            wc -c build/seven0.svbc
-            echo 'autonomous seven0 first 32 bytes:'
-            od -An -tx1 -N32 build/seven0.svbc
-            echo 'autonomous seven0 sha256:'
-            sha256sum build/seven0.svbc
-          else
-            echo 'autonomous seven0 ausente'
-          fi
-          if test -f build/stage0.provenance; then
-            echo 'stage0 provenance:'
-            cat build/stage0.provenance
-          else
-            echo 'stage0 provenance ausente'
-          fi
-
-      - name: Upload seed candidate and Stage 0 evidence
-        if: always()
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: seven-stage0-${{ matrix.os }}
+          name: seven-genesis-audit-${{ matrix.os }}
           path: |
-            build/seven0.candidate.svbc
-            build/seven0.candidate.sha256
-            build/seven0.svbc
-            build/stage0.provenance
+            build/seven0.transition.svbc
+            build/genesis-audit.txt
           if-no-files-found: error
-
-      - name: Enforce autonomous Stage 0 gate
-        shell: bash
-        run: |
-          set -euxo pipefail
-          test -s build/seven0.candidate.svbc
-          test -s build/seven0.svbc
-          cmp build/seven0.candidate.svbc build/seven0.svbc
-          test -s build/stage0.provenance
-          grep -Fx 'formato seven-bootstrap-provenance-v1' build/stage0.provenance
-          grep -Fx 'etapa stage0' build/stage0.provenance
-          grep -Fx 'executor seed/genesis.svhex' build/stage0.provenance
-          grep -Fx 'entrada compiler0/seven0.sev' build/stage0.provenance
-          grep -Fx 'saida build/seven0.svbc' build/stage0.provenance
