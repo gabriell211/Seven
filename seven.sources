@@ -84,7 +84,7 @@ runtime/platform/intrinsic_installer.sev
 runtime/platform/native/bytes.sev
 runtime/platform/native/elf.sev
 runtime/platform/native/linker.sev
-runtime/platform/native/objects.sev
+runtime/platform/native/object_runtime.sev
 runtime/platform/native/pe.sev
 runtime/platform/native/syscall_objects.sev
 runtime/platform/native/target.sev
