@@ -1,0 +1,76 @@
+name: Seven Stage 0 Runner Capability
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seven-stage0-capability-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capability:
+    name: Transition capability (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            seed: seven-linux
+          - os: windows-latest
+            seed: seven-windows.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct transition executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds build/probe-logs
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          chmod +x "build/native-seeds/${{ matrix.seed }}" || true
+
+      - name: Run monolithic capability probes
+        shell: bash
+        run: |
+          set -u
+          seven="$PWD/build/native-seeds/${{ matrix.seed }}"
+          for probe in local_call collections file_io; do
+            echo "=== $probe ===" | tee "build/probe-logs/$probe.log"
+            "$seven" check "bootstrap/probes/$probe.sev" 2>&1 | tee -a "build/probe-logs/$probe.log"
+            echo "check_exit=${PIPESTATUS[0]}" | tee -a "build/probe-logs/$probe.log"
+            "$seven" run "bootstrap/probes/$probe.sev" 2>&1 | tee -a "build/probe-logs/$probe.log"
+            echo "run_exit=${PIPESTATUS[0]}" | tee -a "build/probe-logs/$probe.log"
+          done
+          find build -maxdepth 2 -type f -printf '%p %s bytes\n' 2>/dev/null || true
+
+      - name: Record capability matrix
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          cat build/probe-logs/*.log
+          if test -f build/probe-file.txt; then
+            echo 'probe_file_present=yes'
+            cat build/probe-file.txt
+          else
+            echo 'probe_file_present=no'
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: seven-stage0-capability-${{ matrix.os }}
+          path: |
+            build/probe-logs/
+            build/probe-file.txt
+          if-no-files-found: error
