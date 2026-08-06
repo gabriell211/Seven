@@ -1,0 +1,60 @@
+modulo tests.compiler.wasm
+
+usa seven.compiler.ir
+usa seven.compiler.types
+usa seven.compiler.wasm
+usa std.test.spec
+
+campo suite_wasm() -> Suite ::
+  solta s := suite("webassembly")
+
+  testa(s, "emite modulo wasm valido", campo() -> Nada ::
+    guarda resultado := emite_wasm(unidade_wasm_minima())
+    espera(resultado e Valor, "emissor Wasm falhou")
+    espera(resultado.valor.tamanho > 8, "modulo Wasm ficou vazio")
+    espera(bytes_pega(resultado.valor, 0) == 0, "magic Wasm byte 0 incorreto")
+    espera(bytes_pega(resultado.valor, 1) == 97, "magic Wasm byte 1 incorreto")
+    espera(bytes_pega(resultado.valor, 2) == 115, "magic Wasm byte 2 incorreto")
+    espera(bytes_pega(resultado.valor, 3) == 109, "magic Wasm byte 3 incorreto")
+    espera(bytes_pega(resultado.valor, 4) == 1, "versao Wasm incorreta")
+  fecha)
+
+  testa(s, "exige campo inicio", campo() -> Nada ::
+    guarda resultado := emite_wasm(UnidadeIr {
+      nomes: lista<Texto>(),
+      campos: lista<CampoIr>(),
+      constantes: lista<ConstanteIr>()
+    })
+    espera(resultado e Falha, "modulo sem inicio foi aceito")
+    espera(resultado.valor.codigo == "SV-WASM-ENTRADA", "codigo de entrada incorreto")
+  fecha)
+
+  devolve s
+fecha
+
+campo unidade_wasm_minima() -> UnidadeIr ::
+  solta instrucoes := lista<InstrucaoIr>()
+  lista_coloca(instrucoes, IrConst(0, ValorNum(0)))
+  lista_coloca(instrucoes, IrRetorna(0))
+
+  solta blocos := lista<BlocoIr>()
+  lista_coloca(blocos, BlocoIr {
+    nome: "entrada",
+    instrucoes: instrucoes
+  })
+
+  solta campos := lista<CampoIr>()
+  lista_coloca(campos, CampoIr {
+    nome: "inicio",
+    parametros: 0,
+    efeitos: lista<Texto>(),
+    locais: lista<Tipo>(),
+    blocos: blocos
+  })
+
+  devolve UnidadeIr {
+    nomes: lista<Texto>(),
+    campos: campos,
+    constantes: lista<ConstanteIr>()
+  }
+fecha
