@@ -6,62 +6,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: seven-readiness-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  finalize-stage1:
-    name: Publish canonical Stage 1 sources
-    if: github.event_name == 'pull_request' && github.head_ref == 'stage1-self-host-clean'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: stage1-self-host-clean
-
-      - name: Publish one clean canonical commit
-        shell: bash
-        run: |
-          set -euo pipefail
-          archive="$RUNNER_TEMP/final-stage1.tar.gz"
-          base64 --decode bootstrap/final-stage1.tar.gz.b64 > "$archive"
-          echo '22f44e9dfeed0f676ae3583e47ce550ef0f79bfd712f17c9f3eaec025d6b3548  '"$archive" | sha256sum --check
-
-          git reset --hard 0575069a270a7b5864919b4d0b8699e0321ea840
-          tar -xzf "$archive"
-
-          (cd bootstrap/host/v2 && sha256sum --check SHA256SUMS)
-          ! grep -R -n -E 'stage1 argumentos|parser pos|parser token|ChatGPT|chatgpt|OpenAI|assistente' \
-            compiler compiler0 std bootstrap/host/v2
-
-          git add \
-            bootstrap/host/v2 \
-            compiler0/parse.sev \
-            compiler/ast.sev \
-            compiler/effects.sev \
-            compiler/ir.sev \
-            compiler/lexer.sev \
-            compiler/memory.sev \
-            compiler/parser.sev \
-            compiler/parser_cursor.sev \
-            compiler/source.sev \
-            compiler/token.sev \
-            compiler/types.sev \
-            std/base/lista.sev \
-            std/base/mapa.sev \
-            std/base/texto.sev
-
-          git diff --cached --check
-          git config user.name 'Gabriel Barcelos'
-          git config user.email '102088315+gabriell211@users.noreply.github.com'
-          git commit -m 'Complete Seven Stage 1 self-hosting'
-          git push --force origin HEAD:stage1-self-host-clean
-
   readiness:
     name: Compiler, conformance and source contracts
     runs-on: ubuntu-latest
