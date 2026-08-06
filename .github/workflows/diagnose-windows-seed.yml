@@ -33,9 +33,9 @@ jobs:
           Copy-Item examples/hello.sev hello.sev
           $cases = @(
             @('--version'),
-            @('check', 'examples/hello.sev'),
-            @('check', 'examples\hello.sev'),
-            @('check', (Resolve-Path examples/hello.sev).Path),
+            @('doctor'),
+            @('verify', 'foundation'),
+            @('check', 'arquivo-inexistente.sev'),
             @('check', 'hello.sev'),
             @('run', 'hello.sev'),
             @('web', 'build', 'hello.sev', 'build/web-diagnostic')
@@ -45,6 +45,4 @@ jobs:
             & $seven @case
             Write-Host ('EXIT: ' + $LASTEXITCODE)
           }
-          Write-Host 'FIRST BYTES:'
-          Format-Hex -Path hello.sev | Select-Object -First 4
           exit 0
