@@ -1,0 +1,53 @@
+name: Finalize Seven 0.2 Windows Seed
+
+on:
+  push:
+    branches:
+      - agent/seven-web-build
+    paths:
+      - .github/workflows/finalize-windows-seed.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: seven-windows-seed-finalize
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/seven-web-build
+          fetch-depth: 0
+
+      - name: Verify regenerated archive and record hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/verify-seeds
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo 'd25766cb65f04630f3b585e7fa4fe6a77686ed0174fa04d6f63dd8dccfaa6c6f  build/native-seeds.zip' | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/verify-seeds
+          echo 'ace5ea9e06c9c823e56e547d7af581885f4b4401de17bb87ae5ce8b8ba04b596  build/verify-seeds/seven-windows.exe' | sha256sum --check
+          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/verify-seeds/seven-linux' | sha256sum --check
+
+          for file in .github/workflows/foundation.yml .github/workflows/readiness.yml .github/workflows/web.yml; do
+            sed -i 's/571cfeeb9029e3f4347fca29afe328c50dafe712531f5eade95fd85d6b67d265/d25766cb65f04630f3b585e7fa4fe6a77686ed0174fa04d6f63dd8dccfaa6c6f/g' "$file"
+            sed -i 's/3969242a00743907265bdc40c6fd9b8cd2977a957de259bb2f12fdbd4f0c7da1/ace5ea9e06c9c823e56e547d7af581885f4b4401de17bb87ae5ce8b8ba04b596/g' "$file"
+          done
+
+      - name: Remove repair workflows and publish final commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -f .github/workflows/repair-windows-seed.yml .github/workflows/finalize-windows-seed.yml
+          git add .github/workflows/foundation.yml .github/workflows/readiness.yml .github/workflows/web.yml
+          git config user.name gabriell211
+          git config user.email 102088315+gabriell211@users.noreply.github.com
+          git commit -m 'finalize Windows transition seed command parsing'
+          git push origin HEAD:agent/seven-web-build
