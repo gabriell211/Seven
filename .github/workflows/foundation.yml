@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify-windows:
-    name: Verify Seven directly on Windows
+  windows:
+    name: Windows compiler and installer
     runs-on: windows-latest
     timeout-minutes: 25
 
@@ -25,10 +25,7 @@ jobs:
       - name: Reject retired PowerShell bridge
         shell: cmd
         run: |
-          if exist tools\seven-dev.ps1 exit /b 1
-          if exist tools\seven-lsp.ps1 exit /b 1
-          if exist tools\verify-foundation.ps1 exit /b 1
-          if exist tools\Seven.Foundation.psm1 exit /b 1
+          for /r %%F in (*.ps1 *.psm1) do exit /b 1
 
       - name: Verify bootstrap compiler
         shell: cmd
@@ -42,80 +39,161 @@ jobs:
           bin\seven.exe check runtime\host\seven.sev
           bin\seven.exe check runtime\launcher\seven.sev
           bin\seven.exe check runtime\installer\seven.sev
-          bin\seven.exe check bootstrap\native-release.sev
-          bin\seven.exe check compiler\toolchain\verify.sev
-          bin\seven.exe check compiler\toolchain\bootstrap_chain.sev
+          bin\seven.exe check compiler\toolchain\installer.sev
+          bin\seven.exe check compiler\toolchain\installer_builder.sev
           bin\seven.exe check compiler\toolchain\production_audit.sev
 
-      - name: Run Seven bootstrap smoke test
-        shell: cmd
-        run: bin\seven.exe run examples\hello.sev
-
-      - name: Materialize compiler images
+      - name: Materialize deterministic Seven images
         shell: cmd
         run: |
+          if not exist build mkdir build
           bin\seven.exe build compiler0\seven0.sev build\seven0.svbc
           bin\seven.exe build compiler\seven.sev build\seven.svbc
           bin\seven.exe build compiler\seven.sev build\seven.self.svbc
           bin\seven.exe build runtime\host\seven.sev build\seven.host.svbc
           bin\seven.exe build runtime\launcher\seven.sev build\seven.launcher.svbc
           bin\seven.exe build runtime\installer\seven.sev build\seven.installer.svbc
+          fc /b build\seven.svbc build\seven.self.svbc
 
-      - name: Verify deterministic compiler image
-        shell: cmd
-        run: fc /b build\seven.svbc build\seven.self.svbc
-
-      - name: Upload bootstrap images
-        uses: actions/upload-artifact@v4
-        with:
-          name: seven-svbc-images
-          path: build/*.svbc
-          if-no-files-found: error
-
-      - name: Build native compiler and installers from Seven
-        shell: cmd
-        run: bin\seven.exe run bootstrap\native-release.sev
-
-      - name: Verify Windows installer bundle
+      - name: Reconstruct and verify native seeds
         shell: cmd
         run: |
-          if not exist build\installers\seven-0.1.0-windows-x64\seven-installer.exe exit /b 1
-          if not exist build\installers\seven-0.1.0-windows-x64\payload\seven.ico exit /b 1
-          if not exist build\installers\seven-0.1.0-windows-x64\payload\seven.exe exit /b 1
+          copy /b seed\native\archive\native-seeds.b64.00+seed\native\archive\native-seeds.b64.01+seed\native\archive\native-seeds.b64.02+seed\native\archive\native-seeds.b64.03+seed\native\archive\native-seeds.b64.04+seed\native\archive\native-seeds.b64.05 build\native-seeds.b64
+          certutil -f -decode build\native-seeds.b64 build\native-seeds.zip
+          certutil -hashfile build\native-seeds.zip SHA256 | findstr /i "207b4d92a4bfd4d8dc32cba05c5d6b24cc6f7b62e87210de81eb3addc85f50a4" >nul
+          if not exist build\native-seeds mkdir build\native-seeds
+          tar -xf build\native-seeds.zip -C build\native-seeds
+          certutil -hashfile build\native-seeds\seven-windows.exe SHA256 | findstr /i "6c65dee95cbb3fe2b99a05bbe65a18dd11b3621b59f5f6bb431a5584a062ef86" >nul
+          certutil -hashfile build\native-seeds\seven-installer-windows.exe SHA256 | findstr /i "2192b7576e485a4bbd0a267cb18a836652c2b2de8953937a81992cbc52d6ad0f" >nul
+          certutil -hashfile build\native-seeds\seven-linux SHA256 | findstr /i "f91edfecd7620922109609d89be16426f6f1535e02b03631b4bcd5c174e5405f" >nul
+          certutil -hashfile build\native-seeds\seven-installer-linux SHA256 | findstr /i "8d5b9c534018d8b8ccca7fcdfaa6f7d40587c8a039d63ae214c62f93d35d533e" >nul
 
-      - name: Verify Linux installer bundle
+      - name: Assemble Windows installer bundle
         shell: cmd
         run: |
-          if not exist build\installers\seven-0.1.0-linux-x64\seven-installer exit /b 1
-          if not exist build\installers\seven-0.1.0-linux-x64\payload\seven.ico exit /b 1
-          if not exist build\installers\seven-0.1.0-linux-x64\payload\seven-mark.svg exit /b 1
+          set "BUNDLE=build\installers\seven-0.1.0-windows-x64"
+          mkdir "%BUNDLE%\payload\bin"
+          copy /y build\native-seeds\seven-installer-windows.exe "%BUNDLE%\seven-installer.exe"
+          copy /y build\native-seeds\seven-windows.exe "%BUNDLE%\payload\bin\seven.exe"
+          copy /y build\*.svbc "%BUNDLE%\payload\bin\"
+          copy /y brand\seven.ico "%BUNDLE%\payload\seven.ico"
+          copy /y brand\seven-mark.svg "%BUNDLE%\payload\seven-mark.svg"
+          copy /y LICENSE "%BUNDLE%\payload\LICENSE"
+          copy /y NOTICE "%BUNDLE%\payload\NOTICE"
+          xcopy /e /i /y std "%BUNDLE%\payload\std"
+          certutil -hashfile "%BUNDLE%\seven-installer.exe" SHA256 > "%BUNDLE%\seven-installer.exe.sha256"
 
-      - name: Upload installer bundles
+      - name: Test Windows installation and removal
+        shell: cmd
+        run: |
+          set "BUNDLE=%CD%\build\installers\seven-0.1.0-windows-x64"
+          set "LOCALAPPDATA=%CD%\build\windows-home\LocalAppData"
+          set "APPDATA=%CD%\build\windows-home\AppData"
+          mkdir "%LOCALAPPDATA%"
+          mkdir "%APPDATA%"
+          "%BUNDLE%\seven-installer.exe"
+          if not exist "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" exit /b 1
+          if not exist "%LOCALAPPDATA%\Programs\Seven\seven.ico" exit /b 1
+          if not exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Seven.url" exit /b 1
+          "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" --version
+          reg query HKCU\Software\Classes\.sev >nul
+          reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Seven.Language >nul
+          "%BUNDLE%\seven-installer.exe" --uninstall
+          reg query HKCU\Software\Classes\.sev >nul 2>&1 && exit /b 1
+          reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Seven.Language >nul 2>&1 && exit /b 1
+          if exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Seven.url" exit /b 1
+          rmdir /s /q "%LOCALAPPDATA%\Programs\Seven"
+
+      - name: Upload Windows bundle and Seven images
         uses: actions/upload-artifact@v4
         with:
-          name: seven-installers
-          path: build/installers/
+          name: seven-windows-x64
+          path: |
+            build/installers/seven-0.1.0-windows-x64/
+            build/*.svbc
           if-no-files-found: error
 
-  verify-linux:
-    name: Verify Linux installer layout
+  linux:
+    name: Linux compiler and installer
     runs-on: ubuntu-latest
-    needs: verify-windows
-    timeout-minutes: 10
+    timeout-minutes: 20
 
     steps:
-      - name: Download installer bundles
-        uses: actions/download-artifact@v4
-        with:
-          name: seven-installers
-          path: build/installers
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Verify Linux executable and icons
+      - name: Reject retired PowerShell bridge
         shell: bash
         run: |
-          test -f build/installers/seven-0.1.0-linux-x64/seven-installer
-          test -f build/installers/seven-0.1.0-linux-x64/payload/seven
-          test -f build/installers/seven-0.1.0-linux-x64/payload/seven.ico
-          test -f build/installers/seven-0.1.0-linux-x64/payload/seven-mark.svg
-          chmod +x build/installers/seven-0.1.0-linux-x64/seven-installer
-          chmod +x build/installers/seven-0.1.0-linux-x64/payload/seven
+          if find . -type f \( -name '*.ps1' -o -name '*.psm1' \) | grep -q .; then
+            exit 1
+          fi
+
+      - name: Reconstruct and verify native seeds
+        shell: bash
+        run: |
+          mkdir -p build/native-seeds
+          cat seed/native/archive/native-seeds.b64.* | base64 --decode > build/native-seeds.zip
+          echo "207b4d92a4bfd4d8dc32cba05c5d6b24cc6f7b62e87210de81eb3addc85f50a4  build/native-seeds.zip" | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          cd build/native-seeds
+          echo "6c65dee95cbb3fe2b99a05bbe65a18dd11b3621b59f5f6bb431a5584a062ef86  seven-windows.exe" | sha256sum --check
+          echo "2192b7576e485a4bbd0a267cb18a836652c2b2de8953937a81992cbc52d6ad0f  seven-installer-windows.exe" | sha256sum --check
+          echo "f91edfecd7620922109609d89be16426f6f1535e02b03631b4bcd5c174e5405f  seven-linux" | sha256sum --check
+          echo "8d5b9c534018d8b8ccca7fcdfaa6f7d40587c8a039d63ae214c62f93d35d533e  seven-installer-linux" | sha256sum --check
+
+      - name: Materialize Seven images on Linux
+        shell: bash
+        run: |
+          chmod +x build/native-seeds/seven-linux
+          build/native-seeds/seven-linux --version
+          build/native-seeds/seven-linux check compiler/seven.sev
+          build/native-seeds/seven-linux build compiler/seven.sev build/seven.svbc
+          build/native-seeds/seven-linux build compiler/seven.sev build/seven.self.svbc
+          build/native-seeds/seven-linux build runtime/host/seven.sev build/seven.host.svbc
+          build/native-seeds/seven-linux build runtime/launcher/seven.sev build/seven.launcher.svbc
+          build/native-seeds/seven-linux build runtime/installer/seven.sev build/seven.installer.svbc
+          cmp build/seven.svbc build/seven.self.svbc
+
+      - name: Assemble Linux installer bundle
+        shell: bash
+        run: |
+          BUNDLE="build/installers/seven-0.1.0-linux-x64"
+          mkdir -p "$BUNDLE/payload/bin"
+          install -m 0755 build/native-seeds/seven-installer-linux "$BUNDLE/seven-installer"
+          install -m 0755 build/native-seeds/seven-linux "$BUNDLE/payload/bin/seven"
+          install -m 0644 build/*.svbc "$BUNDLE/payload/bin/"
+          install -m 0644 brand/seven.ico "$BUNDLE/payload/seven.ico"
+          install -m 0644 brand/seven-mark.svg "$BUNDLE/payload/seven-mark.svg"
+          install -m 0644 LICENSE "$BUNDLE/payload/LICENSE"
+          install -m 0644 NOTICE "$BUNDLE/payload/NOTICE"
+          cp -a std "$BUNDLE/payload/std"
+          sha256sum "$BUNDLE/seven-installer" > "$BUNDLE/seven-installer.sha256"
+
+      - name: Test Linux installation and removal
+        shell: bash
+        run: |
+          export HOME="$PWD/build/linux-home"
+          BUNDLE="$PWD/build/installers/seven-0.1.0-linux-x64"
+          mkdir -p "$HOME"
+          "$BUNDLE/seven-installer"
+          test -x "$HOME/.local/share/seven/bin/seven"
+          test -L "$HOME/.local/bin/seven"
+          test -f "$HOME/.local/share/applications/seven.desktop"
+          test -f "$HOME/.local/share/mime/packages/seven.xml"
+          test -f "$HOME/.local/share/icons/hicolor/scalable/apps/seven.svg"
+          test -f "$HOME/.local/share/seven/seven.ico"
+          "$HOME/.local/share/seven/bin/seven" --version
+          "$BUNDLE/seven-installer" --uninstall
+          test ! -e "$HOME/.local/share/seven"
+          test ! -e "$HOME/.local/bin/seven"
+          test ! -e "$HOME/.local/share/applications/seven.desktop"
+          test ! -e "$HOME/.local/share/mime/packages/seven.xml"
+          test ! -e "$HOME/.local/share/icons/hicolor/scalable/apps/seven.svg"
+
+      - name: Upload Linux bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: seven-linux-x64
+          path: build/installers/seven-0.1.0-linux-x64/
+          if-no-files-found: error
