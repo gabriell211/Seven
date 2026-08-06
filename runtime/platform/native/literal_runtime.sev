@@ -1,0 +1,61 @@
+modulo seven.runtime.platform.native.literal_runtime
+
+usa seven.runtime.platform.native.bytes
+usa seven.runtime.platform.native.object_runtime
+usa seven.runtime.platform.native.target
+usa std.base.lista
+usa std.mem.bytes
+
+campo x64_literal_texto(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo,
+  valor: Texto
+) -> Nada ::
+  guarda dados := texto_bytes(valor)
+  x64_runtime_aloca(codigo, virtual_alloc_patches, alvo, dados.tamanho + 17)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 195)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 3)
+  nativo_u32_le(codigo, 1)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u64_le(codigo, dados.tamanho)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 67)
+  bytes_coloca_byte(codigo, 8)
+
+  solta indice: U64 := 0
+  gira indice < dados.tamanho ::
+    x64_literal_byte(codigo, 16 + indice, bytes_pega(dados, indice))
+    vira indice := indice + 1
+  fecha
+  x64_literal_byte(codigo, 16 + dados.tamanho, 0)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 67)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 80)
+fecha
+
+campo x64_literal_byte(codigo: Bytes, deslocamento: U64, valor: Byte) -> Nada ::
+  veja deslocamento <= 127 ::
+    bytes_coloca_byte(codigo, 198)
+    bytes_coloca_byte(codigo, 67)
+    bytes_coloca_byte(codigo, Byte(deslocamento))
+    bytes_coloca_byte(codigo, valor)
+    devolve nulo
+  fecha
+
+  bytes_coloca_byte(codigo, 198)
+  bytes_coloca_byte(codigo, 131)
+  nativo_u32_le(codigo, deslocamento)
+  bytes_coloca_byte(codigo, valor)
+fecha
