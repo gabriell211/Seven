@@ -1,0 +1,123 @@
+name: Seven Native AOT
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seven-native-aot-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Seven emits and executes ELF64
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct audited transition compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          chmod +x build/native-seeds/seven-linux
+          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
+
+      - name: Compile Seven AOT proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$PWD/build/native-seeds/seven-linux"
+          "$seven" check runtime/platform/native/bytes.sev
+          "$seven" check runtime/platform/native/x64.sev
+          "$seven" check runtime/platform/native/elf.sev
+          "$seven" check runtime/platform/native/pe.sev
+          "$seven" check runtime/platform/native/linker.sev
+          "$seven" build tests/native/aot_backend.sev build/native-aot-test.svbc
+
+      - name: Execute AOT generator in audited Genesis host
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd bootstrap/host/v2 && sha256sum --check SHA256SUMS)
+          gcc -O2 -std=c11 -Wall -Wextra -Werror bootstrap/host/v2/genesis-host.c -o build/genesis-host
+          ./build/genesis-host build/native-aot-test.svbc
+          test "$(od -An -tx1 -N4 build/native-aot-proof | tr -d ' \n')" = '7f454c46'
+          test "$(od -An -tx1 -N2 build/native-aot-proof.exe | tr -d ' \n')" = '4d5a'
+
+      - name: Execute Seven-generated ELF
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x build/native-aot-proof
+          readelf -h build/native-aot-proof
+          set +e
+          ./build/native-aot-proof
+          code=$?
+          set -e
+          test "$code" -eq 42
+
+      - name: Reject native transition lowering
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -n 'sys_native_baixa' runtime compiler std
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-native-aot-linux-proof
+          path: |
+            build/native-aot-proof
+            build/native-aot-proof.exe
+            build/native-aot-test.svbc
+          if-no-files-found: error
+
+  windows:
+    name: Seven emits and executes PE32+
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct audited transition compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          echo '80f1948e83b1c58c719c2ae0579a4b03edd1ccc1bf1e4e52091e2c66478feba5  build/native-seeds/seven-windows.exe' | sha256sum --check
+
+      - name: Compile Seven AOT proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$PWD/build/native-seeds/seven-windows.exe"
+          "$seven" build tests/native/aot_backend.sev build/native-aot-test.svbc
+
+      - name: Execute AOT generator in audited Genesis host
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd bootstrap/host/v2 && sha256sum --check SHA256SUMS)
+          clang -D_CRT_SECURE_NO_WARNINGS -O2 -std=c11 -Wall -Wextra -Werror bootstrap/host/v2/genesis-host.c -o build/genesis-host.exe
+          ./build/genesis-host.exe build/native-aot-test.svbc
+          test "$(od -An -tx1 -N2 build/native-aot-proof.exe | tr -d ' \n')" = '4d5a'
+
+      - name: Execute Seven-generated PE
+        shell: bash
+        run: |
+          set +e
+          ./build/native-aot-proof.exe
+          code=$?
+          set -e
+          test "$code" -eq 42
