@@ -12,6 +12,9 @@ from pathlib import Path
 path = Path(os.environ["FIXED_SCRIPT"])
 text = path.read_text()
 
+# The rebuild script generates a second Python program that writes C source.
+# Keep backslashes raw through both layers so C string escapes remain valid.
+text = text.replace("patch = f'''", "patch = rf'''", 1)
 text = text.replace("SIZE_MAX/2", "((size_t)-1)/2")
 text = text.replace("UINT32_MAX", "0xffffffffu")
 text = re.sub(r"\bint32_t\b", "int", text)
