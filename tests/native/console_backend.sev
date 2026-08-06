@@ -1,0 +1,53 @@
+modulo tests.native.console_backend
+
+usa seven.runtime.platform.native.linker
+usa seven.runtime.platform.native.target
+usa seven.runtime.svbc.image
+usa seven.runtime.svbc.opcode
+usa seven.runtime.svbc.value
+usa std.base.lista
+usa std.base.resultado
+
+campo imagem_console() -> ImagemSvbc ::
+  solta constantes := lista<ValorVm>()
+  lista_coloca(constantes, VmTexto("Seven native console"))
+  lista_coloca(constantes, VmNum(42))
+
+  solta nomes := lista<Texto>()
+  lista_coloca(nomes, "terminal_diga")
+
+  solta campos := lista<CampoImagem>()
+  lista_coloca(campos, CampoImagem {
+    nome: "inicio",
+    entrada: 0,
+    locais: 0,
+    parametros: 0,
+    efeitos: lista<Texto>()
+  })
+
+  solta codigo := lista<Instrucao>()
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 0, b: 0, c: 0, ip: 0 })
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 0, b: 1, c: 0, ip: 1 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 1, b: 0, c: 0, ip: 2 })
+  lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: 3 })
+
+  devolve ImagemSvbc {
+    versao: 1,
+    nomes: nomes,
+    constantes: constantes,
+    campos: campos,
+    codigo: codigo
+  }
+fecha
+
+campo inicio() -> Num toca disco ::
+  guarda imagem := imagem_console()
+  guarda linux := baixa_nativo(imagem, alvo_linux_x64())
+  veja linux e Falha :: devolve 10 fecha
+  guarda windows := baixa_nativo(imagem, alvo_win_x64())
+  veja windows e Falha :: devolve 11 fecha
+
+  sys_arquivo_grava_bytes("build/native-console-proof", linux.valor.bytes)
+  sys_arquivo_grava_bytes("build/native-console-proof.exe", windows.valor.bytes)
+  devolve 0
+fecha
