@@ -138,33 +138,83 @@ fecha
     path.write_text(text.replace(marker, "\n" + helper + marker, 1), encoding="utf-8")
 
 
-def patch_token_tags() -> None:
+def patch_token_marks() -> None:
+    parser = Path("compiler/parser.sev")
+    text = parser.read_text(encoding="utf-8")
     replacements = {
-        "compiler/parser.sev": {
-            "atual.tipo == Numero": 'atual.tipo.tag == "Numero"',
-            "atual.tipo == TextoLit": 'atual.tipo.tag == "TextoLit"',
-            "atual.tipo == Nome": 'atual.tipo.tag == "Nome"',
-            "t.tipo == Fim": 't.tipo.tag == "Fim"',
-        },
-        "compiler/parser_cursor.sev": {
-            "atual_token(cursor).tipo == Fim": 'atual_token(cursor).tipo.tag == "Fim"',
-            "encontrado.tipo == Nome": 'encontrado.tipo.tag == "Nome"',
-            "encontrado.tipo == TextoLit": 'encontrado.tipo.tag == "TextoLit"',
-        },
-        "compiler/token.sev": {
-            "valor.tipo == Nome": 'valor.tipo.tag == "Nome"',
-        },
+        "atual.tipo == Numero": "token_marca_numero(atual.marca)",
+        'atual.tipo.tag == "Numero"': "token_marca_numero(atual.marca)",
+        "atual.tipo == TextoLit": "token_marca_texto(atual.marca)",
+        'atual.tipo.tag == "TextoLit"': "token_marca_texto(atual.marca)",
+        "atual.tipo == Nome": "token_marca_nome(atual.marca)",
+        'atual.tipo.tag == "Nome"': "token_marca_nome(atual.marca)",
+        "t.tipo == Fim": 't.marca == ""',
+        't.tipo.tag == "Fim"': 't.marca == ""',
     }
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    parser.write_text(text, encoding="utf-8")
 
-    for file_name, changes in replacements.items():
-        path = Path(file_name)
-        text = path.read_text(encoding="utf-8")
-        for old, new in changes.items():
-            if new not in text:
-                if old not in text:
-                    raise RuntimeError(f"token comparison not found: {file_name}: {old}")
-                text = text.replace(old, new)
-        path.write_text(text, encoding="utf-8")
+    cursor = Path("compiler/parser_cursor.sev")
+    text = cursor.read_text(encoding="utf-8")
+    replacements = {
+        "atual_token(cursor).tipo == Fim": 'atual_token(cursor).marca == ""',
+        'atual_token(cursor).tipo.tag == "Fim"': 'atual_token(cursor).marca == ""',
+        "encontrado.tipo == Nome": "token_marca_nome(encontrado.marca)",
+        'encontrado.tipo.tag == "Nome"': "token_marca_nome(encontrado.marca)",
+        "encontrado.tipo == TextoLit": "token_marca_texto(encontrado.marca)",
+        'encontrado.tipo.tag == "TextoLit"': "token_marca_texto(encontrado.marca)",
+    }
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    cursor.write_text(text, encoding="utf-8")
+
+    token = Path("compiler/token.sev")
+    text = token.read_text(encoding="utf-8")
+    text = text.replace("valor.tipo == Nome", "token_marca_nome(valor.marca)")
+    text = text.replace('valor.tipo.tag == "Nome"', "token_marca_nome(valor.marca)")
+
+    if "campo token_marca_nome(" not in text:
+        marker = "\ncampo token_nome(valor: Token) -> Bit ::"
+        helpers = '''
+campo token_marca_letra(caractere: Texto) -> Bit ::
+  devolve (caractere >= "a" e caractere <= "z") ou (caractere >= "A" e caractere <= "Z") ou caractere == "_"
+fecha
+
+campo token_marca_digito(caractere: Texto) -> Bit ::
+  devolve caractere >= "0" e caractere <= "9"
+fecha
+
+campo token_marca_nome(marca: Texto) -> Bit ::
+  guarda total := sys_texto_tamanho(marca)
+  veja total == 0 ou nao token_marca_letra(sys_texto_caractere(marca, 0)) ::
+    devolve nao
+  fecha
+
+  solta indice: U64 := 1
+  gira indice < total ::
+    guarda caractere := sys_texto_caractere(marca, indice)
+    veja nao token_marca_letra(caractere) e nao token_marca_digito(caractere) ::
+      devolve nao
+    fecha
+    vira indice := indice + 1
+  fecha
+
+  devolve sim
+fecha
+
+campo token_marca_numero(marca: Texto) -> Bit ::
+  devolve sys_texto_tamanho(marca) > 0 e token_marca_digito(sys_texto_caractere(marca, 0))
+fecha
+
+campo token_marca_texto(marca: Texto) -> Bit ::
+  devolve sys_texto_tamanho(marca) >= 2 e sys_texto_caractere(marca, 0) == "\""
+fecha
+'''
+        if marker not in text:
+            raise RuntimeError("token_nome marker not found")
+        text = text.replace(marker, "\n" + helpers + marker, 1)
+    token.write_text(text, encoding="utf-8")
 
 
 def patch_driver_trace() -> None:
@@ -202,5 +252,5 @@ def patch_driver_trace() -> None:
 patch_checker()
 patch_parser()
 patch_emitter()
-patch_token_tags()
+patch_token_marks()
 patch_driver_trace()
