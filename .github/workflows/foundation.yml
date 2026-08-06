@@ -14,13 +14,13 @@ concurrency:
 
 jobs:
   windows:
-    name: Windows compiler and installer
+    name: Windows semantic compiler and installer
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
-      - name: Enforce Seven-only source boundary
+      - name: Enforce Seven-only implementation boundary
         shell: cmd
         run: |
           for /r %%F in (*.ps1 *.psm1 *.c *.cc *.cpp *.cxx *.rs *.go *.py *.js *.ts *.cs) do (
@@ -28,38 +28,30 @@ jobs:
             exit /b 1
           )
 
-      - name: Verify final Windows native seeds
+      - name: Reconstruct and verify audited Windows seeds
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo '15bf6101addc76c36fa9637ca467bf4df13b3f717bd16210dfe6b57e5b30b39b  build/native-seeds.zip' | sha256sum --check
+          echo '37535ecb89c2add4891f8a38356a5fbce41b0d856e8c8f9ad7d4cb5796d17b88  build/native-seeds.zip' | sha256sum --check
           unzip -t build/native-seeds.zip
           unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '6c65dee95cbb3fe2b99a05bbe65a18dd11b3621b59f5f6bb431a5584a062ef86  build/native-seeds/seven-windows.exe' | sha256sum --check
+          echo '4eb24727ceef5a83695a1e1cd092f9b23bf5ecb53ca16508df2a6543d74a2254  build/native-seeds/seven-windows.exe' | sha256sum --check
           echo 'e4847375d1e800425e23253d36394bc8d2a2d9a97598f8905a30986310f176ed  build/native-seeds/seven-installer-windows.exe' | sha256sum --check
 
-      - name: Check Seven sources and deterministic bytecode
-        shell: cmd
-        run: |
-          bin\seven.exe --version
-          bin\seven.exe check compiler0\seven0.sev
-          bin\seven.exe check compiler\seven.sev
-          bin\seven.exe check runtime\installer\seven.sev
-          bin\seven.exe check compiler\toolchain\installer.sev
-          bin\seven.exe build compiler\seven.sev build\seven.svbc
-          bin\seven.exe build compiler\seven.sev build\seven.self.svbc
-          bin\seven.exe build runtime\host\seven.sev build\seven.host.svbc
-          bin\seven.exe build runtime\launcher\seven.sev build\seven.launcher.svbc
-          fc /b build\seven.svbc build\seven.self.svbc
-
-      - name: Verify native Windows compiler
+      - name: Exercise Windows compiler and deterministic bytecode
         shell: cmd
         run: |
           build\native-seeds\seven-windows.exe --version
           build\native-seeds\seven-windows.exe check examples\hello.sev
-          build\native-seeds\seven-windows.exe build examples\hello.sev build\hello.svbc
+          build\native-seeds\seven-windows.exe check conformance\invalid\unknown_name.sev && exit /b 1
+          build\native-seeds\seven-windows.exe run examples\hello.sev
+          build\native-seeds\seven-windows.exe build compiler\seven.sev build\seven.svbc
+          build\native-seeds\seven-windows.exe build compiler\seven.sev build\seven.self.svbc
+          build\native-seeds\seven-windows.exe build runtime\host\seven.sev build\seven.host.svbc
+          build\native-seeds\seven-windows.exe build runtime\launcher\seven.sev build\seven.launcher.svbc
+          fc /b build\seven.svbc build\seven.self.svbc
           build\native-seeds\seven-windows.exe doctor
 
       - name: Assemble Windows bundle
@@ -89,10 +81,10 @@ jobs:
           if errorlevel 1 exit /b 1
           popd
           if not exist "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" exit /b 1
-          if not exist "%LOCALAPPDATA%\Programs\Seven\seven.ico" exit /b 1
           if not exist "%LOCALAPPDATA%\Programs\Seven\seven.svbc" exit /b 1
           if not exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Seven.url" exit /b 1
           "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" --version
+          "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" check "%CD%\examples\hello.sev"
           reg query HKCU\Software\Classes\.sev >nul
           reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Seven.Language >nul
           pushd "%B%"
@@ -112,13 +104,13 @@ jobs:
           if-no-files-found: error
 
   linux:
-    name: Linux compiler and installer
+    name: Linux semantic compiler and installer
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      - name: Enforce Seven-only source boundary
+      - name: Enforce Seven-only implementation boundary
         shell: bash
         run: |
           set -euo pipefail
@@ -126,31 +118,37 @@ jobs:
             exit 1
           fi
 
-      - name: Verify final Linux native seeds
+      - name: Reconstruct and verify audited Linux seeds
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo '15bf6101addc76c36fa9637ca467bf4df13b3f717bd16210dfe6b57e5b30b39b  build/native-seeds.zip' | sha256sum --check
+          echo '37535ecb89c2add4891f8a38356a5fbce41b0d856e8c8f9ad7d4cb5796d17b88  build/native-seeds.zip' | sha256sum --check
           unzip -t build/native-seeds.zip
           unzip -q build/native-seeds.zip -d build/native-seeds
-          echo 'f91edfecd7620922109609d89be16426f6f1535e02b03631b4bcd5c174e5405f  build/native-seeds/seven-linux' | sha256sum --check
+          echo 'e8b73e6515e6e6d65e27f80f6714152493f922713dfda97767e36c6c7908e3ba  build/native-seeds/seven-linux' | sha256sum --check
           echo '8d5b9c534018d8b8ccca7fcdfaa6f7d40587c8a039d63ae214c62f93d35d533e  build/native-seeds/seven-installer-linux' | sha256sum --check
           chmod +x build/native-seeds/seven-linux build/native-seeds/seven-installer-linux
 
-      - name: Verify native Linux compiler and deterministic bytecode
+      - name: Exercise Linux compiler and deterministic bytecode
         shell: bash
         run: |
           set -euo pipefail
-          build/native-seeds/seven-linux --version
-          build/native-seeds/seven-linux check compiler/seven.sev
-          build/native-seeds/seven-linux build compiler/seven.sev build/seven.svbc
-          build/native-seeds/seven-linux build compiler/seven.sev build/seven.self.svbc
-          build/native-seeds/seven-linux build runtime/host/seven.sev build/seven.host.svbc
-          build/native-seeds/seven-linux build runtime/launcher/seven.sev build/seven.launcher.svbc
+          seven=build/native-seeds/seven-linux
+          "$seven" --version
+          "$seven" check examples/hello.sev
+          if "$seven" check conformance/invalid/unknown_name.sev; then
+            echo 'invalid source was accepted'
+            exit 1
+          fi
+          "$seven" run examples/hello.sev
+          "$seven" build compiler/seven.sev build/seven.svbc
+          "$seven" build compiler/seven.sev build/seven.self.svbc
+          "$seven" build runtime/host/seven.sev build/seven.host.svbc
+          "$seven" build runtime/launcher/seven.sev build/seven.launcher.svbc
           cmp build/seven.svbc build/seven.self.svbc
-          build/native-seeds/seven-linux doctor
+          "$seven" doctor
 
       - name: Assemble Linux bundle
         shell: bash
@@ -185,6 +183,7 @@ jobs:
           test -f "$HOME/.local/share/icons/hicolor/scalable/apps/seven.svg"
           test -f "$HOME/.local/share/seven/seven.ico"
           "$HOME/.local/bin/seven" --version
+          "$HOME/.local/bin/seven" check "$GITHUB_WORKSPACE/examples/hello.sev"
           ./seven-installer --uninstall
           test ! -e "$HOME/.local/bin/seven"
           test ! -e "$HOME/.local/share/seven"
