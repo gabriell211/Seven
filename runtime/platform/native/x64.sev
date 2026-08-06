@@ -1,6 +1,7 @@
 modulo seven.runtime.platform.native.x64
 
 usa seven.runtime.platform.native.bytes
+usa seven.runtime.platform.native.syscall_objects
 usa seven.runtime.platform.native.target
 usa seven.runtime.svbc.image
 usa seven.runtime.svbc.opcode
@@ -334,7 +335,17 @@ campo x64_emite_instrucao(
     veja instr.a >= lista_tamanho(imagem.nomes) ::
       devolve Falha(nova_falha("SV-NATIVE-SYSCALL", "nome de syscall fora do limite"))
     fecha
-    devolve x64_syscall_pura(saida.bytes, lista_pega(imagem.nomes, instr.a), instr.b)
+    guarda nome_syscall := lista_pega(imagem.nomes, instr.a)
+    veja x64_syscall_objeto_emite(
+      saida.bytes,
+      saida.virtual_alloc_patches,
+      alvo,
+      nome_syscall,
+      instr.b
+    ) ::
+      devolve Valor(nulo)
+    fecha
+    devolve x64_syscall_pura(saida.bytes, nome_syscall, instr.b)
   fecha
 
   devolve Falha(nova_falha("SV-NATIVE-OP", "opcode SVBC nao suportado pelo AOT x64"))
@@ -520,7 +531,6 @@ campo x64_igual(codigo: Bytes) -> Nada ::
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 200)
   bytes_coloca_byte(codigo, 65)
-  bytes_coloca_byte(codigo, 131)
   bytes_coloca_byte(codigo, 224)
   bytes_coloca_byte(codigo, 1)
   bytes_coloca_byte(codigo, 76)
