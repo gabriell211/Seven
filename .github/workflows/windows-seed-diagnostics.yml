@@ -1,0 +1,58 @@
+name: Diagnose Windows Seed
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/windows-seed-diagnostics.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct audited seed
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo 'b0017401ec6b14eca6efc33008f48fd516cb309075623d7882f5b9fb69fad812  build/native-seeds.zip' | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          echo '1f1c99a8444b2e2bdc1d98be7207dc3623954298f2f759971f7da5c45cfccbcb  build/native-seeds/seven-windows.exe' | sha256sum --check
+
+      - name: Exercise path and command handling
+        shell: cmd
+        run: |
+          @echo on
+          setlocal EnableExtensions EnableDelayedExpansion
+          set "SEVEN=%CD%\build\native-seeds\seven-windows.exe"
+          dir "%CD%\examples\hello.sev"
+          "%SEVEN%" --version
+          echo version-exit=!ERRORLEVEL!
+
+          "%SEVEN%" check "examples\hello.sev" > relative.out 2>&1
+          set "REL=!ERRORLEVEL!"
+          type relative.out
+          echo relative-exit=!REL!
+
+          "%SEVEN%" check "%CD%\examples\hello.sev" > absolute.out 2>&1
+          set "ABS=!ERRORLEVEL!"
+          type absolute.out
+          echo absolute-exit=!ABS!
+
+          copy /y examples\hello.sev build\native-seeds\hello.sev
+          pushd build\native-seeds
+          seven-windows.exe check hello.sev > adjacent.out 2>&1
+          set "ADJ=!ERRORLEVEL!"
+          type adjacent.out
+          echo adjacent-exit=!ADJ!
+          popd
+
+          echo summary relative=!REL! absolute=!ABS! adjacent=!ADJ!
+          exit /b 0
