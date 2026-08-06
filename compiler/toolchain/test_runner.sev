@@ -2,7 +2,9 @@ modulo seven.compiler.toolchain.test_runner
 
 usa seven.compiler.toolchain.command
 usa seven.compiler.driver
+usa seven.compiler.package
 usa std.base.resultado
+usa std.base.texto
 
 molde CasoTeste ::
   nome: Texto
@@ -27,10 +29,7 @@ campo roda_testes(contexto: ContextoToolchain, filtro: Texto) -> Resultado<Resul
   para cada caso em casos ::
     vira total := total + 1
 
-    solta argumentos := lista<Texto>()
-    lista_coloca(argumentos, caso.caminho)
-
-    guarda pedido := pedido_de_compilacao(argumentos)
+    guarda pedido := pedido_caso_teste(caso)
     guarda saida := compila(pedido)
     guarda esperado := resultado_esperado(caso.tipo, saida)
 
@@ -49,6 +48,31 @@ campo roda_testes(contexto: ContextoToolchain, filtro: Texto) -> Resultado<Resul
     falharam: falharam,
     log: log
   })
+fecha
+
+campo pedido_caso_teste(caso: CasoTeste) -> PedidoCompilacao ::
+  solta fontes := lista<Texto>()
+  lista_coloca(fontes, caso.caminho)
+
+  guarda pacote := Pacote {
+    nome: "seven-test",
+    versao: "0.1.0",
+    criador: "gabriell211",
+    entrada: caso.caminho,
+    alvo: "svbc",
+    indice_fontes: "",
+    fontes: fontes,
+    exemplos: lista<Texto>(),
+    dependencias: lista<DependenciaPacote>()
+  }
+
+  devolve PedidoCompilacao {
+    pacote: pacote,
+    entrada: caso.caminho,
+    alvo: "svbc",
+    modo: "seguro",
+    saida: "build/seven-test.svbc"
+  }
 fecha
 
 campo resultado_esperado(tipo: Texto, saida: SaidaCompilacao) -> Bit ::
