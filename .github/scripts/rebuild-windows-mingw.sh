@@ -15,7 +15,7 @@ from pathlib import Path
 path = Path('.github/scripts/rebuild-semantic-seeds.sh')
 text = path.read_text()
 build_marker = '\ngcc -std=c11 -O2 -s -Wall -Wextra -Wno-unused-parameter "$work/seven-bootstrap.c" -o "$work/seven-linux"\n'
-entry_patch = r'''
+entry_patch = r"""
 CHECKER_SOURCE="$work/seven-bootstrap.c" python - <<'PYENTRY'
 import os
 from pathlib import Path
@@ -33,7 +33,7 @@ if old not in source:
     raise SystemExit('Windows CRT entrypoint target not found')
 path.write_text(source.replace(old, new, 1))
 PYENTRY
-'''
+"""
 if build_marker not in text:
     raise SystemExit('Linux compiler build marker not found')
 text = text.replace(build_marker, '\n' + entry_patch + build_marker, 1)
@@ -45,9 +45,12 @@ mingw = 'x86_64-w64-mingw32-gcc -std=c11 -O2 -s -Wall -Wextra -Wno-unused-parame
 text = text[:start] + mingw + text[end:]
 
 old_hash = 'archive_sha=$(sha256sum "$work/native-seeds.zip" | cut -d\' \' -f1)'
-new_hash = '''cat seed/native/final/v1/part*.b64 | tr -d '\\r\\n\\t ' | base64 --decode > "$work/reconstructed.zip"
-cmp "$work/native-seeds.zip" "$work/reconstructed.zip"
-archive_sha=$(sha256sum "$work/reconstructed.zip" | cut -d' ' -f1)'''
+new_hash = (
+    'cat seed/native/final/v1/part*.b64 | tr -d \'\\r\\n\\t \' | '
+    'base64 --decode > "$work/reconstructed.zip"\n'
+    'cmp "$work/native-seeds.zip" "$work/reconstructed.zip"\n'
+    'archive_sha=$(sha256sum "$work/reconstructed.zip" | cut -d\' \' -f1)'
+)
 if old_hash not in text:
     raise SystemExit('archive hash target not found')
 text = text.replace(old_hash, new_hash, 1)
