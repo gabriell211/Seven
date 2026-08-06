@@ -91,7 +91,7 @@ campo pe_optional_header(
   nativo_u32_le(arquivo, PeHeadersX64)
   nativo_u32_le(arquivo, 0)
   nativo_u16_le(arquivo, 3)
-  nativo_u16_le(arquivo, 33120)
+  nativo_u16_le(arquivo, 256)
   nativo_u64_le(arquivo, 1048576)
   nativo_u64_le(arquivo, 4096)
   nativo_u64_le(arquivo, 1048576)
