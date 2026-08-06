@@ -1,0 +1,36 @@
+name: Rebuild Windows Seed with CRT
+
+on:
+  pull_request:
+    paths:
+      - .github/scripts/rebuild-windows-mingw.sh
+      - .github/workflows/rebuild-windows-mingw.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: seven-windows-mingw-rebuild
+  cancel-in-progress: true
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gabriell211/production-readiness
+          fetch-depth: 0
+
+      - name: Install Windows cross compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64
+
+      - name: Rebuild and validate Windows CRT seed
+        shell: bash
+        run: bash .github/scripts/rebuild-windows-mingw.sh
