@@ -28,18 +28,18 @@ jobs:
             exit /b 1
           )
 
-      - name: Verify fixed native seed archive
+      - name: Verify canonical native seed archive
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build/native-seeds
-          cat seed/native/archive/native-seeds.b64.* | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo 'fa83be6c949b4e303a74dfe441883316e285baa1388f5b4370312f3c3c506464  build/native-seeds.zip' | sha256sum --check
+          cat seed/native/canonical/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo '207b4d92a4bfd4d8dc32cba05c5d6b24cc6f7b62e87210de81eb3addc85f50a4  build/native-seeds.zip' | sha256sum --check
           unzip -t build/native-seeds.zip
           unzip -q build/native-seeds.zip -d build/native-seeds
           cd build/native-seeds
           echo '6c65dee95cbb3fe2b99a05bbe65a18dd11b3621b59f5f6bb431a5584a062ef86  seven-windows.exe' | sha256sum --check
-          echo 'ae5feb58a3ccaca19bc56f9aaf27d21a96153ada89a97c7074e66dbe71be36a0  seven-installer-windows.exe' | sha256sum --check
+          echo '2192b7576e485a4bbd0a267cb18a836652c2b2de8953937a81992cbc52d6ad0f  seven-installer-windows.exe' | sha256sum --check
 
       - name: Check Seven sources and deterministic bytecode
         shell: cmd
@@ -125,13 +125,13 @@ jobs:
             exit 1
           fi
 
-      - name: Verify fixed native seed archive
+      - name: Verify canonical native seed archive
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build/native-seeds
-          cat seed/native/archive/native-seeds.b64.* | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo 'fa83be6c949b4e303a74dfe441883316e285baa1388f5b4370312f3c3c506464  build/native-seeds.zip' | sha256sum --check
+          cat seed/native/canonical/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo '207b4d92a4bfd4d8dc32cba05c5d6b24cc6f7b62e87210de81eb3addc85f50a4  build/native-seeds.zip' | sha256sum --check
           unzip -t build/native-seeds.zip
           unzip -q build/native-seeds.zip -d build/native-seeds
           echo 'f91edfecd7620922109609d89be16426f6f1535e02b03631b4bcd5c174e5405f  build/native-seeds/seven-linux' | sha256sum --check
