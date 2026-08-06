@@ -1,8 +1,8 @@
 formato seven-bootstrap-stage1-v1
-estado consolidacao
+estado diagnostico-parser
 entrada seven0-fixed-point
 alvo compiler-core-svbc0
 adaptacao fontes-canônicas
 biblioteca std-core-real
-prova stage1-compila-pacote-e-reconstroi-stage2
+prova imprimir-diagnostico-sintatico-e-restaurar-ir
 criterio seven-stage1-executa-e-reconstroi-stage2
