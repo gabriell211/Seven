@@ -1,0 +1,16 @@
+{
+  "version": "0.1.0",
+  "tag": "v0.1.0",
+  "source_commit": "2bc3b48dd9b9ed7a2f69dfa402b0894d24096f4b",
+  "release_url": "https://github.com/gabriell211/Seven/releases/tag/v0.1.0",
+  "assets": {
+    "seven-0.1.0-windows-x64.zip": "ab79d3779edded7bb57e128ece4fcab2bba5c1e155a55cd9af3f352b57bd946b",
+    "seven-0.1.0-windows-x64.zip.sha256": "published",
+    "seven-0.1.0-linux-x64.tar.gz": "351548290d24e9e236df6500600f2685b46638433833c1dc00dd36f84129f5cc",
+    "seven-0.1.0-linux-x64.tar.gz.sha256": "published"
+  },
+  "seed_archive_sha256": "a2d09138008ae7223683681443663da8d4c58b39600cbaf3bef11889c2495ad3",
+  "windows_compiler_sha256": "f9ebcbe747f5646f1f224af0929d19d321a67a241be3844116e42ac2a5207296",
+  "linux_compiler_sha256": "2f073ab8101742006728a491b3093ddb093d202289002d13cc2a6a03dfa55dcb",
+  "verified": true
+}
