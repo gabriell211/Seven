@@ -153,7 +153,8 @@ def patch_driver_trace() -> None:
   diga "stage1-fluxos=" + texto(lista_tamanho(tokens))
   guarda sintaxe := monta_unidade(tokens)
   diga "stage1-programas=" + texto(lista_tamanho(sintaxe.programas))
-  diga "stage1-diagnosticos-sintaxe=" + texto(lista_tamanho(sintaxe.diagnosticos))'''
+  diga "stage1-diagnosticos-sintaxe=" + texto(lista_tamanho(sintaxe.diagnosticos))
+  mostra_diagnosticos(sintaxe.diagnosticos)'''
     if old_frontend not in text:
         raise RuntimeError("driver frontend pipeline not found")
     text = text.replace(old_frontend, new_frontend, 1)
