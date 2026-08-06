@@ -1,0 +1,24 @@
+name: Seven Stage 0 Source Snapshot
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-stage0-source-snapshot
+          path: |
+            compiler0/
+            runtime/svbc0/
+            runtime/platform/intrinsic_bootstrap.sev
+          if-no-files-found: error
