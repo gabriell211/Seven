@@ -35,9 +35,6 @@ jobs:
           set -euo pipefail
           mkdir -p build
 
-          echo '91a7703e2dc5810290a9144d7b88d8dba75e163e3d0b05e0ebbc086c557194f1  bootstrap/staging/compiler0-patches.tar.gz.b64' | sha256sum --check
-          base64 --decode bootstrap/staging/compiler0-patches.tar.gz.b64 | gzip --decompress | tar -xf -
-
           cat bootstrap/seed/v2/part*.b64 | tr -d '\r\n\t ' | base64 --decode | gzip --decompress > build/seven0.seed.svbc
           echo '123f5b513bcae7774671898f471441b3c71efd570acad91fa634cbc5f33bb223  build/seven0.seed.svbc' | sha256sum --check
 
