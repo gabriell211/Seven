@@ -1,0 +1,608 @@
+modulo seven.runtime.platform.native.file_runtime
+
+usa seven.runtime.platform.native.bytes
+usa seven.runtime.platform.native.bytes_core
+usa seven.runtime.platform.native.literal_runtime
+usa seven.runtime.platform.native.result_runtime
+usa seven.runtime.platform.native.syscall_io
+usa seven.runtime.platform.native.target
+usa seven.runtime.platform.native.win_imports
+usa std.base.lista
+usa std.mem.bytes
+
+campo x64_file_ler_texto(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo,
+  tipado: Bit
+) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 238)
+  bytes_coloca_byte(codigo, 1)
+
+  guarda falha :=
+    se alvo.formato == "elf" ::
+      x64_file_linux_ler_texto(codigo, virtual_alloc_patches, alvo)
+    outro ::
+      x64_file_windows_ler_texto(codigo, virtual_alloc_patches, alvo)
+    fecha
+
+  guarda sucesso := codigo.tamanho
+  veja tipado ::
+    x64_resultado_valor_r15(codigo, virtual_alloc_patches, alvo)
+  outro ::
+    bytes_coloca_byte(codigo, 65)
+    bytes_coloca_byte(codigo, 87)
+  fecha
+  guarda fim_sucesso := x64_file_jmp(codigo)
+
+  guarda erro := codigo.tamanho
+  veja tipado ::
+    x64_resultado_falha_generica(codigo, virtual_alloc_patches, alvo, "SV-ARQUIVO-LER", "nao foi possivel ler o arquivo")
+  outro ::
+    x64_literal_texto(codigo, virtual_alloc_patches, alvo, "")
+  fecha
+
+  guarda fim := codigo.tamanho
+  x64_file_patch(codigo, falha, erro)
+  x64_file_patch(codigo, fim_sucesso, fim)
+  guarda ignora := sucesso
+fecha
+
+campo x64_file_grava_texto(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo,
+  tipado: Bit
+) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 95)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 239)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 238)
+  bytes_coloca_byte(codigo, 1)
+
+  guarda falha :=
+    se alvo.formato == "elf" ::
+      x64_file_linux_grava(codigo, 16, 8)
+    outro ::
+      x64_file_windows_grava(codigo, 16, 8)
+    fecha
+
+  x64_file_retorna_escrita(codigo, virtual_alloc_patches, alvo, tipado, falha)
+fecha
+
+campo x64_file_grava_bytes(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo,
+  tipado: Bit
+) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 95)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 239)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 238)
+  bytes_coloca_byte(codigo, 1)
+
+  guarda falha :=
+    se alvo.formato == "elf" ::
+      x64_file_linux_grava(codigo, 24, 8)
+    outro ::
+      x64_file_windows_grava(codigo, 24, 8)
+    fecha
+
+  x64_file_retorna_escrita(codigo, virtual_alloc_patches, alvo, tipado, falha)
+fecha
+
+campo x64_file_existe(codigo: Bytes, alvo: AlvoNativo) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 238)
+  bytes_coloca_byte(codigo, 1)
+
+  veja alvo.formato == "elf" ::
+    bytes_coloca_byte(codigo, 184)
+    nativo_u32_le(codigo, 257)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 199)
+    bytes_coloca_byte(codigo, 199)
+    nativo_u32_le(codigo, 4294967196)
+    bytes_coloca_byte(codigo, 73)
+    bytes_coloca_byte(codigo, 141)
+    bytes_coloca_byte(codigo, 118)
+    bytes_coloca_byte(codigo, 16)
+    bytes_coloca_byte(codigo, 49)
+    bytes_coloca_byte(codigo, 210)
+    bytes_coloca_byte(codigo, 69)
+    bytes_coloca_byte(codigo, 49)
+    bytes_coloca_byte(codigo, 210)
+    bytes_coloca_byte(codigo, 15)
+    bytes_coloca_byte(codigo, 5)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 131)
+    bytes_coloca_byte(codigo, 248)
+    bytes_coloca_byte(codigo, 0)
+    guarda nao := x64_file_jcc(codigo, 140)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 137)
+    bytes_coloca_byte(codigo, 199)
+    bytes_coloca_byte(codigo, 184)
+    nativo_u32_le(codigo, 3)
+    bytes_coloca_byte(codigo, 15)
+    bytes_coloca_byte(codigo, 5)
+    bytes_coloca_byte(codigo, 184)
+    nativo_u32_le(codigo, 2)
+    bytes_coloca_byte(codigo, 80)
+    guarda fim_sim := x64_file_jmp(codigo)
+    guarda falso := codigo.tamanho
+    bytes_coloca_byte(codigo, 49)
+    bytes_coloca_byte(codigo, 192)
+    bytes_coloca_byte(codigo, 80)
+    guarda fim := codigo.tamanho
+    x64_file_patch(codigo, nao, falso)
+    x64_file_patch(codigo, fim_sim, fim)
+    devolve nulo
+  fecha
+
+  x64_file_windows_abre(codigo, 2147483648, 1, 3)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 255)
+  guarda nao := x64_file_jcc(codigo, 132)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 195)
+  x64_file_windows_fecha(codigo)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 2)
+  bytes_coloca_byte(codigo, 80)
+  guarda fim_sim := x64_file_jmp(codigo)
+  guarda falso := codigo.tamanho
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 80)
+  guarda fim := codigo.tamanho
+  x64_file_patch(codigo, nao, falso)
+  x64_file_patch(codigo, fim_sim, fim)
+fecha
+
+campo x64_file_linux_ler_texto(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> U64 ::
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 257)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 199)
+  nativo_u32_le(codigo, 4294967196)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 118)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 210)
+  bytes_coloca_byte(codigo, 69)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 210)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 0)
+  guarda falha_abre := x64_file_jcc(codigo, 140)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 195)
+
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 8)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 223)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 246)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, 2)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 0)
+  guarda falha_tamanho := x64_file_jcc(codigo, 140)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 199)
+
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 8)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 223)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 246)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 210)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 111)
+  bytes_coloca_byte(codigo, 17)
+  x64_bytes_core_aloca_r13(codigo, virtual_alloc_patches, alvo)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 196)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 3)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 124)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 223)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 116)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 250)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 0)
+  guarda falha_le := x64_file_jcc(codigo, 140)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 223)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 3)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+
+  bytes_coloca_byte(codigo, 67)
+  bytes_coloca_byte(codigo, 198)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 60)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 0)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 124)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 1)
+  guarda fim := x64_file_jmp(codigo)
+
+  guarda erro := codigo.tamanho
+  x64_file_patch(codigo, falha_abre, erro)
+  x64_file_patch(codigo, falha_tamanho, erro)
+  x64_file_patch(codigo, falha_le, erro)
+  x64_file_patch(codigo, fim, codigo.tamanho + 6)
+  devolve erro
+fecha
+
+campo x64_file_linux_grava(codigo: Bytes, dados_offset: U64, tamanho_offset: U64) -> U64 ::
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 257)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 199)
+  nativo_u32_le(codigo, 4294967196)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 119)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, 577)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, 420)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 0)
+  guarda falha := x64_file_jcc(codigo, 140)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 199)
+
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 119)
+  bytes_coloca_byte(codigo, Byte(dados_offset))
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 87)
+  bytes_coloca_byte(codigo, Byte(tamanho_offset))
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 223)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 3)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+  devolve falha
+fecha
+
+campo x64_file_windows_ler_texto(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> U64 ::
+  x64_file_windows_abre(codigo, 2147483648, 1, 3)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 255)
+  guarda falha_abre := x64_file_jcc(codigo, 132)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 195)
+
+  x64_io_win_inicia(codigo, 48)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 217)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 84)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 32)
+  x64_windows_importa(codigo, WinImportGetFileSizeEx)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 124)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 32)
+  x64_io_win_finaliza(codigo)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda falha_tamanho := x64_file_jcc(codigo, 132)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 111)
+  bytes_coloca_byte(codigo, 17)
+  x64_bytes_core_aloca_r13(codigo, virtual_alloc_patches, alvo)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 196)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 3)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 124)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+
+  x64_io_win_inicia(codigo, 48)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 217)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 84)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 40)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 32)
+  nativo_u32_le(codigo, 0)
+  x64_windows_importa(codigo, WinImportReadFile)
+  x64_io_win_finaliza(codigo)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda falha_le := x64_file_jcc(codigo, 132)
+
+  x64_file_windows_fecha(codigo)
+  bytes_coloca_byte(codigo, 67)
+  bytes_coloca_byte(codigo, 198)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 60)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 0)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 124)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 1)
+  guarda fim := x64_file_jmp(codigo)
+
+  guarda erro := codigo.tamanho
+  x64_file_patch(codigo, falha_abre, erro)
+  x64_file_patch(codigo, falha_tamanho, erro)
+  x64_file_patch(codigo, falha_le, erro)
+  x64_file_patch(codigo, fim, codigo.tamanho + 6)
+  devolve erro
+fecha
+
+campo x64_file_windows_grava(codigo: Bytes, dados_offset: U64, tamanho_offset: U64) -> U64 ::
+  x64_file_windows_abre(codigo, 1073741824, 0, 2)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 255)
+  guarda falha := x64_file_jcc(codigo, 132)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 195)
+
+  x64_io_win_inicia(codigo, 48)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 217)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 87)
+  bytes_coloca_byte(codigo, Byte(dados_offset))
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 71)
+  bytes_coloca_byte(codigo, Byte(tamanho_offset))
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 40)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 32)
+  nativo_u32_le(codigo, 0)
+  x64_windows_importa(codigo, WinImportWriteFile)
+  x64_io_win_finaliza(codigo)
+  x64_file_windows_fecha(codigo)
+  devolve falha
+fecha
+
+campo x64_file_windows_abre(codigo: Bytes, acesso: U64, compartilhamento: U64, criacao: U64) -> Nada ::
+  x64_io_win_inicia(codigo, 64)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 78)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, acesso)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, compartilhamento)
+  bytes_coloca_byte(codigo, 69)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 201)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 32)
+  nativo_u32_le(codigo, criacao)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 40)
+  nativo_u32_le(codigo, 128)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 48)
+  nativo_u32_le(codigo, 0)
+  x64_windows_importa(codigo, WinImportCreateFileA)
+  x64_io_win_finaliza(codigo)
+fecha
+
+campo x64_file_windows_fecha(codigo: Bytes) -> Nada ::
+  x64_io_win_inicia(codigo, 32)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 217)
+  x64_windows_importa(codigo, WinImportCloseHandle)
+  x64_io_win_finaliza(codigo)
+fecha
+
+campo x64_file_retorna_escrita(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo,
+  tipado: Bit,
+  falha: U64
+) -> Nada ::
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 199)
+  nativo_u32_le(codigo, 0)
+  veja tipado ::
+    x64_resultado_valor_r15(codigo, virtual_alloc_patches, alvo)
+  outro ::
+    bytes_coloca_byte(codigo, 49)
+    bytes_coloca_byte(codigo, 192)
+    bytes_coloca_byte(codigo, 80)
+  fecha
+  guarda fim_sucesso := x64_file_jmp(codigo)
+  guarda erro := codigo.tamanho
+  veja tipado ::
+    x64_resultado_falha_generica(codigo, virtual_alloc_patches, alvo, "SV-ARQUIVO-GRAVAR", "nao foi possivel gravar o arquivo")
+  outro ::
+    bytes_coloca_byte(codigo, 49)
+    bytes_coloca_byte(codigo, 192)
+    bytes_coloca_byte(codigo, 80)
+  fecha
+  guarda fim := codigo.tamanho
+  x64_file_patch(codigo, falha, erro)
+  x64_file_patch(codigo, fim_sucesso, fim)
+fecha
+
+campo x64_file_jcc(codigo: Bytes, condicao: Byte) -> U64 ::
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, condicao)
+  guarda pos := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  devolve pos
+fecha
+
+campo x64_file_jmp(codigo: Bytes) -> U64 ::
+  bytes_coloca_byte(codigo, 233)
+  guarda pos := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  devolve pos
+fecha
+
+campo x64_file_patch(codigo: Bytes, posicao: U64, destino: U64) -> Nada ::
+  nativo_define_u32_le(codigo, posicao, Num(destino) - Num(posicao + 4))
+fecha
