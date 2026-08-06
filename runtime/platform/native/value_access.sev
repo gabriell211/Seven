@@ -1,0 +1,202 @@
+modulo seven.runtime.platform.native.value_access
+
+usa seven.runtime.platform.native.bytes
+usa seven.runtime.platform.native.object_runtime
+usa std.mem.bytes
+
+const TipoAcessoTexto: U64 := 1
+const TipoAcessoBloco: U64 := 2
+const TipoAcessoObjeto: U64 := 3
+const TipoAcessoBytes: U64 := 4
+
+campo x64_runtime_valor_pega(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+  bytes_coloca_byte(codigo, 88)
+
+  bytes_coloca_byte(codigo, 168)
+  bytes_coloca_byte(codigo, 1)
+  guarda nulo_imediato := x64_valor_jcc(codigo, 132)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 232)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 196)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 28)
+  bytes_coloca_byte(codigo, 36)
+
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 251)
+  bytes_coloca_byte(codigo, Byte(TipoAcessoTexto))
+  guarda texto_tamanho := x64_valor_jcc(codigo, 132)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 251)
+  bytes_coloca_byte(codigo, Byte(TipoAcessoBloco))
+  guarda bloco_tamanho := x64_valor_jcc(codigo, 132)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 251)
+  bytes_coloca_byte(codigo, Byte(TipoAcessoBytes))
+  guarda bytes_tamanho := x64_valor_jcc(codigo, 132)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 251)
+  bytes_coloca_byte(codigo, Byte(TipoAcessoObjeto))
+  guarda nao_objeto := x64_valor_jcc(codigo, 133)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 92)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 108)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 24)
+  bytes_coloca_byte(codigo, 69)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 255)
+
+  guarda loop := codigo.tamanho
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 223)
+  guarda ausente_obj := x64_valor_jcc(codigo, 132)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 117)
+  bytes_coloca_byte(codigo, 0)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 86)
+  x64_runtime_texto_igual(codigo)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda achou_obj := x64_valor_jcc(codigo, 133)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 197)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 199)
+  guarda volta := x64_valor_jmp(codigo)
+  x64_valor_patch(codigo, volta, loop)
+
+  guarda achado := codigo.tamanho
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 69)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 80)
+  guarda fim_obj := x64_valor_jmp(codigo)
+
+  guarda tamanho := codigo.tamanho
+  guarda chave_ok := x64_runtime_chave_tamanho(codigo)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 224)
+  bytes_coloca_byte(codigo, 80)
+  guarda fim_tamanho := x64_valor_jmp(codigo)
+
+  guarda nulo := codigo.tamanho
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 80)
+
+  guarda fim := codigo.tamanho
+  x64_valor_patch(codigo, nulo_imediato, nulo)
+  x64_valor_patch(codigo, texto_tamanho, tamanho)
+  x64_valor_patch(codigo, bloco_tamanho, tamanho)
+  x64_valor_patch(codigo, bytes_tamanho, tamanho)
+  x64_valor_patch(codigo, nao_objeto, nulo)
+  x64_valor_patch(codigo, ausente_obj, nulo)
+  x64_valor_patch(codigo, achou_obj, achado)
+  x64_valor_patch(codigo, fim_obj, fim)
+  x64_valor_patch(codigo, chave_ok, nulo)
+  x64_valor_patch(codigo, fim_tamanho, fim)
+fecha
+
+campo x64_runtime_chave_tamanho(codigo: Bytes) -> U64 ::
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 240)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 238)
+  bytes_coloca_byte(codigo, 1)
+
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 62)
+  bytes_coloca_byte(codigo, 1)
+  guarda falha_tipo := x64_valor_jcc(codigo, 133)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 126)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 7)
+  guarda falha_tamanho := x64_valor_jcc(codigo, 133)
+
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 129)
+  bytes_coloca_byte(codigo, 126)
+  bytes_coloca_byte(codigo, 16)
+  nativo_u32_le(codigo, 1634558324)
+  guarda falha_1 := x64_valor_jcc(codigo, 133)
+  bytes_coloca_byte(codigo, 102)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 129)
+  bytes_coloca_byte(codigo, 126)
+  bytes_coloca_byte(codigo, 20)
+  nativo_u16_le(codigo, 26734)
+  guarda falha_2 := x64_valor_jcc(codigo, 133)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 128)
+  bytes_coloca_byte(codigo, 126)
+  bytes_coloca_byte(codigo, 22)
+  bytes_coloca_byte(codigo, 111)
+  guarda falha_3 := x64_valor_jcc(codigo, 133)
+
+  guarda sucesso := x64_valor_jmp(codigo)
+  guarda falha := codigo.tamanho
+  x64_valor_patch(codigo, falha_tipo, falha)
+  x64_valor_patch(codigo, falha_tamanho, falha)
+  x64_valor_patch(codigo, falha_1, falha)
+  x64_valor_patch(codigo, falha_2, falha)
+  x64_valor_patch(codigo, falha_3, falha)
+  devolve sucesso
+fecha
+
+campo x64_valor_jcc(codigo: Bytes, condicao: Byte) -> U64 ::
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, condicao)
+  guarda pos := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  devolve pos
+fecha
+
+campo x64_valor_jmp(codigo: Bytes) -> U64 ::
+  bytes_coloca_byte(codigo, 233)
+  guarda pos := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  devolve pos
+fecha
+
+campo x64_valor_patch(codigo: Bytes, posicao: U64, destino: U64) -> Nada ::
+  nativo_define_u32_le(codigo, posicao, Num(destino) - Num(posicao + 4))
+fecha
