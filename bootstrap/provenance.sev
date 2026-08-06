@@ -1,0 +1,44 @@
+modulo bootstrap.provenance
+
+usa std.base.resultado
+usa std.crypto.hash
+usa std.fs.file
+
+campo bootstrap_sha256(caminho: Texto) -> Resultado<Texto, Falha> toca disco, ambiente ::
+  guarda dados := arquivo_bytes(caminho)
+
+  veja dados e Falha ::
+    devolve Falha(dados.valor)
+  fecha
+
+  devolve Valor(hash_texto(sha256(dados.valor)))
+fecha
+
+campo bootstrap_grava_proveniencia(
+  etapa: Texto,
+  executor: Texto,
+  entrada: Texto,
+  saida: Texto,
+  manifesto: Texto
+) -> Resultado<Nada, Falha> toca disco, ambiente ::
+  guarda executor_hash := bootstrap_sha256(executor)
+  veja executor_hash e Falha :: devolve Falha(executor_hash.valor) fecha
+
+  guarda entrada_hash := bootstrap_sha256(entrada)
+  veja entrada_hash e Falha :: devolve Falha(entrada_hash.valor) fecha
+
+  guarda saida_hash := bootstrap_sha256(saida)
+  veja saida_hash e Falha :: devolve Falha(saida_hash.valor) fecha
+
+  guarda conteudo :=
+    "formato seven-bootstrap-provenance-v1\n" +
+    "etapa " + etapa + "\n" +
+    "executor " + executor + "\n" +
+    "executor_sha256 " + executor_hash.valor + "\n" +
+    "entrada " + entrada + "\n" +
+    "entrada_sha256 " + entrada_hash.valor + "\n" +
+    "saida " + saida + "\n" +
+    "saida_sha256 " + saida_hash.valor + "\n"
+
+  devolve arquivo_salva_texto(manifesto, conteudo)
+fecha

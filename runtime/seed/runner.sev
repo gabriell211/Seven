@@ -3,6 +3,18 @@ modulo seven.runtime.seed.runner
 usa seven.runtime.seed.svs0
 
 campo roda_seed(caminho: Texto) -> Num toca disco, terminal ::
+  devolve roda_seed_compilacao(
+    caminho,
+    "compiler0/seven0.sev",
+    "build/seven0.svbc"
+  )
+fecha
+
+campo roda_seed_compilacao(
+  caminho: Texto,
+  entrada: Texto,
+  saida: Texto
+) -> Num toca disco, terminal ::
   guarda fita := svs0_carrega(caminho)
 
   veja fita e Falha ::
@@ -10,12 +22,12 @@ campo roda_seed(caminho: Texto) -> Num toca disco, terminal ::
     devolve 1
   fecha
 
-  guarda saida := svs0_executa(fita.valor)
+  guarda resultado := svs0_executa_compilacao(fita.valor, entrada, saida)
 
-  veja saida e Falha ::
-    diga "erro executando seed: " + saida.valor.mensagem
+  veja resultado e Falha ::
+    diga "erro executando seed: " + resultado.valor.mensagem
     devolve 1
   fecha
 
-  devolve saida.valor
+  devolve resultado.valor
 fecha

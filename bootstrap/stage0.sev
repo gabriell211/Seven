@@ -1,6 +1,75 @@
 modulo bootstrap.stage0
 
-campo executar() -> Num toca disco, terminal ::
-  diga "stage0: seed compila compiler0"
+usa bootstrap.provenance
+usa seven.runtime.seed.runner
+usa std.fs.file
+usa std.mem.bytes
+
+const Stage0Seed: Texto := "seed/genesis.svhex"
+const Stage0Entrada: Texto := "compiler0/seven0.sev"
+const Stage0Saida: Texto := "build/seven0.svbc"
+const Stage0Proveniencia: Texto := "build/stage0.provenance"
+
+campo executar() -> Num toca disco, terminal, ambiente ::
+  diga "stage0: Genesis/SVS0 compilando Seven-0"
+
+  guarda codigo := roda_seed_compilacao(
+    Stage0Seed,
+    Stage0Entrada,
+    Stage0Saida
+  )
+
+  veja codigo != 0 ::
+    diga "stage0 falhou durante a execucao do seed"
+    devolve codigo
+  fecha
+
+  guarda verificacao := stage0_verifica_svbc0(Stage0Saida)
+
+  veja verificacao e Falha ::
+    diga "stage0 produziu artefato invalido: " + verificacao.valor.mensagem
+    devolve 1
+  fecha
+
+  guarda proveniencia := bootstrap_grava_proveniencia(
+    "stage0",
+    Stage0Seed,
+    Stage0Entrada,
+    Stage0Saida,
+    Stage0Proveniencia
+  )
+
+  veja proveniencia e Falha ::
+    diga "stage0 nao conseguiu registrar proveniencia: " + proveniencia.valor.mensagem
+    devolve 1
+  fecha
+
+  diga "stage0 concluido: " + Stage0Saida
   devolve 0
+fecha
+
+campo stage0_verifica_svbc0(caminho: Texto) -> Resultado<Nada, Falha> toca disco ::
+  guarda dados := arquivo_bytes(caminho)
+
+  veja dados e Falha ::
+    devolve Falha(dados.valor)
+  fecha
+
+  veja dados.valor.tamanho < 8 ::
+    devolve Falha(nova_falha("SV-BOOT-STAGE0-TAMANHO", "SVBC0 menor que o cabecalho"))
+  fecha
+
+  veja stage0_magic_svbc0(dados.valor) == nao ::
+    devolve Falha(nova_falha("SV-BOOT-STAGE0-MAGIC", "saida nao possui magic SVB0"))
+  fecha
+
+  devolve Valor(nulo)
+fecha
+
+campo stage0_magic_svbc0(dados: Bytes) -> Bit ::
+  devolve bytes_pega(dados, 0) == 83 e bytes_pega(dados, 1) == 86 e bytes_pega(dados, 2) == 66 e bytes_pega(dados, 3) == 48
+fecha
+
+campo inicio() -> Num toca disco, terminal, ambiente ::
+  devolve executar()
 fecha

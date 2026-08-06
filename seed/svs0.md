@@ -4,12 +4,21 @@
 
 Ela nao substitui `SVBC`. Ela existe para tornar o seed pequeno, verificavel e independente de uma linguagem hospedeira.
 
+## Representacao auditavel
+
+A imagem canonica fica em `seed/genesis.svhex` como hexadecimal textual. O loader:
+
+1. ignora espacos, quebras de linha e comentarios iniciados por `#`;
+2. rejeita caracteres nao hexadecimais;
+3. materializa os bytes reais;
+4. valida magic, versao e tamanho declarado antes da execucao.
+
 ## Cabecalho
 
 ```text
 magic       4 bytes   53 56 53 30  // "SVS0"
 versao      2 bytes   00 01
-tamanho     4 bytes   numero de bytes de codigo
+tamanho     4 bytes   numero de bytes de codigo, big-endian
 codigo      N bytes
 ```
 
@@ -19,6 +28,8 @@ codigo      N bytes
 - `u32`
 - `ptr`
 - `span`
+- `texto`
+- `bytes`
 
 ## Instrucoes
 
@@ -39,12 +50,19 @@ codigo      N bytes
 0D RETORNA codigo
 ```
 
-## Contrato minimo
+## Pilha inicial canonica
 
-O seed precisa executar este fluxo:
+Para a compilacao de bootstrap, o runner coloca na pilha:
 
 ```text
-entrada .sev
+[ caminho_da_saida, caminho_da_entrada ]
+```
+
+O topo e `caminho_da_entrada`. Assim a fita minima nao precisa incorporar caminhos dependentes do repositorio.
+
+## Fluxo Genesis
+
+```text
 LE_ARQUIVO
 TOKENIZA
 MONTA
@@ -54,6 +72,8 @@ GRAVA_ARQUIVO
 RETORNA 0
 ```
 
+A gravacao usa bytes binarios. Converter o artefato SVBC0 em texto invalida a etapa.
+
 ## Falha
 
-Qualquer erro produz diagnostico com codigo `S0-*` e retorno diferente de zero.
+Qualquer erro de formato, leitura, compilacao ou gravacao produz diagnostico `SVS0-*` e retorno diferente de zero.
