@@ -9,14 +9,22 @@ const PeTextRvaX64: U64 := 4096
 const PeIdataRvaX64: U64 := 8192
 const PeFileAlignX64: U64 := 512
 const PeSectionAlignX64: U64 := 4096
-const PeIatOffsetX64: U64 := 56
-const PeDllOffsetX64: U64 := 72
-const PeHintNameOffsetX64: U64 := 86
+const PeIatOffsetX64: U64 := 64
+const PeDllOffsetX64: U64 := 88
+const PeExitProcessHintX64: U64 := 102
+const PeVirtualAllocHintX64: U64 := 116
 
 campo pe_x64(codigo: CodigoX64) -> Bytes ::
-  guarda iat_rva := PeIdataRvaX64 + PeIatOffsetX64
+  guarda exit_rva := PeIdataRvaX64 + PeIatOffsetX64
+  guarda virtual_alloc_rva := exit_rva + 8
+
   para cada posicao em codigo.exit_process_patches ::
-    guarda relativo := Num(iat_rva) - Num(PeTextRvaX64 + posicao + 4)
+    guarda relativo := Num(exit_rva) - Num(PeTextRvaX64 + posicao + 4)
+    nativo_define_u32_le(codigo.bytes, posicao, relativo)
+  fecha
+
+  para cada posicao em codigo.virtual_alloc_patches ::
+    guarda relativo := Num(virtual_alloc_rva) - Num(PeTextRvaX64 + posicao + 4)
     nativo_define_u32_le(codigo.bytes, posicao, relativo)
   fecha
 
@@ -107,7 +115,7 @@ campo pe_optional_header(
     outro ::
       veja indice == 12 ::
         nativo_u32_le(arquivo, PeIdataRvaX64 + PeIatOffsetX64)
-        nativo_u32_le(arquivo, 16)
+        nativo_u32_le(arquivo, 24)
       outro ::
         nativo_u32_le(arquivo, 0)
         nativo_u32_le(arquivo, 0)
@@ -143,7 +151,8 @@ campo pe_idata_x64() -> Bytes ::
   guarda oft_rva := PeIdataRvaX64 + 40
   guarda iat_rva := PeIdataRvaX64 + PeIatOffsetX64
   guarda dll_rva := PeIdataRvaX64 + PeDllOffsetX64
-  guarda hint_rva := PeIdataRvaX64 + PeHintNameOffsetX64
+  guarda exit_hint_rva := PeIdataRvaX64 + PeExitProcessHintX64
+  guarda virtual_hint_rva := PeIdataRvaX64 + PeVirtualAllocHintX64
 
   nativo_u32_le(idata, oft_rva)
   nativo_u32_le(idata, 0)
@@ -152,16 +161,24 @@ campo pe_idata_x64() -> Bytes ::
   nativo_u32_le(idata, iat_rva)
   nativo_preenche_ate(idata, 40, 0)
 
-  nativo_u64_le(idata, hint_rva)
+  nativo_u64_le(idata, exit_hint_rva)
+  nativo_u64_le(idata, virtual_hint_rva)
   nativo_u64_le(idata, 0)
-  nativo_u64_le(idata, hint_rva)
+
+  nativo_u64_le(idata, exit_hint_rva)
+  nativo_u64_le(idata, virtual_hint_rva)
   nativo_u64_le(idata, 0)
 
   bytes_coloca_texto(idata, "KERNEL32.dll")
   bytes_coloca_byte(idata, 0)
-  nativo_preenche_ate(idata, PeHintNameOffsetX64, 0)
+  nativo_preenche_ate(idata, PeExitProcessHintX64, 0)
   nativo_u16_le(idata, 0)
   bytes_coloca_texto(idata, "ExitProcess")
+  bytes_coloca_byte(idata, 0)
+
+  nativo_preenche_ate(idata, PeVirtualAllocHintX64, 0)
+  nativo_u16_le(idata, 0)
+  bytes_coloca_texto(idata, "VirtualAlloc")
   bytes_coloca_byte(idata, 0)
   devolve idata
 fecha
