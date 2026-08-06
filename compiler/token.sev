@@ -47,7 +47,6 @@ campo token_e(valor: Token, marca: Texto) -> Bit ::
   devolve valor.marca == marca
 fecha
 
-
 campo token_marca_letra(caractere: Texto) -> Bit ::
   devolve (caractere >= "a" e caractere <= "z") ou (caractere >= "A" e caractere <= "Z") ou caractere == "_"
 fecha
@@ -73,7 +72,7 @@ campo token_marca_numero(marca: Texto) -> Bit ::
 fecha
 
 campo token_marca_texto(marca: Texto) -> Bit ::
-  devolve sys_texto_tamanho(marca) >= 2 e sys_texto_caractere(marca, 0) == """
+  devolve sys_texto_tamanho(marca) >= 2 e sys_texto_caractere(marca, 0) == "\""
 fecha
 
 campo token_nome(valor: Token) -> Bit ::
