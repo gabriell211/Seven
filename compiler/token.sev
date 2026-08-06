@@ -55,13 +55,9 @@ campo token_marca_digito(caractere: Texto) -> Bit ::
   devolve caractere >= "0" e caractere <= "9"
 fecha
 
-campo token_marca_reservada(marca: Texto) -> Bit ::
-  devolve marca == "modulo" ou marca == "usa" ou marca == "como" ou marca == "campo" ou marca == "extern" ou marca == "molde" ou marca == "selo" ou marca == "const" ou marca == "guarda" ou marca == "solta" ou marca == "vira" ou marca == "diga" ou marca == "veja" ou marca == "outro" ou marca == "gira" ou marca == "para" ou marca == "cada" ou marca == "em" ou marca == "devolve" ou marca == "caixa" ou marca == "marca" ou marca == "pega" ou marca == "zona" ou marca == "falha" ou marca == "fecha" ou marca == "toca" ou marca == "requer" ou marca == "liga" ou marca == "sim" ou marca == "nao" ou marca == "nulo" ou marca == "e" ou marca == "ou"
-fecha
-
 campo token_marca_nome(marca: Texto) -> Bit ::
   guarda total := sys_texto_tamanho(marca)
-  veja total == 0 ou token_marca_reservada(marca) ou nao token_marca_letra(sys_texto_caractere(marca, 0)) :: devolve nao fecha
+  veja total == 0 ou nao token_marca_letra(sys_texto_caractere(marca, 0)) :: devolve nao fecha
   solta indice: U64 := 1
   gira indice < total ::
     guarda caractere := sys_texto_caractere(marca, indice)
@@ -83,8 +79,8 @@ campo token_nome(valor: Token) -> Bit ::
   devolve valor.tipo == Nome
 fecha
 
-campo token_palavra(valor: Token) -> Bit ::
-  devolve valor.tipo == Palavra
+campo token_nome_contextual(valor: Token) -> Bit ::
+  devolve valor.tipo == Nome ou valor.tipo == Palavra
 fecha
 
 campo token_numero(valor: Token) -> Bit ::
@@ -93,10 +89,6 @@ fecha
 
 campo token_texto(valor: Token) -> Bit ::
   devolve valor.tipo == TextoLit
-fecha
-
-campo token_final(valor: Token) -> Bit ::
-  devolve valor.tipo == Fim
 fecha
 
 campo fluxo_tem_erros(fluxo: FluxoTokens) -> Bit ::
