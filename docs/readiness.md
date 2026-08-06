@@ -1,124 +1,80 @@
 # Seven Readiness
 
-## Release State
+## Current classification
 
-Seven 0.1.0 is ready as a public foundation repository.
+Seven 0.1.0 is a functional foundation release under production hardening.
+It is not declared production-ready merely because source files, native seeds or
+installers exist. Readiness must be demonstrated by executable gates.
 
-It includes:
+The supported foundation already includes:
 
-- official identity and creator metadata;
-- official logo, mark and Windows icon;
-- language specification;
-- compiler source in `.sev`;
-- Seven-0 bootstrap source;
-- bytecode and seed specifications;
-- runtime and VM source in `.sev`;
-- platform ABI and target contracts;
-- Seven-native toolchain source for CLI, installer, formatter, test runner,
-  LSP server, release preparation, foundation verification and bootstrap
-  verification;
-- full standard library surface;
-- frontend CSS system;
-- examples;
-- conformance suites;
-- Windows bootstrap executable;
-- checksums for binary artifacts.
+- the `.sev` language surface and specification;
+- compiler, runtime, VM and toolchain sources written in Seven;
+- deterministic `.svbc` generation;
+- native bootstrap executables for Windows x64 and Linux x64;
+- native installers with installation and uninstallation tests;
+- a TextMate grammar and editor assets;
+- valid and invalid conformance suites;
+- checksummed bootstrap artifacts.
 
-## Executable
+## Required evidence
 
-`bin/seven.exe` supports:
+A production-readiness claim requires all of the following:
 
-```text
-seven --version
-seven check <file.sev>
-seven build <file.sev> [out.svbc]
-seven run <file.sev>
-```
+1. valid conformance programs are accepted;
+2. invalid conformance programs are rejected with stable diagnostics;
+3. `check`, `build` and `run` exercise real compiler and runtime behavior;
+4. generated SVBC is structurally validated before execution;
+5. memory allocations and indexed accesses are bounded;
+6. Windows and Linux installers install, execute and uninstall successfully;
+7. the canonical grammar and editor grammar remain identical;
+8. no public compiler, runtime or standard-library surface silently delegates to
+   a placeholder intrinsic;
+9. `seed -> seven0 -> seven -> seven.self` produces equivalent deterministic
+   outputs;
+10. releases are reproducible, checksummed, signed and accompanied by an SBOM.
 
-## Foundation Verification
+## Automated gates
 
-The foundation release has an explicit verifier:
-
-```powershell
-.\tools\verify-foundation.ps1
-```
-
-This verifier checks the Windows bootstrap executable, valid conformance files,
-standard library files, SVBC envelope generation, development VM execution,
-package lock generation, LSP symbol publication, FFI header generation, runtime
-command execution surface for `build/seven.svbc verify foundation` and
-`build/seven.svbc verify bootstrap`, `build/seven.launcher.svbc verify bootstrap`
-and `build/seven.svbc verify production`, absence of JavaScript/TypeScript
-runtime in the official source tree and invalid conformance diagnostics.
-
-The development CLI exposes the current operational gates:
-
-```powershell
-.\tools\seven-dev.ps1 check .\examples\hello.sev
-.\tools\seven-dev.ps1 run .\examples\hello.sev
-.\tools\seven-dev.ps1 debug .\examples\control.sev --break 8 --locals
-.\tools\seven-dev.ps1 pkg add std.http 1.0.0 registry
-.\tools\seven-dev.ps1 pkg verify
-.\tools\seven-dev.ps1 pkg install
-.\tools\seven-dev.ps1 ffi header .\examples\interop-c\main.sev .\build\interop-c.h
-.\tools\seven-dev.ps1 ffi manifest .\examples\interop-c\main.sev .\build\interop-c.json
-```
-
-The Windows bootstrap executable and PowerShell verifier remain foundation
-bridges. The production compiler should absorb these development gates into the
-self-hosted `seven`.
-
-The launcher contract now lives in `compiler/toolchain/launcher.sev`; release and
-install plans carry a `seven.launcher` manifest and `seven.launcher.svbc`
-bytecode. This is the verified handoff point before replacing the transitional
-host with a real self-hosted executable.
-
-The official replacement path is documented in [Bridge retirement](bridge-retirement.md):
+The repository uses two complementary workflows:
 
 ```text
-tools/verify-foundation.ps1 -> seven verify foundation
-seven verify bootstrap       -> equivalencia seven == seven.self
-seven verify production      -> checklist dos 10 pontos
-bin/seven.exe               -> seed -> seven0 -> seven -> seven.self
+.github/workflows/foundation.yml
+.github/workflows/readiness.yml
 ```
 
-## Enterprise Readiness
+`foundation.yml` validates the audited bootstrap archive, native compiler
+execution, deterministic bytecode and Windows/Linux installer lifecycle.
 
-Seven 0.1.0 is enterprise-evaluable as a foundation release. It has explicit
-verification for bootstrap behavior, checksums, conformance, packages, LSP and
-FFI, but it is not yet a final enterprise production compiler.
+`readiness.yml` deliberately goes further. It executes the compiler against the
+valid and invalid conformance suites, validates grammar synchronization, checks
+memory regression coverage and rejects known production placeholders.
 
-Company evaluations should use:
+A green foundation workflow does not override a failing readiness workflow.
 
-- [Market readiness](market-readiness.md);
-- [C and JavaScript parity](c-js-parity.md);
-- [Enterprise readiness](enterprise-readiness.md);
-- [Security policy](../SECURITY.md);
-- [Support scope](../SUPPORT.md);
-- `.\tools\verify-foundation.ps1`.
+## Bootstrap status
 
-## Market Readiness
-
-Seven's market-readiness target is self-reliance: compiler, runtime, standard
-library and primary tooling must be Seven-native before 1.0 production claims.
-Host tools and bootstrap artifacts are allowed only as auditable bridges.
-
-The foundation verifier now guards the official core source roots against
-permanent host-language source files, rejects JavaScript/TypeScript/npm in the
-official tree, requires the Seven-native toolchain surface and checks the
-standard library. This is a baseline check, not a substitute for the full
-self-hosting chain.
-
-## Production Gate
-
-Seven should be called production-ready only after:
+Native bootstrap binaries are transition artifacts. They make the repository
+executable and auditable, but they are not by themselves proof of self-hosting.
+The production chain remains:
 
 ```text
 seed -> seven0 -> seven -> seven.self
 ```
 
-passes with equivalent output.
+The final proof is deterministic equivalence between the compiler produced by
+Seven-0, the compiler produced by Seven and the compiler rebuilt by itself.
 
-The detailed production checklist is in [Production gate](production-gate.md).
+## Usage classification
 
-Until then, Seven 0.1.0 is a complete foundation release, not a final 1.0 production compiler.
+Until every production gate passes, Seven is suitable for:
+
+- compiler and runtime development;
+- language experiments;
+- conformance work;
+- editor integration;
+- isolated prototypes and non-critical pilots.
+
+It must not yet be presented as a final compiler for business-critical workloads.
+When all gates pass, this document and the release metadata must be updated in
+the same reviewed change that promotes the release.
