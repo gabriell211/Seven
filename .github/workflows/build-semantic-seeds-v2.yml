@@ -26,7 +26,7 @@ jobs:
           path = Path("${{ runner.temp }}/seven-bootstrap.c")
           source = path.read_text()
           old = "if(!var_by(vars,nv,n)&&!func_by(funcs,nf,n)&&!known_word(n))"
-          new = "if(!strchr(n,'.')&&!var_by(vars,nv,n)&&!func_by(funcs,nf,n)&&!known_word(n))"
+          new = "if(!strstr(n,\".\")&&!var_by(vars,nv,n)&&!func_by(funcs,nf,n)&&!known_word(n))"
           if old not in source:
               raise SystemExit("semantic return-name rule not found")
           path.write_text(source.replace(old, new))
