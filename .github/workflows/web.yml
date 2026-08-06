@@ -1,0 +1,72 @@
+name: Seven WebAssembly
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seven-webassembly-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  webassembly:
+    name: Seven-native WebAssembly backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct audited Seven compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo 'a2d09138008ae7223683681443663da8d4c58b39600cbaf3bef11889c2495ad3  build/native-seeds.zip' | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          echo '2f073ab8101742006728a491b3093ddb093d202289002d13cc2a6a03dfa55dcb  build/native-seeds/seven-linux' | sha256sum --check
+          chmod +x build/native-seeds/seven-linux
+
+      - name: Validate Seven WebAssembly sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven=build/native-seeds/seven-linux
+          "$seven" check compiler/wasm.sev
+          "$seven" check compiler/toolchain/web_build.sev
+          "$seven" check runtime/platform/web/target.sev
+          "$seven" check runtime/platform/web/manifest.sev
+          "$seven" check tests/compiler/wasm.sev
+
+      - name: Enforce zero foreign-language implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find compiler compiler0 runtime std bootstrap tests/compiler \
+            -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' \
+            -o -name '*.rs' -o -name '*.go' -o -name '*.py' -o -name '*.js' \
+            -o -name '*.mjs' -o -name '*.ts' -o -name '*.cs' -o -name '*.java' \) \
+            -print -quit | grep -q .; then
+            echo 'Foreign-language implementation source detected.'
+            exit 1
+          fi
+
+      - name: Verify direct WebAssembly contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'campo emite_wasm' compiler/wasm.sev
+          grep -q 'wasm_secao_tipos' compiler/wasm.sev
+          grep -q 'wasm_secao_imports' compiler/wasm.sev
+          grep -q 'wasm_secao_codigo' compiler/wasm.sev
+          grep -q 'wasm_secao_dados' compiler/wasm.sev
+          grep -q 'app.wasm' compiler/toolchain/web_build.sev
+          grep -q 'seven_start' compiler/toolchain/web_build.sev
+          grep -q 'extensao_fonte: ".sev"' runtime/platform/web/target.sev
+          ! grep -R -n 'app.svbc\|seven-runtime.js\|sys_web_empacota' \
+            compiler/wasm.sev compiler/toolchain/web_build.sev runtime/platform/web
