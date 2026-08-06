@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - .github/scripts/rebuild-web-seeds.sh
+      - .github/scripts/run-rebuild-web-seeds.sh
       - .github/workflows/rebuild-web-seeds.yml
   workflow_dispatch:
 
@@ -27,4 +28,4 @@ jobs:
 
       - name: Rebuild and validate Seven 0.2 seeds
         shell: bash
-        run: bash .github/scripts/rebuild-web-seeds.sh
+        run: bash .github/scripts/run-rebuild-web-seeds.sh
