@@ -19,17 +19,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Reconstruct the audited Genesis host
+      - name: Reconstruct the audited bootstrap
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build
           cat bootstrap/seed/v2/part*.b64 | tr -d '\r\n\t ' | base64 --decode | gzip --decompress > build/seven0.seed.svbc
           echo '123f5b513bcae7774671898f471441b3c71efd570acad91fa634cbc5f33bb223  build/seven0.seed.svbc' | sha256sum --check
-          base64 --decode bootstrap/staging/genesis-host.c.gz.b64 | gzip --decompress > build/genesis-host.c
-          echo 'a6199eb4b40b8ae18c1bdf80aca9d3e3a4c1ded6dd8d6c97a038d1ff1718eb0a  bootstrap/staging/genesis-host.c.gz.b64' | sha256sum --check
-          echo '02c5f7b3b579af450be1267ad7ea67834f5d156632c87bba9bde1dc65ffabd03  build/genesis-host.c' | sha256sum --check
-          gcc -O2 -std=c11 -Wall -Wextra -Werror build/genesis-host.c -o build/genesis-host
+          (cd bootstrap/host/v2 && sha256sum --check SHA256SUMS)
+          gcc -O2 -std=c11 -Wall -Wextra -Werror bootstrap/host/v2/genesis-host.c -o build/genesis-host
 
       - name: Rebuild Seven-0 to its fixed point
         shell: bash
@@ -181,6 +179,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          host_source_hash=$(cat bootstrap/host/v2/genesis-host.c bootstrap/host/v2/genesis-host.part*.inc | sha256sum | awk '{print $1}')
           stage0_hash=$(sha256sum build/seven0.svbc | awk '{print $1}')
           source_hash=$(sha256sum build/seven.stage1.monolith.sev | awk '{print $1}')
           stage1_hash=$(sha256sum build/seven.stage1.svbc | awk '{print $1}')
@@ -189,6 +188,8 @@ jobs:
           cat > build/stage1.provenance <<EOF
           formato seven-bootstrap-provenance-v2
           etapa stage1
+          host_fontes bootstrap/host/v2
+          host_fontes_sha256 $host_source_hash
           executor build/seven0.svbc
           executor_sha256 $stage0_hash
           entrada build/seven.stage1.monolith.sev
