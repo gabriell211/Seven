@@ -1,8 +1,6 @@
 modulo seven0.check
 
-usa seven0.primitives
-usa seven0.ast
-usa seven0.diagnostic
+
 
 molde Simbolo ::
   nome: Texto
@@ -272,7 +270,7 @@ fecha
 
 campo bloco_tem_retorno(bloco: No) -> Bit ::
   para cada comando em bloco.filhos ::
-    veja comando.especie == "retorno" :: devolve sim fecha
+    veja comando.especie == "retorno" ou comando.especie == "falha" :: devolve sim fecha
     veja comando.especie == "se" ::
       veja lista_no_tamanho(comando.filhos) > 2 e bloco_tem_retorno(lista_no_pega(comando.filhos, 1)) e bloco_tem_retorno(lista_no_pega(comando.filhos, 2)) ::
         devolve sim
