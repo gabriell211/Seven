@@ -63,7 +63,7 @@ campo intr_cmd_args_verify_production(args: Lista<ValorVm>) -> Resultado<ValorVm
 fecha
 
 campo intr_cmd_help(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca terminal ::
-  svbc_terminal_escreve("seven <check|build|run|test|bench|fmt|lint|doc|repl|debug|profile|doctor|install|lsp|pkg|target|web|serve|release|verify>")
+  svbc_terminal_escreve("seven estavel <check|build|run|test|doctor|install|uninstall|installer|verify>")
   devolve Valor(VmNum(0))
 fecha
 
@@ -73,7 +73,7 @@ campo intr_cmd_version(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca t
 fecha
 
 campo intr_cmd_unimplemented(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca terminal ::
-  svbc_terminal_escreve("comando ainda nao implementado no SVBC de transicao: " + valor_texto(lista_pega(args, 0)))
+  svbc_terminal_escreve("comando fora da superficie estavel da Seven 0.1: " + valor_texto(lista_pega(args, 0)))
   devolve Valor(VmNum(2))
 fecha
 
