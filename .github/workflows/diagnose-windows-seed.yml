@@ -30,15 +30,16 @@ jobs:
         shell: pwsh
         run: |
           $seven = Join-Path $PWD 'build/native-seeds/seven-windows.exe'
+          [IO.File]::WriteAllBytes('empty.sev', [byte[]]@())
+          [IO.File]::WriteAllText('one.sev', 'x', [Text.UTF8Encoding]::new($false))
+          [IO.File]::WriteAllText('minimal.sev', "modulo a`n", [Text.UTF8Encoding]::new($false))
           Copy-Item examples/hello.sev hello.sev
           $cases = @(
-            @('--version'),
-            @('doctor'),
-            @('verify', 'foundation'),
             @('check', 'arquivo-inexistente.sev'),
-            @('check', 'hello.sev'),
-            @('run', 'hello.sev'),
-            @('web', 'build', 'hello.sev', 'build/web-diagnostic')
+            @('check', 'empty.sev'),
+            @('check', 'one.sev'),
+            @('check', 'minimal.sev'),
+            @('check', 'hello.sev')
           )
           foreach ($case in $cases) {
             Write-Host ('COMMAND: seven ' + ($case -join ' '))
