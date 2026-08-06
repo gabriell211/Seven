@@ -1,0 +1,137 @@
+modulo seven.compiler.types
+
+usa seven.compiler.ast
+usa seven.compiler.symbols
+usa seven.compiler.source
+usa seven.compiler.diagnostic
+
+campo confere_argumentos(
+  argumentos: Lista<Expressao>,
+  parametros: Lista<Tipo>,
+  locais: Mapa<Texto, VinculoTipo>,
+  programa: Programa,
+  simbolos: TabelaSimbolos,
+  tabela: TabelaTipos,
+  local: Span
+) -> Nada ::
+  veja lista_tamanho(argumentos) != lista_tamanho(parametros) ::
+    reporta_tipo(tabela, "SV-TIPO-ARIDADE", "quantidade de argumentos difere da assinatura", local)
+  fecha
+
+  solta indice: U64 := 0
+  gira indice < lista_tamanho(argumentos) e indice < lista_tamanho(parametros) ::
+    guarda recebido := infere_expressao(lista_pega(argumentos, indice), locais, programa, simbolos, tabela)
+    exige_compativel(tabela, lista_pega(parametros, indice), recebido, local, "argumento " + texto(indice + 1))
+    vira indice := indice + 1
+  fecha
+fecha
+
+campo tipo_alvo(
+  alvo: Expressao,
+  locais: Mapa<Texto, VinculoTipo>,
+  programa: Programa,
+  simbolos: TabelaSimbolos,
+  tabela: TabelaTipos
+) -> Tipo ::
+  veja alvo e ExprNome ::
+    guarda vinculo := mapa_pega(locais, alvo.valor.nome)
+    veja vinculo e Algo ::
+      veja nao vinculo.valor.mutavel ::
+        reporta_tipo(tabela, "SV-TIPO-IMUTAVEL", "vinculo '" + alvo.valor.nome + "' e imutavel", alvo.valor.span)
+      fecha
+      devolve vinculo.valor.tipo
+    fecha
+  fecha
+  devolve infere_expressao(alvo, locais, programa, simbolos, tabela)
+fecha
+
+campo exige_compativel(tabela: TabelaTipos, esperado: Tipo, recebido: Tipo, local: Span, contexto: Texto) -> Nada ::
+  veja tipos_compativeis(esperado, recebido) ::
+    devolve nulo
+  fecha
+  lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+    "SV-TIPO-INCOMPATIVEL",
+    contexto + " possui tipo incompativel",
+    local.arquivo,
+    local.linha,
+    local.coluna,
+    "esperado " + tipo_textual(esperado) + ", recebido " + tipo_textual(recebido)
+  ))
+fecha
+
+campo tipos_compativeis(a: Tipo, b: Tipo) -> Bit ::
+  veja a == b ou a == TipoDesconhecido ou b == TipoDesconhecido :: devolve sim fecha
+  veja a e TipoGenerico :: devolve sim fecha
+  veja b e TipoGenerico :: devolve sim fecha
+  veja a e TipoLista ::
+    veja b e TipoLista :: devolve tipos_compativeis(a.item, b.item) fecha
+  fecha
+  veja a e TipoFatia ::
+    veja b e TipoFatia :: devolve tipos_compativeis(a.item, b.item) fecha
+  fecha
+  veja a e TipoPonteiro ::
+    veja b e TipoPonteiro :: devolve tipos_compativeis(a.item, b.item) fecha
+  fecha
+  veja a e TipoAplicado ::
+    veja b e TipoMolde :: devolve a.nome == b.nome fecha
+    veja b e TipoSelo :: devolve a.nome == b.nome fecha
+    veja b e TipoAplicado :: devolve a.nome == b.nome fecha
+  fecha
+  veja b e TipoAplicado ::
+    veja a e TipoMolde :: devolve b.nome == a.nome fecha
+    veja a e TipoSelo :: devolve b.nome == a.nome fecha
+  fecha
+  veja a e TipoCampo ::
+    veja b e TipoCampo ::
+      devolve tipos_compativeis(a.retorno, b.retorno)
+    fecha
+  fecha
+  devolve tipo_numerico(a) e tipo_numerico(b)
+fecha
+
+campo nome_tipo_maiusculo(nome: Texto) -> Bit ::
+  veja sys_texto_tamanho(nome) == 0 :: devolve nao fecha
+  guarda primeiro := sys_texto_caractere(nome, 0)
+  devolve primeiro == "A" ou primeiro == "B" ou primeiro == "C" ou primeiro == "D" ou primeiro == "E" ou primeiro == "F" ou primeiro == "G" ou primeiro == "H" ou primeiro == "I" ou primeiro == "J" ou primeiro == "K" ou primeiro == "L" ou primeiro == "M" ou primeiro == "N" ou primeiro == "O" ou primeiro == "P" ou primeiro == "Q" ou primeiro == "R" ou primeiro == "S" ou primeiro == "T" ou primeiro == "U" ou primeiro == "V" ou primeiro == "W" ou primeiro == "X" ou primeiro == "Y" ou primeiro == "Z"
+fecha
+
+campo tipo_numerico(tipo: Tipo) -> Bit ::
+  veja tipo == TipoDesconhecido :: devolve sim fecha
+  veja tipo e TipoBase ::
+    devolve tipo.nome == "Num" ou tipo.nome == "Byte" ou tipo.nome == "I8" ou tipo.nome == "I16" ou tipo.nome == "I32" ou tipo.nome == "I64" ou tipo.nome == "U8" ou tipo.nome == "U16" ou tipo.nome == "U32" ou tipo.nome == "U64" ou tipo.nome == "Real32" ou tipo.nome == "Real64"
+  fecha
+  devolve nao
+fecha
+
+campo tipo_texto(tipo: Tipo) -> Bit ::
+  veja tipo e TipoBase ::
+    devolve tipo.nome == "Texto"
+  fecha
+  devolve nao
+fecha
+
+campo tipo_item(tipo: Tipo) -> Tipo ::
+  veja tipo e TipoLista :: devolve tipo.item fecha
+  veja tipo e TipoFatia :: devolve tipo.item fecha
+  veja tipo e TipoPonteiro :: devolve tipo.item fecha
+  devolve TipoDesconhecido
+fecha
+
+campo tipo_textual(tipo: Tipo) -> Texto ::
+  veja tipo e TipoBase :: devolve tipo.nome fecha
+  veja tipo e TipoMolde :: devolve tipo.nome fecha
+  veja tipo e TipoSelo :: devolve tipo.nome fecha
+  veja tipo e TipoGenerico :: devolve tipo.nome fecha
+  veja tipo e TipoLista :: devolve "Lista<" + tipo_textual(tipo.item) + ">" fecha
+  veja tipo e TipoFatia :: devolve "Fatia<" + tipo_textual(tipo.item) + ">" fecha
+  veja tipo e TipoPonteiro :: devolve "Ptr<" + tipo_textual(tipo.item) + ">" fecha
+  veja tipo e TipoAplicado :: devolve tipo.nome fecha
+  veja tipo e TipoCampo :: devolve "Campo -> " + tipo_textual(tipo.retorno) fecha
+  veja tipo == TipoNada :: devolve "Nada" fecha
+  veja tipo == TipoDesconhecido :: devolve "?" fecha
+  devolve "tipo"
+fecha
+
+campo reporta_tipo(tabela: TabelaTipos, codigo: Texto, mensagem: Texto, local: Span) -> Nada ::
+  lista_coloca(tabela.diagnosticos, erro(codigo, mensagem, local.arquivo, local.linha, local.coluna))
+fecha
