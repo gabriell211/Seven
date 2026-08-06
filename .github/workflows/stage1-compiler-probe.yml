@@ -104,10 +104,24 @@ jobs:
             diga("stage1 indice=" + pedido.pacote.indice_fontes)
             guarda fontes := fonte_carrega_pacote(pedido.pacote)
             diga("stage1 fontes=" + texto(lista_tamanho(fontes.arquivos)))
+            para cada fonte em fontes.arquivos ::
+              diga("stage1 fonte=" + fonte.caminho)
+              diga("stage1 texto=" + texto(sys_texto_tamanho(fonte.texto)))
+            fecha
             guarda fluxos := varre_unidade(fontes)
             diga("stage1 fluxos=" + texto(lista_tamanho(fluxos)))
+            para cada fluxo em fluxos ::
+              diga("stage1 tokens=" + texto(lista_tamanho(fluxo.tokens)))
+              solta indice_token: U64 := 0
+              gira indice_token < lista_tamanho(fluxo.tokens) e indice_token < 24 ::
+                guarda atual_token_stage1 := lista_pega(fluxo.tokens, indice_token)
+                diga("stage1 token=" + atual_token_stage1.marca)
+                vira indice_token := indice_token + 1
+              fecha
+            fecha
             guarda sintaxe := monta_unidade(fluxos)
             diga("stage1 programas=" + texto(lista_tamanho(sintaxe.programas)))
+            diga("stage1 diagnosticos=" + texto(lista_tamanho(sintaxe.diagnosticos)))
             solta total_itens: U64 := 0
             para cada programa em sintaxe.programas ::
               vira total_itens := total_itens + lista_tamanho(programa.itens)
