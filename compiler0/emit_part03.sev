@@ -1,0 +1,168 @@
+modulo seven0.emit
+
+usa std.base.lista
+usa seven0.primitives
+usa seven0.ast
+usa seven0.check
+usa seven0.svbc0
+
+campo local_indice_opcional(contexto: ContextoCampo, nome: Texto) -> Num ::
+  solta indice: U64 := 0
+  gira indice < lista_tamanho(contexto.locais) ::
+    guarda local := lista_pega(contexto.locais, indice)
+    veja local.nome == nome :: devolve Num(local.indice) fecha
+    vira indice := indice + 1
+  fecha
+  devolve -1
+fecha
+
+campo emite_instrucao(contexto: ContextoEmissao, opcode: Byte, a: U32, b: U32) -> U32 ::
+  guarda indice := U32(lista_tamanho(contexto.codigo))
+  lista_coloca(contexto.codigo, InstrucaoEmitida {
+    opcode: opcode,
+    a: a,
+    b: b
+  })
+  devolve indice
+fecha
+
+campo corrige_a(contexto: ContextoEmissao, indice: U32, valor: U32) -> Nada ::
+  guarda instrucao := lista_pega(contexto.codigo, indice)
+  vira instrucao.a := valor
+  lista_define(contexto.codigo, indice, instrucao)
+fecha
+
+campo nome_indice(contexto: ContextoEmissao, valor: Texto) -> U32 ::
+  solta indice: U32 := 0
+  para cada existente em contexto.nomes ::
+    veja existente == valor :: devolve indice fecha
+    vira indice := indice + 1
+  fecha
+  lista_coloca(contexto.nomes, valor)
+  devolve indice
+fecha
+
+campo texto_indice_pool(contexto: ContextoEmissao, valor: Texto) -> U32 ::
+  solta indice: U32 := 0
+  para cada existente em contexto.textos ::
+    veja existente == valor :: devolve indice fecha
+    vira indice := indice + 1
+  fecha
+  lista_coloca(contexto.textos, valor)
+  devolve indice
+fecha
+
+campo numero_indice(contexto: ContextoEmissao, valor: U32) -> U32 ::
+  solta indice: U32 := 0
+  para cada existente em contexto.numeros ::
+    veja existente == valor :: devolve indice fecha
+    vira indice := indice + 1
+  fecha
+  lista_coloca(contexto.numeros, valor)
+  devolve indice
+fecha
+
+campo campo_interno_indice(programa: Programa, nome: Texto) -> Num ::
+  solta indice_item: U64 := 0
+  solta indice_campo: U32 := 0
+  gira indice_item < lista_no_tamanho(programa.itens) ::
+    guarda item := lista_no_pega(programa.itens, indice_item)
+    veja item.especie == "campo" ::
+      veja item.nome == nome :: devolve Num(indice_campo) fecha
+      vira indice_campo := indice_campo + 1
+    fecha
+    vira indice_item := indice_item + 1
+  fecha
+  devolve -1
+fecha
+
+campo constante_por_nome(programa: Programa, nome: Texto) -> No ::
+  solta indice: U64 := 0
+  gira indice < lista_no_tamanho(programa.itens) ::
+    guarda item := lista_no_pega(programa.itens, indice)
+    veja item.especie == "const" e item.nome == nome :: devolve item fecha
+    vira indice := indice + 1
+  fecha
+  devolve no("ausente", "", "", "", 0, 0)
+fecha
+
+campo variante_por_nome(programa: Programa, nome: Texto) -> No ::
+  solta indice_item: U64 := 0
+  gira indice_item < lista_no_tamanho(programa.itens) ::
+    guarda item := lista_no_pega(programa.itens, indice_item)
+    veja item.especie == "selo" ::
+      solta indice_variante: U64 := 0
+      gira indice_variante < lista_no_tamanho(item.filhos) ::
+        guarda variante := lista_no_pega(item.filhos, indice_variante)
+        veja variante.especie == "variante" e variante.nome == nome :: devolve variante fecha
+        vira indice_variante := indice_variante + 1
+      fecha
+    fecha
+    vira indice_item := indice_item + 1
+  fecha
+  devolve no("ausente", "", "", "", 0, 0)
+fecha
+
+campo chamada_lista(nome: Texto) -> Bit ::
+  devolve nome == "lista" ou nome == "lista_texto" ou nome == "lista_token" ou nome == "lista_no" ou nome == "lista_simbolo" ou nome == "lista_diagnostico"
+fecha
+
+campo chamada_numerica(nome: Texto) -> Bit ::
+  devolve nome == "U32" ou nome == "U64" ou nome == "Num" ou nome == "Byte" ou nome == "Real64"
+fecha
+
+campo nome_maiusculo(nome: Texto) -> Bit ::
+  veja texto_tamanho(nome) == 0 :: devolve nao fecha
+  guarda primeiro := texto_caractere(nome, 0)
+  devolve primeiro >= "A" e primeiro <= "Z"
+fecha
+
+campo texto_indice(valor: Texto, procurado: Texto) -> Num ::
+  solta indice: U64 := 0
+  gira indice < texto_tamanho(valor) ::
+    veja texto_caractere(valor, indice) == procurado :: devolve Num(indice) fecha
+    vira indice := indice + 1
+  fecha
+  devolve -1
+fecha
+
+campo serializa_svbc0(contexto: ContextoEmissao) -> Bytes ::
+  solta bytes := bytes_novo()
+  bytes_escreve_texto(bytes, MagicSvbc0)
+  bytes_u32(bytes, VersaoSvbc0)
+  serializa_textos(bytes, contexto.nomes)
+  serializa_textos(bytes, contexto.textos)
+  serializa_numeros(bytes, contexto.numeros)
+  serializa_campos(bytes, contexto)
+  serializa_codigo(bytes, contexto.codigo)
+  devolve bytes
+fecha
+
+campo serializa_textos(bytes: Bytes, valores: Lista<Texto>) -> Nada ::
+  bytes_u32(bytes, U32(lista_tamanho(valores)))
+  para cada valor em valores :: bytes_texto_com_tamanho(bytes, valor) fecha
+fecha
+
+campo serializa_numeros(bytes: Bytes, valores: Lista<U32>) -> Nada ::
+  bytes_u32(bytes, U32(lista_tamanho(valores)))
+  para cada valor em valores :: bytes_u32(bytes, valor) fecha
+fecha
+
+campo serializa_campos(bytes: Bytes, contexto: ContextoEmissao) -> Nada ::
+  bytes_u32(bytes, U32(lista_tamanho(contexto.campos)))
+  para cada campo em contexto.campos ::
+    bytes_u32(bytes, nome_indice(contexto, campo.nome))
+    bytes_u32(bytes, campo.entrada)
+    bytes_u32(bytes, campo.locais)
+    bytes_u32(bytes, campo.parametros)
+  fecha
+fecha
+
+campo serializa_codigo(bytes: Bytes, codigo: Lista<InstrucaoEmitida>) -> Nada ::
+  bytes_u32(bytes, U32(lista_tamanho(codigo)))
+  para cada instrucao em codigo ::
+    bytes_byte(bytes, instrucao.opcode)
+    bytes_u32(bytes, instrucao.a)
+    bytes_u32(bytes, instrucao.b)
+  fecha
+fecha
