@@ -1,0 +1,98 @@
+name: Seven Stage 1 Compiler Probe
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seven-stage1-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct autonomous Seven-0
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+
+          cat bootstrap/seed/v2/part*.b64 | tr -d '\r\n\t ' | base64 --decode | gzip --decompress > build/seven0.seed.svbc
+          echo '123f5b513bcae7774671898f471441b3c71efd570acad91fa634cbc5f33bb223  build/seven0.seed.svbc' | sha256sum --check
+
+          base64 --decode bootstrap/staging/genesis-host.c.gz.b64 | gzip --decompress > build/genesis-host.c
+          echo '2f71509466eee470a5379d750b067a7e1733c0a4c1c8dd56542eb6bd5d0ec1d1  build/genesis-host.c' | sha256sum --check
+          gcc -O2 -std=c11 -Wall -Wextra -Werror build/genesis-host.c -o build/genesis-host
+
+          {
+            printf 'modulo seven0_bootstrap_monolith\n\n'
+            for arquivo in $(find compiler0 -maxdepth 1 -type f -name '*.sev' | LC_ALL=C sort); do
+              printf '// BEGIN %s\n' "$(basename "$arquivo")"
+              sed '/^modulo /d; /^usa /d' "$arquivo"
+              printf '// END %s\n\n' "$(basename "$arquivo")"
+            done
+          } > build/seven0.monolith.sev
+
+          build/genesis-host build/seven0.seed.svbc build/seven0.monolith.sev build/seven0.svbc
+          echo 'dad562c0bc695b6e2724425f3fa0b7e6af2929160a27472e256a4cdf24915678  build/seven0.svbc' | sha256sum --check
+
+      - name: Generate deterministic Stage 1 compiler monolith
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf 'modulo seven_stage1_monolith\n\n'
+            for arquivo in $(find compiler -type f -name '*.sev' | LC_ALL=C sort); do
+              printf '// BEGIN %s\n' "$arquivo"
+              sed '/^modulo /d; /^usa /d' "$arquivo"
+              printf '// END %s\n\n' "$arquivo"
+            done
+          } > build/seven.stage1.monolith.sev
+
+          sha256sum build/seven.stage1.monolith.sev | tee build/stage1-source.sha256
+          wc -c build/seven.stage1.monolith.sev | tee build/stage1-source.size
+
+      - name: Compile the full Seven compiler with Seven-0
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -uo pipefail
+          build/genesis-host build/seven0.svbc build/seven.stage1.monolith.sev build/seven.stage1.svbc 2>&1 | tee build/stage1-compile.log
+          printf '%s\n' "${PIPESTATUS[0]}" > build/stage1-compile.exit
+          exit 0
+
+      - name: Record Stage 1 evidence
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          echo 'exit:'
+          cat build/stage1-compile.exit
+          echo 'log:'
+          cat build/stage1-compile.log
+          if test -f build/seven.stage1.svbc; then
+            wc -c build/seven.stage1.svbc
+            sha256sum build/seven.stage1.svbc
+            od -An -tx1 -N16 build/seven.stage1.svbc
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: seven-stage1-compiler-probe
+          path: |
+            build/seven.stage1.monolith.sev
+            build/stage1-source.sha256
+            build/stage1-source.size
+            build/stage1-compile.log
+            build/stage1-compile.exit
+            build/seven.stage1.svbc
+          if-no-files-found: warn
