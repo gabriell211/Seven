@@ -25,11 +25,19 @@ jobs:
           from pathlib import Path
           path = Path("${{ runner.temp }}/seven-bootstrap.c")
           source = path.read_text()
-          old = "if(!var_by(vars,nv,n)&&!func_by(funcs,nf,n)&&!known_word(n))"
-          new = "if(!strstr(n,\".\")&&!var_by(vars,nv,n)&&!func_by(funcs,nf,n)&&!known_word(n))"
-          if old not in source:
+
+          old_return = "if(!var_by(vars,nv,n)&&!func_by(funcs,nf,n)&&!known_word(n))"
+          new_return = "if(!strstr(n,\".\")&&!var_by(vars,nv,n)&&!func_by(funcs,nf,n)&&!known_word(n))"
+          if old_return not in source:
               raise SystemExit("semantic return-name rule not found")
-          path.write_text(source.replace(old, new))
+          source = source.replace(old_return, new_return)
+
+          mark_rule = 'if(streq(x->text,"marca")&&i+3<f->end){ArrayInfo*a=arr_by(arr,na,t.v[i+1].text);if(a&&streq(t.v[i+2].text,"@")&&t.v[i+3].kind==TK_NUMBER&&strtoll(t.v[i+3].text,NULL,0)>=a->size)report(&r,"SV-MEM-LIMITE",&t.v[i+3],"constant index outside array bounds");}\n'
+          pega_rule = ' if(streq(x->text,"pega")){int j=i+1;while(j<f->end&&t.v[j].line==x->line&&!streq(t.v[j].text,"->"))j++;if(j+1<f->end&&streq(t.v[j].text,"->")&&t.v[j+1].kind==TK_IDENT&&!var_by(vars,nv,t.v[j+1].text)&&nv<MAX_SYMBOLS){Var*v=&vars[nv++];memset(v,0,sizeof(*v));strncpy(v->name,t.v[j+1].text,127);v->mutable_=0;v->line=x->line;}}\n'
+          if mark_rule not in source:
+              raise SystemExit("memory mark rule not found")
+          source = source.replace(mark_rule, mark_rule + pega_rule)
+          path.write_text(source)
           PY
 
       - name: Build semantic bootstrap binaries
