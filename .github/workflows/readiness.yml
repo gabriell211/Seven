@@ -29,15 +29,26 @@ jobs:
           grep -q '"fileTypes": \["sev"\]' syntax/seven.tmLanguage.json
           grep -q '"scopeName": "source.seven"' syntax/seven.tmLanguage.json
 
-      - name: Reconstruct audited Linux bootstrap
+      - name: Verify deterministic source index
+        shell: bash
+        run: |
+          set -euo pipefail
+          find compiler compiler0 runtime std bootstrap \
+            -type f -name '*.sev' -print | LC_ALL=C sort > "$RUNNER_TEMP/seven.sources"
+          cmp seven.sources "$RUNNER_TEMP/seven.sources"
+          grep -q '^indice seven.sources$' seven.pkg
+          grep -q 'indice_fontes' compiler/package.sev
+          grep -q 'fonte_carrega_indice' compiler/source.sev
+
+      - name: Reconstruct audited semantic bootstrap
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo '15bf6101addc76c36fa9637ca467bf4df13b3f717bd16210dfe6b57e5b30b39b  build/native-seeds.zip' | sha256sum --check
+          echo '37535ecb89c2add4891f8a38356a5fbce41b0d856e8c8f9ad7d4cb5796d17b88  build/native-seeds.zip' | sha256sum --check
           unzip -q build/native-seeds.zip -d build/native-seeds
-          echo 'f91edfecd7620922109609d89be16426f6f1535e02b03631b4bcd5c174e5405f  build/native-seeds/seven-linux' | sha256sum --check
+          echo 'e8b73e6515e6e6d65e27f80f6714152493f922713dfda97767e36c6c7908e3ba  build/native-seeds/seven-linux' | sha256sum --check
           chmod +x build/native-seeds/seven-linux
 
       - name: Exercise compiler and conformance behavior
@@ -74,6 +85,16 @@ jobs:
           echo "readiness failures: $failures"
           test "$failures" -eq 0
 
+      - name: Check every indexed Seven source
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$PWD/build/native-seeds/seven-linux"
+          while IFS= read -r file; do
+            echo "source: $file"
+            "$seven" check "$file"
+          done < seven.sources
+
       - name: Reject production placeholders
         shell: bash
         run: |
@@ -83,10 +104,13 @@ jobs:
             exit 1
           fi
 
-      - name: Verify memory and installer regression coverage
+      - name: Verify compiler contracts and regressions
         shell: bash
         run: |
           set -euo pipefail
+          grep -q 'aplica_linha_manifesto' compiler/package.sev
+          grep -q 'pedido_caso_teste' compiler/toolchain/test_runner.sev
+          ! grep -q 'pedido_de_compilacao(lista<Texto>())' compiler/toolchain/test_runner.sev
           grep -q 'LimiteBlocoMemoria' runtime/svbc/memory.sev
           grep -q 'rejeita bloco maior que 64 MiB' tests/runtime/svbc_memory.sev
           grep -q 'uninstall' compiler/toolchain/installer.sev
