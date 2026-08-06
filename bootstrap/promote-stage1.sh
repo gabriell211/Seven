@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+git fetch origin stage1-self-host-clean --depth=1
+git show FETCH_HEAD:bootstrap/final-stage1.tar.gz.b64 | base64 --decode > "$RUNNER_TEMP/stage1.tar.gz"
+tar -tzf "$RUNNER_TEMP/stage1.tar.gz" | grep -Ev '(^|/)(\.github|bootstrap/final|bootstrap/\.stage1|build)(/|$)' > "$RUNNER_TEMP/paths"
+test -s "$RUNNER_TEMP/paths"
+tar -xzf "$RUNNER_TEMP/stage1.tar.gz"
+! grep -RniE 'chatgpt|openai|assistente|parser pos|stage1 argumentos|debug' compiler compiler0 std bootstrap/host/v2
+(cd bootstrap/host/v2 && sha256sum --check SHA256SUMS)
+
+mkdir -p build
+cat bootstrap/seed/v2/part*.b64 | tr -d '\r\n\t ' | base64 --decode | gzip --decompress > build/seven0.seed.svbc
+echo '123f5b513bcae7774671898f471441b3c71efd570acad91fa634cbc5f33bb223  build/seven0.seed.svbc' | sha256sum --check
+gcc -O2 -std=c11 -Wall -Wextra -Werror bootstrap/host/v2/genesis-host.c -o build/genesis-host
+
+{
+  printf 'modulo seven0_bootstrap_monolith\n\n'
+  for arquivo in $(find compiler0 -maxdepth 1 -type f -name '*.sev' | LC_ALL=C sort); do
+    printf '// BEGIN %s\n' "$(basename "$arquivo")"
+    sed '/^modulo /d; /^usa /d' "$arquivo"
+    printf '// END %s\n\n' "$(basename "$arquivo")"
+  done
+} > build/seven0.monolith.sev
+build/genesis-host build/seven0.seed.svbc build/seven0.monolith.sev build/seven0.svbc
+build/genesis-host build/seven0.svbc build/seven0.monolith.sev build/seven0.self.svbc
+cmp build/seven0.svbc build/seven0.self.svbc
+
+cat > build/stage1.sources <<'EOF'
+std/base/lista.sev
+std/base/resultado.sev
+std/base/talvez.sev
+std/base/mapa.sev
+std/base/texto.sev
+std/mem/bytes.sev
+std/fs/file.sev
+compiler/ast.sev
+compiler/bytecode.sev
+compiler/diagnostic.sev
+compiler/driver.sev
+compiler/effects.sev
+compiler/emitter.sev
+compiler/ffi.sev
+compiler/ir.sev
+compiler/lexer.sev
+compiler/memory.sev
+compiler/package.sev
+compiler/parser.sev
+compiler/parser_cursor.sev
+compiler/semantic.sev
+compiler/source.sev
+compiler/symbols.sev
+compiler/token.sev
+compiler/types.sev
+EOF
+{
+  printf 'modulo seven_stage1_monolith\n\n'
+  while IFS= read -r arquivo; do
+    printf '// BEGIN %s\n' "$arquivo"
+    case "$arquivo" in
+      compiler/bytecode.sev) sed '/^modulo /d; /^usa /d; s/emite_constante(/bytecode_emite_constante(/g' "$arquivo" ;;
+      compiler/emitter.sev) sed '/^modulo /d; /^usa /d; s/^campo emite(/campo emite_formato(/' "$arquivo" ;;
+      *) sed '/^modulo /d; /^usa /d' "$arquivo" ;;
+    esac
+    printf '// END %s\n\n' "$arquivo"
+  done < build/stage1.sources
+  cat <<'EOF'
+campo inicio(argumentos: Lista<Texto>) -> Num toca terminal, disco, ambiente ::
+  guarda pedido := pedido_de_compilacao(argumentos)
+  guarda saida := compila(pedido)
+  veja saida e Sucesso :: devolve 0 outro :: mostra_diagnosticos(saida.diagnosticos) devolve 1 fecha
+fecha
+EOF
+} > build/seven.stage1.monolith.sev
+build/genesis-host build/seven0.svbc build/seven.stage1.monolith.sev build/seven.stage1.svbc
+
+cat > build/proof.sev <<'EOF'
+modulo stage1.prova
+campo inicio() -> Num :: devolve 42 fecha
+EOF
+printf '%s\n' build/proof.sev > build/proof.sources
+cat > build/proof.pkg <<'EOF'
+pacote proof
+versao 0.0.1
+criador Gabriel Barcelos
+entrada stage1.prova.inicio
+alvo svbc
+indice build/proof.sources
+EOF
+build/genesis-host build/seven.stage1.svbc build/proof.pkg build/proof.svbc
+set +e
+build/genesis-host build/proof.svbc
+proof_exit=$?
+set -e
+test "$proof_exit" -eq 42
+
+printf '%s\n' build/seven.stage1.monolith.sev > build/stage2.sources
+cat > build/stage2.pkg <<'EOF'
+pacote stage2
+versao 0.0.1
+criador Gabriel Barcelos
+entrada seven_stage1_monolith.inicio
+alvo svbc
+indice build/stage2.sources
+EOF
+build/genesis-host build/seven.stage1.svbc build/stage2.pkg build/seven.stage2.svbc
+build/genesis-host build/seven.stage2.svbc build/stage2.pkg build/seven.stage2.self.svbc
+cmp build/seven.stage2.svbc build/seven.stage2.self.svbc
+test "$(sha256sum build/seven.stage2.svbc | cut -d' ' -f1)" = '68897b5275d93f6599e31d5b8c8c5b36b78e329cb433b0b120e92242251c1f6a'
+
+git add bootstrap/host/v2 compiler0 compiler std
+git diff --cached --check
+if ! git diff --cached --quiet; then
+  git config user.name 'Gabriel Barcelos'
+  git config user.email '102088315+gabriell211@users.noreply.github.com'
+  git commit -m 'Complete Seven Stage 1 self-hosting'
+  git push origin HEAD:stage1-self-host-final
+fi
