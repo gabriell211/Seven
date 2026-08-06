@@ -1,23 +1,55 @@
 modulo std.base.mapa
 
+usa std.base.lista
+usa std.base.talvez
+
 molde Mapa<K, V> ::
+  chaves: Lista<K>
+  valores: Lista<V>
   tamanho: U64
 fecha
 
 campo mapa<K, V>() -> Mapa<K, V> ::
   devolve Mapa<K, V> {
+    chaves: lista<K>(),
+    valores: lista<V>(),
     tamanho: 0
   }
 fecha
 
+campo mapa_indice<K, V>(m: Mapa<K, V>, chave: K) -> Num ::
+  solta indice: U64 := 0
+  gira indice < lista_tamanho(m.chaves) ::
+    veja lista_pega(m.chaves, indice) == chave ::
+      devolve Num(indice)
+    fecha
+    vira indice := indice + 1
+  fecha
+  devolve -1
+fecha
+
 campo mapa_coloca<K, V>(m: Mapa<K, V>, chave: K, valor: V) -> Mapa<K, V> ::
-  devolve sys_mapa_coloca(m, chave, valor)
+  guarda indice := mapa_indice(m, chave)
+
+  veja indice >= 0 ::
+    vira m.valores := lista_define(m.valores, U64(indice), valor)
+    devolve m
+  fecha
+
+  vira m.chaves := lista_coloca(m.chaves, chave)
+  vira m.valores := lista_coloca(m.valores, valor)
+  vira m.tamanho := lista_tamanho(m.chaves)
+  devolve m
 fecha
 
 campo mapa_pega<K, V>(m: Mapa<K, V>, chave: K) -> Talvez<V> ::
-  devolve sys_mapa_pega(m, chave)
+  guarda indice := mapa_indice(m, chave)
+  veja indice < 0 ::
+    devolve Vazio
+  fecha
+  devolve Algo(lista_pega(m.valores, U64(indice)))
 fecha
 
 campo mapa_tem<K, V>(m: Mapa<K, V>, chave: K) -> Bit ::
-  devolve sys_mapa_tem(m, chave)
+  devolve mapa_indice(m, chave) >= 0
 fecha
