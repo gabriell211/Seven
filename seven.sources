@@ -86,6 +86,7 @@ runtime/platform/native/elf.sev
 runtime/platform/native/linker.sev
 runtime/platform/native/object_runtime.sev
 runtime/platform/native/pe.sev
+runtime/platform/native/syscall_dispatch.sev
 runtime/platform/native/syscall_objects.sev
 runtime/platform/native/target.sev
 runtime/platform/native/x64.sev
