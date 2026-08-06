@@ -1,0 +1,167 @@
+modulo seven.runtime.platform.native.pe
+
+usa seven.runtime.platform.native.bytes
+usa seven.runtime.platform.native.x64
+usa std.mem.bytes
+
+const PeHeadersX64: U64 := 512
+const PeTextRvaX64: U64 := 4096
+const PeIdataRvaX64: U64 := 8192
+const PeFileAlignX64: U64 := 512
+const PeSectionAlignX64: U64 := 4096
+const PeIatOffsetX64: U64 := 56
+const PeDllOffsetX64: U64 := 72
+const PeHintNameOffsetX64: U64 := 86
+
+campo pe_x64(codigo: CodigoX64) -> Bytes ::
+  guarda iat_rva := PeIdataRvaX64 + PeIatOffsetX64
+  para cada posicao em codigo.exit_process_patches ::
+    guarda relativo := Num(iat_rva) - Num(PeTextRvaX64 + posicao + 4)
+    nativo_define_u32_le(codigo.bytes, posicao, relativo)
+  fecha
+
+  guarda idata := pe_idata_x64()
+  guarda texto_raw := nativo_alinha(codigo.bytes.tamanho, PeFileAlignX64)
+  guarda idata_raw := nativo_alinha(idata.tamanho, PeFileAlignX64)
+  guarda idata_offset := PeHeadersX64 + texto_raw
+  solta arquivo := bytes_novo()
+
+  pe_dos_header(arquivo)
+  pe_coff_header(arquivo)
+  pe_optional_header(arquivo, codigo, texto_raw, idata_raw)
+  pe_section_header(arquivo, ".text", codigo.bytes.tamanho, PeTextRvaX64, texto_raw, PeHeadersX64, 1610612768)
+  pe_section_header(arquivo, ".idata", idata.tamanho, PeIdataRvaX64, idata_raw, idata_offset, 3221225536)
+
+  nativo_preenche_ate(arquivo, PeHeadersX64, 0)
+  nativo_anexa(arquivo, codigo.bytes)
+  nativo_preenche_ate(arquivo, PeHeadersX64 + texto_raw, 0)
+  nativo_anexa(arquivo, idata)
+  nativo_preenche_ate(arquivo, PeHeadersX64 + texto_raw + idata_raw, 0)
+  devolve arquivo
+fecha
+
+campo pe_dos_header(arquivo: Bytes) -> Nada ::
+  bytes_coloca_byte(arquivo, 77)
+  bytes_coloca_byte(arquivo, 90)
+  nativo_preenche_ate(arquivo, 60, 0)
+  nativo_u32_le(arquivo, 128)
+  nativo_preenche_ate(arquivo, 128, 0)
+fecha
+
+campo pe_coff_header(arquivo: Bytes) -> Nada ::
+  bytes_coloca_byte(arquivo, 80)
+  bytes_coloca_byte(arquivo, 69)
+  bytes_coloca_byte(arquivo, 0)
+  bytes_coloca_byte(arquivo, 0)
+
+  nativo_u16_le(arquivo, 34404)
+  nativo_u16_le(arquivo, 2)
+  nativo_u32_le(arquivo, 0)
+  nativo_u32_le(arquivo, 0)
+  nativo_u32_le(arquivo, 0)
+  nativo_u16_le(arquivo, 240)
+  nativo_u16_le(arquivo, 34)
+fecha
+
+campo pe_optional_header(
+  arquivo: Bytes,
+  codigo: CodigoX64,
+  texto_raw: U64,
+  idata_raw: U64
+) -> Nada ::
+  nativo_u16_le(arquivo, 523)
+  bytes_coloca_byte(arquivo, 0)
+  bytes_coloca_byte(arquivo, 0)
+  nativo_u32_le(arquivo, texto_raw)
+  nativo_u32_le(arquivo, idata_raw)
+  nativo_u32_le(arquivo, 0)
+  nativo_u32_le(arquivo, PeTextRvaX64 + codigo.entrada)
+  nativo_u32_le(arquivo, PeTextRvaX64)
+  nativo_u64_le(arquivo, 5368709120)
+  nativo_u32_le(arquivo, PeSectionAlignX64)
+  nativo_u32_le(arquivo, PeFileAlignX64)
+  nativo_u16_le(arquivo, 6)
+  nativo_u16_le(arquivo, 0)
+  nativo_u16_le(arquivo, 0)
+  nativo_u16_le(arquivo, 0)
+  nativo_u16_le(arquivo, 6)
+  nativo_u16_le(arquivo, 0)
+  nativo_u32_le(arquivo, 0)
+  nativo_u32_le(arquivo, 12288)
+  nativo_u32_le(arquivo, PeHeadersX64)
+  nativo_u32_le(arquivo, 0)
+  nativo_u16_le(arquivo, 3)
+  nativo_u16_le(arquivo, 33120)
+  nativo_u64_le(arquivo, 1048576)
+  nativo_u64_le(arquivo, 4096)
+  nativo_u64_le(arquivo, 1048576)
+  nativo_u64_le(arquivo, 4096)
+  nativo_u32_le(arquivo, 0)
+  nativo_u32_le(arquivo, 16)
+
+  solta indice: U64 := 0
+  gira indice < 16 ::
+    veja indice == 1 ::
+      nativo_u32_le(arquivo, PeIdataRvaX64)
+      nativo_u32_le(arquivo, 40)
+    outro ::
+      veja indice == 12 ::
+        nativo_u32_le(arquivo, PeIdataRvaX64 + PeIatOffsetX64)
+        nativo_u32_le(arquivo, 16)
+      outro ::
+        nativo_u32_le(arquivo, 0)
+        nativo_u32_le(arquivo, 0)
+      fecha
+    fecha
+    vira indice := indice + 1
+  fecha
+fecha
+
+campo pe_section_header(
+  arquivo: Bytes,
+  nome: Texto,
+  virtual_tamanho: U64,
+  virtual_rva: U64,
+  raw_tamanho: U64,
+  raw_offset: U64,
+  caracteristicas: U64
+) -> Nada ::
+  nativo_nome_secao(arquivo, nome)
+  nativo_u32_le(arquivo, virtual_tamanho)
+  nativo_u32_le(arquivo, virtual_rva)
+  nativo_u32_le(arquivo, raw_tamanho)
+  nativo_u32_le(arquivo, raw_offset)
+  nativo_u32_le(arquivo, 0)
+  nativo_u32_le(arquivo, 0)
+  nativo_u16_le(arquivo, 0)
+  nativo_u16_le(arquivo, 0)
+  nativo_u32_le(arquivo, caracteristicas)
+fecha
+
+campo pe_idata_x64() -> Bytes ::
+  solta idata := bytes_novo()
+  guarda oft_rva := PeIdataRvaX64 + 40
+  guarda iat_rva := PeIdataRvaX64 + PeIatOffsetX64
+  guarda dll_rva := PeIdataRvaX64 + PeDllOffsetX64
+  guarda hint_rva := PeIdataRvaX64 + PeHintNameOffsetX64
+
+  nativo_u32_le(idata, oft_rva)
+  nativo_u32_le(idata, 0)
+  nativo_u32_le(idata, 0)
+  nativo_u32_le(idata, dll_rva)
+  nativo_u32_le(idata, iat_rva)
+  nativo_preenche_ate(idata, 40, 0)
+
+  nativo_u64_le(idata, hint_rva)
+  nativo_u64_le(idata, 0)
+  nativo_u64_le(idata, hint_rva)
+  nativo_u64_le(idata, 0)
+
+  bytes_coloca_texto(idata, "KERNEL32.dll")
+  bytes_coloca_byte(idata, 0)
+  nativo_preenche_ate(idata, PeHintNameOffsetX64, 0)
+  nativo_u16_le(idata, 0)
+  bytes_coloca_texto(idata, "ExitProcess")
+  bytes_coloca_byte(idata, 0)
+  devolve idata
+fecha
