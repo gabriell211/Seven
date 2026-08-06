@@ -53,12 +53,22 @@ jobs:
           test "$(od -An -tx1 -N4 build/native-aot-proof | tr -d ' \n')" = '7f454c46'
           test "$(od -An -tx1 -N2 build/native-aot-proof.exe | tr -d ' \n')" = '4d5a'
 
+      - name: Inspect generated native formats
+        shell: bash
+        run: |
+          set -euo pipefail
+          readelf -h build/native-aot-proof | tee build/native-aot-proof.elf.txt
+          objdump -p build/native-aot-proof.exe | tee build/native-aot-proof.pe.txt
+          grep -q 'pei-x86-64' build/native-aot-proof.pe.txt
+          grep -q 'KERNEL32.dll' build/native-aot-proof.pe.txt
+          grep -q 'ExitProcess' build/native-aot-proof.pe.txt
+          grep -q 'VirtualAlloc' build/native-aot-proof.pe.txt
+
       - name: Execute Seven-generated ELF
         shell: bash
         run: |
           set -euo pipefail
           chmod +x build/native-aot-proof
-          readelf -h build/native-aot-proof
           set +e
           ./build/native-aot-proof
           code=$?
@@ -78,6 +88,8 @@ jobs:
             build/native-aot-proof
             build/native-aot-proof.exe
             build/native-aot-test.svbc
+            build/native-aot-proof.elf.txt
+            build/native-aot-proof.pe.txt
           if-no-files-found: error
 
   windows:
