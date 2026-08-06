@@ -12,16 +12,70 @@ molde Instrucao0 ::
   ip: U64
 fecha
 
+molde CampoImagem0 ::
+  nome: Texto
+  entrada: U32
+  locais: U32
+  parametros: U32
+fecha
+
 molde ImagemSvbc0 ::
+  versao: U32
+  nomes: Lista<Texto>
   constantes_texto: Lista<Texto>
   constantes_u32: Lista<U32>
+  campos: Lista<CampoImagem0>
   codigo: Lista<Instrucao0>
+fecha
+
+campo instrucao0(opcode: Opcode0, a: U32, b: U32, ip: U64) -> Instrucao0 ::
+  devolve Instrucao0 {
+    opcode: opcode,
+    a: a,
+    b: b,
+    ip: ip
+  }
+fecha
+
+campo campo_imagem0(nome: Texto, entrada: U32, locais: U32, parametros: U32) -> CampoImagem0 ::
+  devolve CampoImagem0 {
+    nome: nome,
+    entrada: entrada,
+    locais: locais,
+    parametros: parametros
+  }
 fecha
 
 campo svbc0_vazia() -> ImagemSvbc0 ::
   devolve ImagemSvbc0 {
+    versao: VersaoSvbc0Runtime,
+    nomes: lista<Texto>(),
     constantes_texto: lista<Texto>(),
     constantes_u32: lista<U32>(),
+    campos: lista<CampoImagem0>(),
     codigo: lista<Instrucao0>()
   }
+fecha
+
+campo svbc0_campo_indice_opcional(imagem: ImagemSvbc0, nome: Texto) -> Talvez<U32> ::
+  solta indice: U32 := 0
+
+  para cada campo em imagem.campos ::
+    veja campo.nome == nome ::
+      devolve Algo(indice)
+    fecha
+    vira indice := indice + 1
+  fecha
+
+  devolve Nada
+fecha
+
+campo svbc0_campo_indice(imagem: ImagemSvbc0, nome: Texto) -> U32 ::
+  guarda indice := svbc0_campo_indice_opcional(imagem, nome)
+
+  veja indice e Algo ::
+    devolve indice.valor
+  fecha
+
+  devolve 0
 fecha
