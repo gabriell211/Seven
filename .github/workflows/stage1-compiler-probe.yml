@@ -31,6 +31,7 @@ jobs:
           echo '123f5b513bcae7774671898f471441b3c71efd570acad91fa634cbc5f33bb223  build/seven0.seed.svbc' | sha256sum --check
           base64 --decode bootstrap/staging/genesis-host.c.gz.b64 | gzip --decompress > build/genesis-host.c
           echo '2f71509466eee470a5379d750b067a7e1733c0a4c1c8dd56542eb6bd5d0ec1d1  build/genesis-host.c' | sha256sum --check
+          python bootstrap/stage1_host_adapt.py build/genesis-host.c
           gcc -O2 -std=c11 -Wall -Wextra -Werror build/genesis-host.c -o build/genesis-host
 
           {
