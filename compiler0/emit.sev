@@ -257,7 +257,7 @@ fecha
 
 campo emite_para_cada(contexto: ContextoCampo, comando: No) -> Nada ::
   guarda iterador := local_adiciona(contexto, "__iter_" + comando.nome + "_" + texto_u64(contexto.proximo_local), sim)
-  guarda item := local_indice_opcional(contexto, comando.nome)
+  solta item := local_indice_opcional(contexto, comando.nome)
   veja item < 0 :: vira item := Num(local_adiciona(contexto, comando.nome, sim)) fecha
 
   emite_expressao(contexto, lista_no_pega(comando.filhos, 0))
