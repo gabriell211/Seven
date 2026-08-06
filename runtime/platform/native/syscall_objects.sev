@@ -48,10 +48,6 @@ campo x64_syscall_objeto_emite(
     x64_lista_define(codigo)
     devolve sim
   fecha
-  veja nome == "sys_lista_pop" e aridade == 1 ::
-    x64_lista_pop(codigo)
-    devolve sim
-  fecha
 
   devolve nao
 fecha
