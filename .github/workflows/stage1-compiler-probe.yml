@@ -99,7 +99,20 @@ jobs:
 
             cat <<'EOF'
           campo inicio(argumentos: Lista<Texto>) -> Num toca terminal, disco, ambiente ::
+            diga("stage1 argumentos=" + texto(lista_tamanho(argumentos)))
             guarda pedido := pedido_de_compilacao(argumentos)
+            diga("stage1 indice=" + pedido.pacote.indice_fontes)
+            guarda fontes := fonte_carrega_pacote(pedido.pacote)
+            diga("stage1 fontes=" + texto(lista_tamanho(fontes.arquivos)))
+            guarda fluxos := varre_unidade(fontes)
+            diga("stage1 fluxos=" + texto(lista_tamanho(fluxos)))
+            guarda sintaxe := monta_unidade(fluxos)
+            diga("stage1 programas=" + texto(lista_tamanho(sintaxe.programas)))
+            solta total_itens: U64 := 0
+            para cada programa em sintaxe.programas ::
+              vira total_itens := total_itens + lista_tamanho(programa.itens)
+            fecha
+            diga("stage1 itens=" + texto(total_itens))
             guarda saida := compila(pedido)
             veja saida e Sucesso ::
               devolve 0
