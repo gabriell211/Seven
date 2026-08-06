@@ -1,0 +1,321 @@
+modulo seven.compiler.wasm
+
+usa seven.compiler.ir
+usa std.base.lista
+usa std.base.resultado
+usa std.mem.bytes
+
+const WasmPagina: U64 := 65536
+const WasmDadosInicio: U32 := 1024
+
+molde VinculoTextoWasm ::
+  local: U32
+  valor: Texto
+fecha
+
+molde VinculoNumWasm ::
+  local: U32
+  valor: U32
+fecha
+
+molde MensagemWasm ::
+  deslocamento: U32
+  tamanho: U32
+fecha
+
+molde PlanoWasm ::
+  mensagens: Lista<MensagemWasm>
+  dados: Bytes
+  retorno: U32
+fecha
+
+campo emite_wasm(unidade: UnidadeIr) -> Resultado<Bytes, Falha> ::
+  guarda plano := planeja_wasm(unidade)
+  veja plano e Falha ::
+    devolve Falha(plano.valor)
+  fecha
+
+  veja U64(WasmDadosInicio) + plano.valor.dados.tamanho > WasmPagina ::
+    devolve Falha(nova_falha(
+      "SV-WASM-MEMORIA",
+      "dados estaticos excedem a pagina inicial de WebAssembly"
+    ))
+  fecha
+
+  solta modulo := bytes_novo()
+  bytes_coloca_byte(modulo, 0)
+  bytes_coloca_byte(modulo, 97)
+  bytes_coloca_byte(modulo, 115)
+  bytes_coloca_byte(modulo, 109)
+  bytes_coloca_byte(modulo, 1)
+  bytes_coloca_byte(modulo, 0)
+  bytes_coloca_byte(modulo, 0)
+  bytes_coloca_byte(modulo, 0)
+
+  wasm_secao(modulo, 1, wasm_secao_tipos())
+  wasm_secao(modulo, 2, wasm_secao_imports())
+  wasm_secao(modulo, 3, wasm_secao_funcoes())
+  wasm_secao(modulo, 5, wasm_secao_memoria())
+  wasm_secao(modulo, 7, wasm_secao_exports())
+  wasm_secao(modulo, 10, wasm_secao_codigo(plano.valor))
+  wasm_secao(modulo, 11, wasm_secao_dados(plano.valor))
+
+  devolve Valor(modulo)
+fecha
+
+campo planeja_wasm(unidade: UnidadeIr) -> Resultado<PlanoWasm, Falha> ::
+  para cada campo em unidade.campos ::
+    veja campo.nome == "inicio" ::
+      devolve planeja_campo_wasm(campo)
+    fecha
+  fecha
+
+  devolve Falha(nova_falha(
+    "SV-WASM-ENTRADA",
+    "o alvo web exige um campo inicio()"
+  ))
+fecha
+
+campo planeja_campo_wasm(campo: CampoIr) -> Resultado<PlanoWasm, Falha> ::
+  solta textos := lista<VinculoTextoWasm>()
+  solta numeros := lista<VinculoNumWasm>()
+  solta mensagens := lista<MensagemWasm>()
+  solta dados := bytes_novo()
+  solta retorno: U32 := 0
+
+  para cada bloco em campo.blocos ::
+    para cada instrucao em bloco.instrucoes ::
+      veja instrucao e IrConst ::
+        veja instrucao.valor e ValorTexto ::
+          lista_coloca(textos, VinculoTextoWasm {
+            local: instrucao.destino,
+            valor: instrucao.valor.valor
+          })
+        fecha
+
+        veja instrucao.valor e ValorNum ::
+          lista_coloca(numeros, VinculoNumWasm {
+            local: instrucao.destino,
+            valor: U32(instrucao.valor.valor)
+          })
+        fecha
+
+        veja instrucao.valor e ValorBit ::
+          solta valor_bit: U32 := 0
+          veja instrucao.valor.valor :: vira valor_bit := 1 fecha
+          lista_coloca(numeros, VinculoNumWasm {
+            local: instrucao.destino,
+            valor: valor_bit
+          })
+        fecha
+
+        veja instrucao.valor e ValorNulo ::
+          lista_coloca(numeros, VinculoNumWasm {
+            local: instrucao.destino,
+            valor: 0
+          })
+        fecha
+      fecha
+
+      veja instrucao e IrSyscall ::
+        veja instrucao.nome != "terminal_diga" ::
+          devolve Falha(nova_falha(
+            "SV-WASM-SYSCALL",
+            "syscall ainda nao suportada pelo alvo web: " + instrucao.nome
+          ))
+        fecha
+
+        veja lista_tamanho(instrucao.argumentos) != 1 ::
+          devolve Falha(nova_falha(
+            "SV-WASM-ABI",
+            "terminal_diga exige exatamente um argumento"
+          ))
+        fecha
+
+        guarda local := lista_pega(instrucao.argumentos, 0)
+        guarda texto := texto_local_wasm(textos, local)
+        veja texto e Falha :: devolve Falha(texto.valor) fecha
+
+        guarda bytes_texto_atual := texto_bytes(texto.valor)
+        guarda deslocamento := WasmDadosInicio + U32(dados.tamanho)
+        lista_coloca(mensagens, MensagemWasm {
+          deslocamento: deslocamento,
+          tamanho: U32(bytes_texto_atual.tamanho)
+        })
+        wasm_anexa(dados, bytes_texto_atual)
+      fecha
+
+      veja instrucao e IrRetorna ::
+        guarda valor_retorno := numero_local_wasm(numeros, instrucao.origem)
+        veja valor_retorno e Falha :: devolve Falha(valor_retorno.valor) fecha
+        vira retorno := valor_retorno.valor
+      fecha
+
+      veja instrucao e IrMove ::
+        devolve Falha(nova_falha("SV-WASM-INSTRUCAO", "IrMove ainda nao suportada no alvo web inicial"))
+      fecha
+      veja instrucao e IrBin ::
+        devolve Falha(nova_falha("SV-WASM-INSTRUCAO", "IrBin ainda nao suportada no alvo web inicial"))
+      fecha
+      veja instrucao e IrChama ::
+        devolve Falha(nova_falha("SV-WASM-INSTRUCAO", "chamadas internas ainda nao suportadas no alvo web inicial"))
+      fecha
+      veja instrucao e IrSalta ::
+        devolve Falha(nova_falha("SV-WASM-INSTRUCAO", "saltos ainda nao suportados no alvo web inicial"))
+      fecha
+      veja instrucao e IrSaltaSeNao ::
+        devolve Falha(nova_falha("SV-WASM-INSTRUCAO", "desvios ainda nao suportados no alvo web inicial"))
+      fecha
+      veja instrucao e IrCaixa ::
+        devolve Falha(nova_falha("SV-WASM-INSTRUCAO", "alocacao dinamica ainda nao suportada no alvo web inicial"))
+      fecha
+      veja instrucao e IrMarcaByte ::
+        devolve Falha(nova_falha("SV-WASM-INSTRUCAO", "escrita de memoria ainda nao suportada no alvo web inicial"))
+      fecha
+      veja instrucao e IrPegaByte ::
+        devolve Falha(nova_falha("SV-WASM-INSTRUCAO", "leitura de memoria ainda nao suportada no alvo web inicial"))
+      fecha
+    fecha
+  fecha
+
+  devolve Valor(PlanoWasm {
+    mensagens: mensagens,
+    dados: dados,
+    retorno: retorno
+  })
+fecha
+
+campo texto_local_wasm(vinculos: Lista<VinculoTextoWasm>, local: U32) -> Resultado<Texto, Falha> ::
+  para cada vinculo em vinculos ::
+    veja vinculo.local == local :: devolve Valor(vinculo.valor) fecha
+  fecha
+  devolve Falha(nova_falha("SV-WASM-TEXTO", "texto de terminal_diga nao e constante"))
+fecha
+
+campo numero_local_wasm(vinculos: Lista<VinculoNumWasm>, local: U32) -> Resultado<U32, Falha> ::
+  para cada vinculo em vinculos ::
+    veja vinculo.local == local :: devolve Valor(vinculo.valor) fecha
+  fecha
+  devolve Falha(nova_falha("SV-WASM-RETORNO", "retorno de inicio precisa ser constante no alvo web inicial"))
+fecha
+
+campo wasm_secao_tipos() -> Bytes ::
+  solta secao := bytes_novo()
+  wasm_uleb(secao, 2)
+
+  bytes_coloca_byte(secao, 96)
+  wasm_uleb(secao, 2)
+  bytes_coloca_byte(secao, 127)
+  bytes_coloca_byte(secao, 127)
+  wasm_uleb(secao, 0)
+
+  bytes_coloca_byte(secao, 96)
+  wasm_uleb(secao, 0)
+  wasm_uleb(secao, 1)
+  bytes_coloca_byte(secao, 127)
+  devolve secao
+fecha
+
+campo wasm_secao_imports() -> Bytes ::
+  solta secao := bytes_novo()
+  wasm_uleb(secao, 1)
+  wasm_texto(secao, "seven")
+  wasm_texto(secao, "terminal_diga")
+  bytes_coloca_byte(secao, 0)
+  wasm_uleb(secao, 0)
+  devolve secao
+fecha
+
+campo wasm_secao_funcoes() -> Bytes ::
+  solta secao := bytes_novo()
+  wasm_uleb(secao, 1)
+  wasm_uleb(secao, 1)
+  devolve secao
+fecha
+
+campo wasm_secao_memoria() -> Bytes ::
+  solta secao := bytes_novo()
+  wasm_uleb(secao, 1)
+  bytes_coloca_byte(secao, 0)
+  wasm_uleb(secao, 1)
+  devolve secao
+fecha
+
+campo wasm_secao_exports() -> Bytes ::
+  solta secao := bytes_novo()
+  wasm_uleb(secao, 2)
+
+  wasm_texto(secao, "memory")
+  bytes_coloca_byte(secao, 2)
+  wasm_uleb(secao, 0)
+
+  wasm_texto(secao, "seven_start")
+  bytes_coloca_byte(secao, 0)
+  wasm_uleb(secao, 1)
+  devolve secao
+fecha
+
+campo wasm_secao_codigo(plano: PlanoWasm) -> Bytes ::
+  solta secao := bytes_novo()
+  solta corpo := bytes_novo()
+  wasm_uleb(corpo, 0)
+
+  para cada mensagem em plano.mensagens ::
+    bytes_coloca_byte(corpo, 65)
+    wasm_uleb(corpo, mensagem.deslocamento)
+    bytes_coloca_byte(corpo, 65)
+    wasm_uleb(corpo, mensagem.tamanho)
+    bytes_coloca_byte(corpo, 16)
+    wasm_uleb(corpo, 0)
+  fecha
+
+  bytes_coloca_byte(corpo, 65)
+  wasm_uleb(corpo, plano.retorno)
+  bytes_coloca_byte(corpo, 11)
+
+  wasm_uleb(secao, 1)
+  wasm_uleb(secao, U32(corpo.tamanho))
+  wasm_anexa(secao, corpo)
+  devolve secao
+fecha
+
+campo wasm_secao_dados(plano: PlanoWasm) -> Bytes ::
+  solta secao := bytes_novo()
+  wasm_uleb(secao, 1)
+  wasm_uleb(secao, 0)
+  bytes_coloca_byte(secao, 65)
+  wasm_uleb(secao, WasmDadosInicio)
+  bytes_coloca_byte(secao, 11)
+  wasm_uleb(secao, U32(plano.dados.tamanho))
+  wasm_anexa(secao, plano.dados)
+  devolve secao
+fecha
+
+campo wasm_secao(destino: Bytes, identificador: Byte, conteudo: Bytes) -> Nada ::
+  bytes_coloca_byte(destino, identificador)
+  wasm_uleb(destino, U32(conteudo.tamanho))
+  wasm_anexa(destino, conteudo)
+fecha
+
+campo wasm_texto(destino: Bytes, texto: Texto) -> Nada ::
+  guarda dados := texto_bytes(texto)
+  wasm_uleb(destino, U32(dados.tamanho))
+  wasm_anexa(destino, dados)
+fecha
+
+campo wasm_uleb(destino: Bytes, valor: U32) -> Nada ::
+  solta restante := valor
+  gira restante >= 128 ::
+    bytes_coloca_byte(destino, Byte((restante % 128) + 128))
+    vira restante := restante / 128
+  fecha
+  bytes_coloca_byte(destino, Byte(restante))
+fecha
+
+campo wasm_anexa(destino: Bytes, origem: Bytes) -> Nada ::
+  solta indice: U64 := 0
+  gira indice < origem.tamanho ::
+    bytes_coloca_byte(destino, bytes_pega(origem, indice))
+    vira indice := indice + 1
+  fecha
+fecha
