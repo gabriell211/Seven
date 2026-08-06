@@ -1,0 +1,146 @@
+name: Seven Stage 0 Fixed Point
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seven-stage0-fixed-point-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fixed-point:
+    name: Seven-0 fixed point (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            host: build/genesis-host
+          - os: windows-latest
+            host: build/genesis-host.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct audited Stage 0 inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+
+          cat bootstrap/seed/v2/part*.b64 | tr -d '\r\n\t ' | base64 --decode | gzip --decompress > build/seven0.seed.svbc
+          echo '123f5b513bcae7774671898f471441b3c71efd570acad91fa634cbc5f33bb223  build/seven0.seed.svbc' | sha256sum --check
+
+          echo '0d2a905c2fb3211326c3cdf5f164e39f12a708cf1b917bfe99028458cf6e5516  bootstrap/staging/genesis-host.c.gz.b64' | sha256sum --check
+          base64 --decode bootstrap/staging/genesis-host.c.gz.b64 | gzip --decompress > build/genesis-host.c
+          echo '2f71509466eee470a5379d750b067a7e1733c0a4c1c8dd56542eb6bd5d0ec1d1  build/genesis-host.c' | sha256sum --check
+
+      - name: Generate deterministic Seven-0 monolith
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf 'modulo seven0_bootstrap_monolith\n\n'
+            for arquivo in $(find compiler0 -maxdepth 1 -type f -name '*.sev' | LC_ALL=C sort); do
+              nome=$(basename "$arquivo")
+              printf '// BEGIN %s\n' "$nome"
+              sed '/^modulo /d; /^usa /d' "$arquivo"
+              printf '// END %s\n\n' "$nome"
+            done
+          } > build/seven0.monolith.sev
+          echo 'f2d0e118e3b214fbf9b74571e9529d6cf5318e7a34984aa64ba7a7b6e96a7bb8  build/seven0.monolith.sev' | sha256sum --check
+
+      - name: Build Genesis host on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcc -O2 -std=c11 -Wall -Wextra -Werror build/genesis-host.c -o build/genesis-host
+          chmod +x build/genesis-host
+
+      - name: Build Genesis host on Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          clang -D_CRT_SECURE_NO_WARNINGS -O2 -std=c11 -Wall -Wextra -Werror build/genesis-host.c -o build/genesis-host.exe
+
+      - name: Rebuild Seven-0 to a fixed point
+        shell: bash
+        run: |
+          set -euo pipefail
+          host="$PWD/${{ matrix.host }}"
+          "$host" build/seven0.seed.svbc build/seven0.monolith.sev build/seven0.svbc
+          "$host" build/seven0.svbc build/seven0.monolith.sev build/seven0.self.svbc
+          cmp build/seven0.svbc build/seven0.self.svbc
+          echo 'dad562c0bc695b6e2724425f3fa0b7e6af2929160a27472e256a4cdf24915678  build/seven0.svbc' | sha256sum --check
+          test "$(wc -c < build/seven0.svbc | tr -d ' ')" = '83696'
+          test "$(od -An -tx1 -N4 build/seven0.svbc | tr -d ' \n')" = '53564230'
+
+      - name: Compile and execute a fresh Seven program
+        shell: bash
+        run: |
+          set -euo pipefail
+          host="$PWD/${{ matrix.host }}"
+          cat > build/stage0-proof.sev <<'EOF'
+          modulo stage0.prova
+
+          campo inicio() -> Num ::
+            devolve 42
+          fecha
+          EOF
+
+          "$host" build/seven0.svbc build/stage0-proof.sev build/stage0-proof.svbc
+          echo 'ec1cab055cdc99f2293c2009527563afdcd67165dfa98b8a9adf66b4dc7a88bb  build/stage0-proof.svbc' | sha256sum --check
+          test "$(wc -c < build/stage0-proof.svbc | tr -d ' ')" = '76'
+          test "$(od -An -tx1 -N4 build/stage0-proof.svbc | tr -d ' \n')" = '53564230'
+
+          set +e
+          "$host" build/stage0-proof.svbc
+          proof_exit=$?
+          set -e
+          test "$proof_exit" -eq 42
+
+      - name: Record fixed-point provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          host_hash=$(sha256sum "${{ matrix.host }}" | awk '{print $1}')
+          cat > build/stage0-fixed-point.provenance <<EOF
+          formato seven-bootstrap-provenance-v2
+          etapa stage0
+          executor ${{ matrix.host }}
+          executor_sha256 $host_hash
+          seed build/seven0.seed.svbc
+          seed_sha256 123f5b513bcae7774671898f471441b3c71efd570acad91fa634cbc5f33bb223
+          entrada build/seven0.monolith.sev
+          entrada_sha256 f2d0e118e3b214fbf9b74571e9529d6cf5318e7a34984aa64ba7a7b6e96a7bb8
+          saida build/seven0.svbc
+          saida_sha256 dad562c0bc695b6e2724425f3fa0b7e6af2929160a27472e256a4cdf24915678
+          autorebuild build/seven0.self.svbc
+          prova build/stage0-proof.svbc
+          prova_sha256 ec1cab055cdc99f2293c2009527563afdcd67165dfa98b8a9adf66b4dc7a88bb
+          prova_exit 42
+          fixed_point sim
+          EOF
+          cat build/stage0-fixed-point.provenance
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-stage0-fixed-point-${{ matrix.os }}
+          path: |
+            ${{ matrix.host }}
+            build/seven0.svbc
+            build/seven0.self.svbc
+            build/seven0.monolith.sev
+            build/stage0-proof.sev
+            build/stage0-proof.svbc
+            build/stage0-fixed-point.provenance
+          if-no-files-found: error
