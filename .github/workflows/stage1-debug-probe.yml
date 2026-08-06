@@ -29,6 +29,8 @@ jobs:
             build/stage1-debug.log
             build/stage1-debug.exit
             build/stage1-proof.svbc
+            build/seven0.svbc
+            build/seven0.self.svbc
             build/seven.stage1.monolith.sev
             build/seven.stage1.svbc
           if-no-files-found: warn
