@@ -1,0 +1,22 @@
+name: Inspect Semantic Checker
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          set -euo pipefail
+          git show 2d52d1114e8ddc3354bf7c76d64cf31970ece48a:.github/workflows/regenerate-semantic-seeds.yml > "$RUNNER_TEMP/generator.yml"
+          awk '/seven-bootstrap.c.gz.b64.*B64/{capture=1;next} /^          B64$/{capture=0} capture{sub(/^          /,"");print}' "$RUNNER_TEMP/generator.yml" > "$RUNNER_TEMP/seven-bootstrap.c.gz.b64"
+          base64 --decode "$RUNNER_TEMP/seven-bootstrap.c.gz.b64" | gzip --decompress > "$RUNNER_TEMP/seven-bootstrap.c"
+          grep -n -C 4 'streq(x->text,"campo")' "$RUNNER_TEMP/seven-bootstrap.c"
+          grep -n -C 3 'duplicate function name' "$RUNNER_TEMP/seven-bootstrap.c"
