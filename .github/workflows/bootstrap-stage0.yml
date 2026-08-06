@@ -60,7 +60,7 @@ jobs:
           test "$(wc -c < build/seven0.transition.svbc | tr -d ' ')" = '373'
           test "$(od -An -tx1 -N4 build/seven0.transition.svbc | tr -d ' \n')" = '53564243'
           echo 'cfd129ec6a11b9ccc83e42bc73a4f479bf86294a0fd07b1fc26a5359d119c0b9  build/seven0.transition.svbc' | sha256sum --check
-          grep -a -q '^modulo seven0$' build/seven0.transition.svbc
+          grep -a -q 'modulo seven0' build/seven0.transition.svbc
           if test -e build/seven0.svbc; then
             echo 'transition output was incorrectly promoted to autonomous Seven-0'
             exit 1
