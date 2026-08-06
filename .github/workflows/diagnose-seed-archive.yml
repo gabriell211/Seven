@@ -1,0 +1,25 @@
+name: Diagnose Seed Archive
+
+on:
+  push:
+    branches:
+      - gabriell211/production-readiness
+    paths:
+      - .github/workflows/diagnose-seed-archive.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gabriell211/production-readiness
+      - run: |
+          set -euo pipefail
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > "$RUNNER_TEMP/native-seeds.zip"
+          sha256sum "$RUNNER_TEMP/native-seeds.zip"
+          wc -c seed/native/final/v1/part*.b64 "$RUNNER_TEMP/native-seeds.zip"
+          unzip -t "$RUNNER_TEMP/native-seeds.zip"
