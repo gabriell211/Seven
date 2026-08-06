@@ -2,6 +2,7 @@ modulo seven.compiler.source
 
 usa seven.compiler.diagnostic
 usa seven.compiler.package
+usa std.base.texto
 
 molde Span ::
   arquivo: Texto
@@ -35,10 +36,34 @@ campo fonte_carrega(caminho: Texto) -> Resultado<Fonte, Diagnostico> toca disco 
 fecha
 
 campo fonte_carrega_pacote(pacote: Pacote) -> UnidadeFonte toca disco ::
+  veja pacote.indice_fontes != "" ::
+    devolve fonte_carrega_indice(pacote.indice_fontes)
+  fecha
+
   solta arquivos := lista<Fonte>()
 
-  para cada raiz em pacote.fontes ::
-    para cada caminho em arquivos_sv(raiz) ::
+  para cada caminho em pacote.fontes ::
+    veja texto_contem(caminho, ".sev") ::
+      guarda fonte := fonte_carrega(caminho)
+      veja fonte e Valor ::
+        lista_coloca(arquivos, fonte.valor)
+      fecha
+    fecha
+  fecha
+
+  devolve UnidadeFonte {
+    arquivos: arquivos
+  }
+fecha
+
+campo fonte_carrega_indice(caminho_indice: Texto) -> UnidadeFonte toca disco ::
+  solta arquivos := lista<Fonte>()
+  guarda conteudo := arquivo_ler(caminho_indice)
+
+  para cada linha em linhas(conteudo) ::
+    guarda caminho := texto_apara_manifesto(linha)
+
+    veja caminho != "" e nao texto_comeca(caminho, "#") ::
       guarda fonte := fonte_carrega(caminho)
       veja fonte e Valor ::
         lista_coloca(arquivos, fonte.valor)
