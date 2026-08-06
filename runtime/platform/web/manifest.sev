@@ -5,17 +5,43 @@ usa seven.runtime.platform.web.target
 molde ManifestoWeb ::
   nome: Texto
   entrada: Texto
+  alvo: Texto
+  abi: Texto
+  executavel: Texto
+  exportacao_entrada: Texto
+  prefixo_handlers: Texto
+  inbox: U32
+  checksum: Texto
+  capacidades: Lista<Texto>
   arquivos: Lista<Texto>
 fecha
 
-campo web_manifesto(nome: Texto, entrada: Texto) -> ManifestoWeb ::
+campo web_manifesto(nome: Texto, entrada: Texto, checksum: Texto) -> ManifestoWeb ::
+  solta capacidades := lista<Texto>()
+  lista_coloca(capacidades, "dom")
+  lista_coloca(capacidades, "events")
+  lista_coloca(capacidades, "navigation")
+  lista_coloca(capacidades, "fetch")
+  lista_coloca(capacidades, "storage")
+
+  solta arquivos := lista<Texto>()
+  lista_coloca(arquivos, "index.html")
+  lista_coloca(arquivos, "seven-loader.mjs")
+  lista_coloca(arquivos, "app.wasm")
+  lista_coloca(arquivos, "app.wasm.sha256")
+  lista_coloca(arquivos, "seven.web.json")
+
   devolve ManifestoWeb {
     nome: nome,
     entrada: entrada,
-    arquivos: lista<Texto>()
+    alvo: "webassembly",
+    abi: "seven-web-2",
+    executavel: "app.wasm",
+    exportacao_entrada: "seven_start",
+    prefixo_handlers: "seven_",
+    inbox: 32768,
+    checksum: checksum,
+    capacidades: capacidades,
+    arquivos: arquivos
   }
-fecha
-
-campo web_empacota(alvo: AlvoWeb, manifesto: ManifestoWeb, imagem: Bytes) -> Resultado<Bytes, Falha> ::
-  devolve sys_web_empacota(alvo, manifesto, imagem)
 fecha

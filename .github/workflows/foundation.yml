@@ -34,41 +34,38 @@ jobs:
           set -euo pipefail
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo 'a2d09138008ae7223683681443663da8d4c58b39600cbaf3bef11889c2495ad3  build/native-seeds.zip' | sha256sum --check
+          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
           unzip -t build/native-seeds.zip
           unzip -q build/native-seeds.zip -d build/native-seeds
-          echo 'f9ebcbe747f5646f1f224af0929d19d321a67a241be3844116e42ac2a5207296  build/native-seeds/seven-windows.exe' | sha256sum --check
+          echo '80f1948e83b1c58c719c2ae0579a4b03edd1ccc1bf1e4e52091e2c66478feba5  build/native-seeds/seven-windows.exe' | sha256sum --check
           echo 'e4847375d1e800425e23253d36394bc8d2a2d9a97598f8905a30986310f176ed  build/native-seeds/seven-installer-windows.exe' | sha256sum --check
 
-      - name: Exercise Windows compiler and deterministic bytecode
-        shell: cmd
+      - name: Exercise Windows compiler, WebAssembly and deterministic bytecode
+        shell: bash
         run: |
-          set "SEVEN=%CD%\build\native-seeds\seven-windows.exe"
-          "%SEVEN%" --version
-          if errorlevel 1 exit /b 1
-          "%SEVEN%" check "%CD%\examples\hello.sev"
-          if errorlevel 1 exit /b 1
-          "%SEVEN%" check "%CD%\conformance\invalid\unknown_name.sev"
-          if not errorlevel 1 exit /b 1
-          "%SEVEN%" run "%CD%\examples\hello.sev"
-          if errorlevel 1 exit /b 1
-          "%SEVEN%" build "%CD%\compiler\seven.sev" "%CD%\build\seven.svbc"
-          if errorlevel 1 exit /b 1
-          "%SEVEN%" build "%CD%\compiler\seven.sev" "%CD%\build\seven.self.svbc"
-          if errorlevel 1 exit /b 1
-          "%SEVEN%" build "%CD%\runtime\host\seven.sev" "%CD%\build\seven.host.svbc"
-          if errorlevel 1 exit /b 1
-          "%SEVEN%" build "%CD%\runtime\launcher\seven.sev" "%CD%\build\seven.launcher.svbc"
-          if errorlevel 1 exit /b 1
-          fc /b "%CD%\build\seven.svbc" "%CD%\build\seven.self.svbc"
-          if errorlevel 1 exit /b 1
-          "%SEVEN%" doctor
-          if errorlevel 1 exit /b 1
+          set -euo pipefail
+          seven="$PWD/build/native-seeds/seven-windows.exe"
+          "$seven" --version
+          "$seven" check examples/hello.sev
+          if "$seven" check conformance/invalid/unknown_name.sev; then
+            echo 'invalid source was accepted'
+            exit 1
+          fi
+          "$seven" run examples/hello.sev
+          "$seven" web build examples/hello.sev build/web-windows
+          test -s build/web-windows/app.wasm
+          test -s build/web-windows/seven.web.json
+          "$seven" build compiler/seven.sev build/seven.svbc
+          "$seven" build compiler/seven.sev build/seven.self.svbc
+          "$seven" build runtime/host/seven.sev build/seven.host.svbc
+          "$seven" build runtime/launcher/seven.sev build/seven.launcher.svbc
+          cmp build/seven.svbc build/seven.self.svbc
+          "$seven" doctor
 
       - name: Assemble Windows bundle
         shell: cmd
         run: |
-          set "B=build\installers\seven-0.1.0-windows-x64"
+          set "B=build\installers\seven-0.2.0-windows-x64"
           mkdir "%B%\payload\bin" || exit /b 1
           mkdir "%B%\payload\std" || exit /b 1
           copy /y build\native-seeds\seven-installer-windows.exe "%B%\seven-installer.exe" || exit /b 1
@@ -86,7 +83,7 @@ jobs:
       - name: Install, execute and uninstall on Windows
         shell: cmd
         run: |
-          set "B=%CD%\build\installers\seven-0.1.0-windows-x64"
+          set "B=%CD%\build\installers\seven-0.2.0-windows-x64"
           pushd "%B%"
           start /wait "" ".\seven-installer.exe"
           if errorlevel 1 exit /b 1
@@ -96,8 +93,11 @@ jobs:
           if not exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Seven.url" exit /b 1
           "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" --version
           if errorlevel 1 exit /b 1
-          "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" check "%CD%\examples\hello.sev"
+          "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" check examples/hello.sev
           if errorlevel 1 exit /b 1
+          "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" web build examples/hello.sev build/installed-web-windows
+          if errorlevel 1 exit /b 1
+          if not exist build\installed-web-windows\app.wasm exit /b 1
           reg query HKCU\Software\Classes\.sev >nul
           if errorlevel 1 exit /b 1
           reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Seven.Language >nul
@@ -114,8 +114,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: seven-0.1.0-windows-x64
-          path: build/installers/seven-0.1.0-windows-x64/
+          name: seven-0.2.0-windows-x64
+          path: build/installers/seven-0.2.0-windows-x64/
           if-no-files-found: error
 
   linux:
@@ -139,14 +139,14 @@ jobs:
           set -euo pipefail
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo 'a2d09138008ae7223683681443663da8d4c58b39600cbaf3bef11889c2495ad3  build/native-seeds.zip' | sha256sum --check
+          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
           unzip -t build/native-seeds.zip
           unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '2f073ab8101742006728a491b3093ddb093d202289002d13cc2a6a03dfa55dcb  build/native-seeds/seven-linux' | sha256sum --check
+          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
           echo '8d5b9c534018d8b8ccca7fcdfaa6f7d40587c8a039d63ae214c62f93d35d533e  build/native-seeds/seven-installer-linux' | sha256sum --check
           chmod +x build/native-seeds/seven-linux build/native-seeds/seven-installer-linux
 
-      - name: Exercise Linux compiler and deterministic bytecode
+      - name: Exercise Linux compiler, WebAssembly and deterministic bytecode
         shell: bash
         run: |
           set -euo pipefail
@@ -158,6 +158,9 @@ jobs:
             exit 1
           fi
           "$seven" run examples/hello.sev
+          "$seven" web build examples/hello.sev build/web-linux
+          test -s build/web-linux/app.wasm
+          test -s build/web-linux/seven.web.json
           "$seven" build compiler/seven.sev build/seven.svbc
           "$seven" build compiler/seven.sev build/seven.self.svbc
           "$seven" build runtime/host/seven.sev build/seven.host.svbc
@@ -169,7 +172,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          b='build/installers/seven-0.1.0-linux-x64'
+          b='build/installers/seven-0.2.0-linux-x64'
           mkdir -p "$b/payload/bin" "$b/payload/std"
           install -m 0755 build/native-seeds/seven-installer-linux "$b/seven-installer"
           install -m 0755 build/native-seeds/seven-linux "$b/payload/bin/seven"
@@ -187,7 +190,7 @@ jobs:
         run: |
           set -euo pipefail
           export HOME="$RUNNER_TEMP/seven-home"
-          b="$GITHUB_WORKSPACE/build/installers/seven-0.1.0-linux-x64"
+          b="$GITHUB_WORKSPACE/build/installers/seven-0.2.0-linux-x64"
           mkdir -p "$HOME"
           cd "$b"
           ./seven-installer
@@ -199,12 +202,14 @@ jobs:
           test -f "$HOME/.local/share/seven/seven.ico"
           "$HOME/.local/bin/seven" --version
           "$HOME/.local/bin/seven" check "$GITHUB_WORKSPACE/examples/hello.sev"
+          "$HOME/.local/bin/seven" web build "$GITHUB_WORKSPACE/examples/hello.sev" "$GITHUB_WORKSPACE/build/installed-web-linux"
+          test -s "$GITHUB_WORKSPACE/build/installed-web-linux/app.wasm"
           ./seven-installer --uninstall
           test ! -e "$HOME/.local/bin/seven"
           test ! -e "$HOME/.local/share/seven"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: seven-0.1.0-linux-x64
-          path: build/installers/seven-0.1.0-linux-x64/
+          name: seven-0.2.0-linux-x64
+          path: build/installers/seven-0.2.0-linux-x64/
           if-no-files-found: error

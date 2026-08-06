@@ -4,26 +4,46 @@ usa seven.runtime.platform.abi
 
 molde AlvoWeb ::
   nome: Texto
+  formato: Texto
+  abi: Texto
+  extensao_fonte: Texto
   imports: Lista<ContratoIntrinseco>
+  exports: Lista<Texto>
   saida: Texto
 fecha
 
 campo alvo_web() -> AlvoWeb ::
   solta imports := lista<ContratoIntrinseco>()
+  solta exports := lista<Texto>()
 
-  lista_coloca(imports, contrato_intrinseco("frontend_monta", CapFrontend, "Nada"))
-  lista_coloca(imports, contrato_intrinseco("frontend_escuta", CapFrontend, "Nada"))
-  lista_coloca(imports, contrato_intrinseco("frontend_navega", CapFrontend, "Nada"))
-  lista_coloca(imports, contrato_intrinseco("frontend_fetch_texto", CapFrontend, "Resultado<Texto, Falha>"))
-  lista_coloca(imports, contrato_intrinseco("frontend_injeta_css", CapFrontend, "Nada"))
-  lista_coloca(imports, contrato_intrinseco("sys_frontend_empacota", CapFrontend, "Resultado<Bytes, Falha>"))
-  lista_coloca(imports, contrato_intrinseco("sys_http_envia", CapRede, "Resultado<Resposta, Falha>"))
-  lista_coloca(imports, contrato_intrinseco("sys_tempo_agora", CapTempo, "U64"))
-  lista_coloca(imports, contrato_intrinseco("sys_env", CapAmbiente, "Resultado<Texto, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("seven.terminal_diga", CapTerminal, "(texto: DescritorTexto) -> I32"))
+  lista_coloca(imports, contrato_intrinseco("seven.frontend_monta", CapFrontend, "(seletor: DescritorTexto, html: DescritorTexto) -> I32"))
+  lista_coloca(imports, contrato_intrinseco("seven.frontend_texto", CapFrontend, "(seletor: DescritorTexto, texto: DescritorTexto) -> I32"))
+  lista_coloca(imports, contrato_intrinseco("seven.frontend_atributo", CapFrontend, "(seletor: DescritorTexto, nome: DescritorTexto, valor: DescritorTexto) -> I32"))
+  lista_coloca(imports, contrato_intrinseco("seven.frontend_classe_adiciona", CapFrontend, "(seletor: DescritorTexto, classe: DescritorTexto) -> I32"))
+  lista_coloca(imports, contrato_intrinseco("seven.frontend_classe_remove", CapFrontend, "(seletor: DescritorTexto, classe: DescritorTexto) -> I32"))
+  lista_coloca(imports, contrato_intrinseco("seven.frontend_escuta", CapFrontend, "(seletor: DescritorTexto, evento: DescritorTexto, handler: DescritorTexto) -> I32"))
+  lista_coloca(imports, contrato_intrinseco("seven.frontend_navega", CapFrontend, "(url: DescritorTexto) -> I32"))
+  lista_coloca(imports, contrato_intrinseco("seven.frontend_injeta_css", CapFrontend, "(css: DescritorTexto) -> I32"))
+  lista_coloca(imports, contrato_intrinseco("seven.frontend_fetch_texto", CapRede, "(url: DescritorTexto, handler: DescritorTexto) -> I32"))
+  lista_coloca(imports, contrato_intrinseco("seven.frontend_resposta_texto", CapRede, "() -> DescritorTexto"))
+  lista_coloca(imports, contrato_intrinseco("seven.frontend_resposta_status", CapRede, "() -> I32"))
+  lista_coloca(imports, contrato_intrinseco("seven.frontend_evento_valor", CapFrontend, "() -> DescritorTexto"))
+  lista_coloca(imports, contrato_intrinseco("seven.frontend_armazena", CapFrontend, "(chave: DescritorTexto, valor: DescritorTexto) -> I32"))
+  lista_coloca(imports, contrato_intrinseco("seven.frontend_carrega", CapFrontend, "(chave: DescritorTexto) -> DescritorTexto"))
+  lista_coloca(imports, contrato_intrinseco("seven.frontend_remove", CapFrontend, "(chave: DescritorTexto) -> I32"))
+
+  lista_coloca(exports, "memory")
+  lista_coloca(exports, "seven_start")
+  lista_coloca(exports, "seven_<handler>")
 
   devolve AlvoWeb {
-    nome: "web",
+    nome: "webassembly",
+    formato: "wasm-binario-1",
+    abi: "seven-web-2",
+    extensao_fonte: ".sev",
     imports: imports,
-    saida: "pacote-web"
+    exports: exports,
+    saida: "app.wasm"
   }
 fecha

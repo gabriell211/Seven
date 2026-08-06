@@ -1,0 +1,136 @@
+modulo tests.compiler.wasm
+
+usa seven.compiler.ir
+usa seven.compiler.types
+usa seven.compiler.wasm
+usa std.test.spec
+
+campo suite_wasm() -> Suite ::
+  solta s := suite("webassembly")
+
+  testa(s, "emite modulo wasm valido", campo() -> Nada ::
+    guarda resultado := emite_wasm(unidade_wasm_minima())
+    espera(resultado e Valor, "emissor Wasm falhou")
+    espera(resultado.valor.tamanho > 8, "modulo Wasm ficou vazio")
+    espera(bytes_pega(resultado.valor, 0) == 0, "magic Wasm byte 0 incorreto")
+    espera(bytes_pega(resultado.valor, 1) == 97, "magic Wasm byte 1 incorreto")
+    espera(bytes_pega(resultado.valor, 2) == 115, "magic Wasm byte 2 incorreto")
+    espera(bytes_pega(resultado.valor, 3) == 109, "magic Wasm byte 3 incorreto")
+    espera(bytes_pega(resultado.valor, 4) == 1, "versao Wasm incorreta")
+  fecha)
+
+  testa(s, "emite aplicacao com DOM e handler", campo() -> Nada ::
+    guarda resultado := emite_wasm(unidade_wasm_interativa())
+    espera(resultado e Valor, "aplicacao interativa nao foi emitida")
+    espera(resultado.valor.tamanho > emite_wasm(unidade_wasm_minima()).valor.tamanho, "aplicacao interativa nao adicionou codigo e dados")
+  fecha)
+
+  testa(s, "codifica i32 const com LEB128 assinado", campo() -> Nada ::
+    solta dados := bytes_novo()
+    wasm_sleb_positivo(dados, 127)
+    espera(dados.tamanho == 2, "127 precisa de dois bytes em signed LEB128")
+    espera(bytes_pega(dados, 0) == 255, "primeiro byte signed LEB128 incorreto")
+    espera(bytes_pega(dados, 1) == 0, "terminador signed LEB128 incorreto")
+  fecha)
+
+  testa(s, "grava descritor little endian", campo() -> Nada ::
+    solta dados := bytes_novo()
+    wasm_u32_le(dados, 305419896)
+    espera(bytes_pega(dados, 0) == 120, "byte little endian 0 incorreto")
+    espera(bytes_pega(dados, 1) == 86, "byte little endian 1 incorreto")
+    espera(bytes_pega(dados, 2) == 52, "byte little endian 2 incorreto")
+    espera(bytes_pega(dados, 3) == 18, "byte little endian 3 incorreto")
+  fecha)
+
+  testa(s, "exige campo inicio", campo() -> Nada ::
+    guarda resultado := emite_wasm(UnidadeIr {
+      nomes: lista<Texto>(),
+      campos: lista<CampoIr>(),
+      constantes: lista<ConstanteIr>()
+    })
+    espera(resultado e Falha, "modulo sem inicio foi aceito")
+    espera(resultado.valor.codigo == "SV-WASM-ENTRADA", "codigo de entrada incorreto")
+  fecha)
+
+  devolve s
+fecha
+
+campo locais_wasm(quantidade: U32) -> Lista<Tipo> ::
+  solta locais := lista<Tipo>()
+  solta indice: U32 := 0
+  gira indice < quantidade ::
+    lista_coloca(locais, TipoBase("I32"))
+    vira indice := indice + 1
+  fecha
+  devolve locais
+fecha
+
+campo campo_ir(nome: Texto, instrucoes: Lista<InstrucaoIr>, locais: U32) -> CampoIr ::
+  solta blocos := lista<BlocoIr>()
+  lista_coloca(blocos, BlocoIr {
+    nome: "entrada",
+    instrucoes: instrucoes
+  })
+  devolve CampoIr {
+    nome: nome,
+    parametros: 0,
+    efeitos: lista<Texto>(),
+    locais: locais_wasm(locais),
+    blocos: blocos
+  }
+fecha
+
+campo unidade_wasm_minima() -> UnidadeIr ::
+  solta instrucoes := lista<InstrucaoIr>()
+  lista_coloca(instrucoes, IrConst(0, ValorNum(0)))
+  lista_coloca(instrucoes, IrRetorna(0))
+
+  solta campos := lista<CampoIr>()
+  lista_coloca(campos, campo_ir("inicio", instrucoes, 1))
+
+  devolve UnidadeIr {
+    nomes: lista<Texto>(),
+    campos: campos,
+    constantes: lista<ConstanteIr>()
+  }
+fecha
+
+campo unidade_wasm_interativa() -> UnidadeIr ::
+  solta inicio := lista<InstrucaoIr>()
+  lista_coloca(inicio, IrConst(0, ValorTexto("#seven-app")))
+  lista_coloca(inicio, IrConst(1, ValorTexto("<button id=\"acao\">Executar</button>")))
+  solta monta_args := lista<U32>()
+  lista_coloca(monta_args, 0)
+  lista_coloca(monta_args, 1)
+  lista_coloca(inicio, IrChama(2, "frontend_monta", monta_args))
+  lista_coloca(inicio, IrConst(3, ValorTexto("#acao")))
+  lista_coloca(inicio, IrConst(4, ValorTexto("click")))
+  lista_coloca(inicio, IrConst(5, ValorTexto("acao")))
+  solta evento_args := lista<U32>()
+  lista_coloca(evento_args, 3)
+  lista_coloca(evento_args, 4)
+  lista_coloca(evento_args, 5)
+  lista_coloca(inicio, IrChama(6, "frontend_escuta", evento_args))
+  lista_coloca(inicio, IrConst(7, ValorNum(0)))
+  lista_coloca(inicio, IrRetorna(7))
+
+  solta acao := lista<InstrucaoIr>()
+  lista_coloca(acao, IrConst(0, ValorTexto("#acao")))
+  lista_coloca(acao, IrConst(1, ValorTexto("Executado")))
+  solta texto_args := lista<U32>()
+  lista_coloca(texto_args, 0)
+  lista_coloca(texto_args, 1)
+  lista_coloca(acao, IrChama(2, "frontend_texto", texto_args))
+  lista_coloca(acao, IrConst(3, ValorNum(0)))
+  lista_coloca(acao, IrRetorna(3))
+
+  solta campos := lista<CampoIr>()
+  lista_coloca(campos, campo_ir("inicio", inicio, 8))
+  lista_coloca(campos, campo_ir("acao", acao, 4))
+
+  devolve UnidadeIr {
+    nomes: lista<Texto>(),
+    campos: campos,
+    constantes: lista<ConstanteIr>()
+  }
+fecha

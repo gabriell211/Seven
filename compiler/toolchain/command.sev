@@ -37,7 +37,7 @@ selo ComandoSeven ::
   CmdPkgVerify
   CmdPkgInstall
   CmdTargetList
-  CmdWebBuild(projeto: Texto)
+  CmdWebBuild(entrada: Texto, saida: Texto)
   CmdServe(projeto: Texto)
   CmdRelease
   CmdVerifyFoundation
