@@ -132,6 +132,7 @@ std/frontend/bundle.sev
 std/frontend/css.sev
 std/frontend/dom.sev
 std/frontend/http.sev
+std/frontend/intrinsics.sev
 std/frontend/layout.sev
 std/frontend/media.sev
 std/frontend/router.sev
