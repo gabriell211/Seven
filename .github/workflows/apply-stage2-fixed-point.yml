@@ -21,7 +21,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .github/fixed-point/part*.b64 | tr -d '\r\n' | base64 --decode > /tmp/fixed-point.patch
+          cat .github/fixed-point/chunk*.b64 | tr -d '\r\n' | base64 --decode > /tmp/fixed-point.patch
+          echo '4095525ee374977a38ef1640bfdaf148ed345d0f09900c126b6414348b5f6a1a  /tmp/fixed-point.patch' | sha256sum --check
           git apply --check /tmp/fixed-point.patch
           git apply /tmp/fixed-point.patch
           rm -rf .github/fixed-point .github/workflows/apply-stage2-fixed-point.yml
