@@ -1,0 +1,23 @@
+name: Seven Stage 0 Staging Snapshot
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-stage0-staging-snapshot
+          path: |
+            bootstrap/seed/v2/
+            bootstrap/staging/
+          if-no-files-found: error
