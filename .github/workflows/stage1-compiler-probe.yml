@@ -1,13 +1,13 @@
-name: Export Canonical Seven Stage 1
+name: Publish Canonical Seven Stage 1 Sources
 
 on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  export:
+  publish:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -16,43 +16,26 @@ jobs:
           ref: stage1-self-host-clean
           fetch-depth: 0
 
-      - name: Generate canonical Stage 1 tree
+      - name: Generate canonical source tree
+        if: ${{ hashFiles('bootstrap/stage1_finalize.py') != '' }}
         run: python bootstrap/stage1_finalize.py
 
-      - name: Package canonical files
+      - name: Keep workflow changes for API publication
+        if: ${{ hashFiles('bootstrap/stage1_finalize.py') != '' }}
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p build/canonical-stage1
-          while IFS= read -r path; do
-            mkdir -p "build/canonical-stage1/$(dirname "$path")"
-            cp "$path" "build/canonical-stage1/$path"
-          done <<'EOF'
-          .github/workflows/stage0-fixed-point.yml
-          .github/workflows/stage1-compiler-probe.yml
-          bootstrap/staging/genesis-host.c.gz.b64
-          compiler0/check.sev
-          compiler0/parse.sev
-          compiler0/emit.sev
-          compiler/parser.sev
-          compiler/parser_cursor.sev
-          compiler/token.sev
-          std/base/lista.sev
-          std/base/mapa.sev
-          std/base/texto.sev
-          EOF
-          cat > build/canonical-stage1/deletions.txt <<'EOF'
-          .github/workflows/stage1-canonicalize.yml
-          bootstrap/stage1-workflow.final
-          bootstrap/stage1.finalize.trigger
-          bootstrap/stage1_adapt.py
-          bootstrap/stage1_finalize.py
-          bootstrap/stage1_host_adapt.py
-          EOF
-          tar -C build/canonical-stage1 -czf build/canonical-stage1.tar.gz .
+          git checkout HEAD -- .github/workflows/stage0-fixed-point.yml
+          git checkout HEAD -- .github/workflows/stage1-compiler-probe.yml
+          git checkout HEAD -- .github/workflows/stage1-canonicalize.yml
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: canonical-seven-stage1
-          path: build/canonical-stage1.tar.gz
-          if-no-files-found: error
+      - name: Commit canonical sources and Genesis host
+        if: ${{ hashFiles('bootstrap/stage1_finalize.py') != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name seven-bootstrap-bot
+          git config user.email actions@users.noreply.github.com
+          git add -A
+          git commit -m 'Canonicalize Stage 1 sources and Genesis host'
+          git push origin HEAD:stage1-self-host-clean
