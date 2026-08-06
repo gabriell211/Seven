@@ -1,0 +1,13 @@
+pacote seven.bootstrap.stage0
+versao 0.2.0
+criador Gabriel Barcelos
+perfil gabriell211
+entrada bootstrap.stage0.inicio
+alvo svbc
+indice seven.sources
+fonte compiler0
+fonte runtime
+fonte std
+fonte bootstrap
+seed seed/genesis.svhex
+build build
