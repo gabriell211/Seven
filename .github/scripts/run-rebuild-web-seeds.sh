@@ -6,6 +6,7 @@ cp .github/scripts/rebuild-web-seeds.sh "$fixed"
 
 FIXED_SCRIPT="$fixed" python - <<'PY'
 import os
+import re
 from pathlib import Path
 
 path = Path(os.environ["FIXED_SCRIPT"])
@@ -13,7 +14,7 @@ text = path.read_text()
 
 text = text.replace("SIZE_MAX/2", "((size_t)-1)/2")
 text = text.replace("UINT32_MAX", "0xffffffffu")
-text = text.replace("int32_t", "int")
+text = re.sub(r"\bint32_t\b", "int", text)
 old_ident = "static int seven_web_ident(int c){return isalnum((unsigned char)c)||c=='_';}"
 new_ident = """static int seven_web_ascii_alnum(int c){return (c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9');}
 static int seven_web_espaco(int c){return c==' '||c=='\\t'||c=='\\r'||c=='\\n';}
