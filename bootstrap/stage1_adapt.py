@@ -138,6 +138,35 @@ fecha
     path.write_text(text.replace(marker, "\n" + helper + marker, 1), encoding="utf-8")
 
 
+def patch_token_tags() -> None:
+    replacements = {
+        "compiler/parser.sev": {
+            "atual.tipo == Numero": 'atual.tipo.tag == "Numero"',
+            "atual.tipo == TextoLit": 'atual.tipo.tag == "TextoLit"',
+            "atual.tipo == Nome": 'atual.tipo.tag == "Nome"',
+            "t.tipo == Fim": 't.tipo.tag == "Fim"',
+        },
+        "compiler/parser_cursor.sev": {
+            "atual_token(cursor).tipo == Fim": 'atual_token(cursor).tipo.tag == "Fim"',
+            "encontrado.tipo == Nome": 'encontrado.tipo.tag == "Nome"',
+            "encontrado.tipo == TextoLit": 'encontrado.tipo.tag == "TextoLit"',
+        },
+        "compiler/token.sev": {
+            "valor.tipo == Nome": 'valor.tipo.tag == "Nome"',
+        },
+    }
+
+    for file_name, changes in replacements.items():
+        path = Path(file_name)
+        text = path.read_text(encoding="utf-8")
+        for old, new in changes.items():
+            if new not in text:
+                if old not in text:
+                    raise RuntimeError(f"token comparison not found: {file_name}: {old}")
+                text = text.replace(old, new)
+        path.write_text(text, encoding="utf-8")
+
+
 def patch_driver_trace() -> None:
     path = Path("compiler/driver.sev")
     text = path.read_text(encoding="utf-8")
@@ -173,4 +202,5 @@ def patch_driver_trace() -> None:
 patch_checker()
 patch_parser()
 patch_emitter()
+patch_token_tags()
 patch_driver_trace()
