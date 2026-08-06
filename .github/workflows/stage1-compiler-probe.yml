@@ -3,7 +3,7 @@ name: Finalize Seven Stage 1
 on:
   push:
     branches:
-      - agent/stage1-self-host
+      - stage1-self-host-clean
 
 permissions:
   contents: write
@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/stage1-self-host
+          ref: stage1-self-host-clean
           fetch-depth: 0
 
       - name: Install canonical Stage 1 sources and gates
@@ -30,4 +30,4 @@ jobs:
           git config user.email actions@users.noreply.github.com
           git add -A
           git commit -m '[stage1-final] Canonicalize Stage 1 self-hosting'
-          git push origin HEAD:agent/stage1-self-host
+          git push origin HEAD:stage1-self-host-clean
