@@ -1,16 +1,14 @@
 # Seven Genesis Seed Image
 # Formato: SVS0, versao 1
-# Esta fita e o primeiro artefato canonico do seed.
-# Ela representa o fluxo minimo: ler fonte, tokenizar, montar, conferir, emitir SVBC0 e gravar.
+# Fluxo: LE_ARQUIVO -> TOKENIZA -> MONTA -> CONFERE -> EMITE_SVBC0
+#        -> GRAVA_ARQUIVO -> RETORNA 0
+# A entrada e a saida sao colocadas na pilha pelo runner canonico.
 
-53565330 0001 0000000B
+53565330 0001 00000008
 05
 07
 08
 09
 0A
-0B
 06
-0200
-0D
-00
+0D 00
