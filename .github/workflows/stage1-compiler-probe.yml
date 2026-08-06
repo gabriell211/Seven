@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: seven-stage1-probe-${{ github.ref }}
@@ -18,11 +18,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Evolve Seven-0 for named seal payloads
-        if: github.event_name == 'push' && github.ref == 'refs/heads/agent/stage1-self-host'
+      - name: Apply deterministic Stage 1 bootstrap adaptations
         shell: bash
         run: |
           set -euo pipefail
@@ -31,7 +28,8 @@ jobs:
 
           parse = Path('compiler0/parse.sev')
           text = parse.read_text()
-          old = '''    veja parse_aceita(p, "(") ::
+          if 'campo parse_carga_variante(' not in text:
+              old = '''    veja parse_aceita(p, "(") ::
               veja nao parse_proximo(p, ")") ::
                 lista_no_coloca(no_variante.filhos, no("carga", "", parse_tipo(p), "", variante.linha, variante.coluna))
                 gira parse_aceita(p, ",") ::
@@ -40,7 +38,7 @@ jobs:
               fecha
               parse_espera(p, ")", "S0-PARSE-VARIANTE", "esperado ) na variante")
             fecha'''
-          new = '''    veja parse_aceita(p, "(") ::
+              new = '''    veja parse_aceita(p, "(") ::
               veja nao parse_proximo(p, ")") ::
                 lista_no_coloca(no_variante.filhos, parse_carga_variante(p, variante))
                 gira parse_aceita(p, ",") ::
@@ -49,7 +47,6 @@ jobs:
               fecha
               parse_espera(p, ")", "S0-PARSE-VARIANTE", "esperado ) na variante")
             fecha'''
-          if 'campo parse_carga_variante(' not in text:
               if old not in text:
                   raise SystemExit('variant parser block not found')
               text = text.replace(old, new)
@@ -66,14 +63,13 @@ campo parse_carga_variante(p: Parser, variante: Token) -> No ::
               devolve no("carga", nome, parse_tipo(p), "", variante.linha, variante.coluna)
             fecha
 '''
-              if marker not in text:
-                  raise SystemExit('parse_externo marker not found')
               text = text.replace(marker, '\n' + helper + marker, 1)
               parse.write_text(text)
 
           emit = Path('compiler0/emit.sev')
           text = emit.read_text()
-          old = '''campo emite_variante(contexto: ContextoCampo, expr: No) -> Nada ::
+          if 'campo variante_por_nome(' not in text:
+              old = '''campo emite_variante(contexto: ContextoCampo, expr: No) -> Nada ::
               emite_const_texto(contexto, "__tipo")
               emite_const_texto(contexto, expr.nome)
               emite_const_texto(contexto, "tag")
@@ -94,7 +90,7 @@ campo parse_carga_variante(p: Parser, variante: Token) -> No ::
 
               emite_syscall(contexto, "sys_obj_novo", argumentos)
             fecha'''
-          new = '''campo emite_variante(contexto: ContextoCampo, expr: No) -> Nada ::
+              new = '''campo emite_variante(contexto: ContextoCampo, expr: No) -> Nada ::
               emite_const_texto(contexto, "__tipo")
               emite_const_texto(contexto, expr.nome)
               emite_const_texto(contexto, "tag")
@@ -119,7 +115,6 @@ campo parse_carga_variante(p: Parser, variante: Token) -> No ::
 
               emite_syscall(contexto, "sys_obj_novo", argumentos)
             fecha'''
-          if 'campo variante_por_nome(' not in text:
               if old not in text:
                   raise SystemExit('variant emitter block not found')
               text = text.replace(old, new)
@@ -142,25 +137,9 @@ campo variante_por_nome(programa: Programa, nome: Texto) -> No ::
               devolve no("ausente", "", "", "", 0, 0)
             fecha
 '''
-              if marker not in text:
-                  raise SystemExit('chamada_lista marker not found')
               text = text.replace(marker, '\n' + helper + marker, 1)
               emit.write_text(text)
           PY
-
-          rm -f .github/workflows/stage1-patch-variants.yml
-          rm -f .github/workflows/stage1-source-snapshot.yml
-          rm -f .github/workflows/stage1-patch-constructor.yml
-
-          if git diff --quiet; then
-            echo 'Seven-0 named variants already applied'
-          else
-            git config user.name seven-bootstrap-bot
-            git config user.email actions@users.noreply.github.com
-            git add -A
-            git commit -m 'Preserve named seal payloads in Seven-0'
-            git push origin HEAD:agent/stage1-self-host
-          fi
 
       - name: Reconstruct autonomous Seven-0
         shell: bash
@@ -281,9 +260,6 @@ campo variante_por_nome(programa: Programa, nome: Texto) -> No ::
         with:
           name: seven-stage1-compiler-probe
           path: |
-            compiler0/check.sev
-            compiler0/parse.sev
-            compiler0/emit.sev
             build/seven0-stage1.sha256
             build/seven0-stage1.size
             build/stage1.sources
