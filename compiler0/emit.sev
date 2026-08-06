@@ -429,6 +429,16 @@ campo emite_chamada(contexto: ContextoCampo, expr: No) -> Nada ::
     devolve nulo
   fecha
 
+  veja chamada_numerica(expr.nome) ::
+    veja lista_no_tamanho(expr.filhos) > 0 ::
+      emite_expressao(contexto, lista_no_pega(expr.filhos, 0))
+    outro ::
+      emite_const_u32(contexto, 0)
+    fecha
+    emite_syscall(contexto, "sys_num_cast", 1)
+    devolve nulo
+  fecha
+
   guarda campo := campo_interno_indice(contexto.emissao.unidade.programa, expr.nome)
   veja campo >= 0 ::
     para cada argumento em expr.filhos :: emite_expressao(contexto, argumento) fecha
@@ -477,6 +487,28 @@ campo emite_binario(contexto: ContextoCampo, expr: No) -> Nada ::
     emite_syscall(contexto, "sys_obj_pega", 2)
     emite_const_texto(contexto, direita.nome)
     emite_instrucao(contexto.emissao, OpIgual, 0, 0)
+    devolve nulo
+  fecha
+
+  veja expr.valor == "e" ::
+    emite_expressao(contexto, esquerda)
+    guarda salto_falso := emite_instrucao(contexto.emissao, OpSaltaFalso, 0, 0)
+    emite_expressao(contexto, direita)
+    guarda salto_fim := emite_instrucao(contexto.emissao, OpSalta, 0, 0)
+    corrige_a(contexto.emissao, salto_falso, U32(lista_tamanho(contexto.emissao.codigo)))
+    emite_const_u32(contexto, 0)
+    corrige_a(contexto.emissao, salto_fim, U32(lista_tamanho(contexto.emissao.codigo)))
+    devolve nulo
+  fecha
+
+  veja expr.valor == "ou" ::
+    emite_expressao(contexto, esquerda)
+    guarda avalia_direita := emite_instrucao(contexto.emissao, OpSaltaFalso, 0, 0)
+    emite_const_u32(contexto, 1)
+    guarda salto_fim := emite_instrucao(contexto.emissao, OpSalta, 0, 0)
+    corrige_a(contexto.emissao, avalia_direita, U32(lista_tamanho(contexto.emissao.codigo)))
+    emite_expressao(contexto, direita)
+    corrige_a(contexto.emissao, salto_fim, U32(lista_tamanho(contexto.emissao.codigo)))
     devolve nulo
   fecha
 
@@ -642,6 +674,10 @@ fecha
 
 campo chamada_lista(nome: Texto) -> Bit ::
   devolve nome == "lista" ou nome == "lista_texto" ou nome == "lista_token" ou nome == "lista_no" ou nome == "lista_simbolo" ou nome == "lista_diagnostico"
+fecha
+
+campo chamada_numerica(nome: Texto) -> Bit ::
+  devolve nome == "U32" ou nome == "U64" ou nome == "Num" ou nome == "Byte" ou nome == "Real64"
 fecha
 
 campo nome_maiusculo(nome: Texto) -> Bit ::

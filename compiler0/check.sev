@@ -179,9 +179,7 @@ campo confere_bloco(unidade: Unidade, campo: No, bloco: No, locais: ListaSimbolo
 
     veja comando.especie == "declaracao" ::
       confere_expressao(unidade, campo, lista_no_pega(comando.filhos, 0), locais)
-      veja simbolo_indice(locais, comando.nome) >= 0 ::
-        adiciona_diag(unidade, comando, "S0-SEM-LOCAL", "variavel duplicada: " + comando.nome)
-      outro ::
+      veja simbolo_indice(locais, comando.nome) < 0 ::
         lista_simbolo_coloca(locais, simbolo(
           comando.nome,
           "local",

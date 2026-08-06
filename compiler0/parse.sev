@@ -446,8 +446,17 @@ campo parse_fator(p: Parser) -> No ::
   devolve expr
 fecha
 
+campo parse_nao_unario(p: Parser) -> Bit ::
+  veja parse_atual(p).tipo != "palavra" ou nao parse_proximo(p, "nao") ::
+    devolve nao
+  fecha
+
+  guarda proximo := parse_olha(p, 1).marca
+  devolve proximo != "," e proximo != ")" e proximo != "]" e proximo != "}" e proximo != "::" e proximo != "fecha" e proximo != "outro" e proximo != "fim" e proximo != "guarda" e proximo != "solta" e proximo != "vira" e proximo != "devolve" e proximo != "diga" e proximo != "veja" e proximo != "gira" e proximo != "para" e proximo != "falha"
+fecha
+
 campo parse_unario(p: Parser) -> No ::
-  veja parse_proximo(p, "nao") ou parse_proximo(p, "-") ::
+  veja parse_nao_unario(p) ou (parse_atual(p).tipo == "sinal" e parse_proximo(p, "-")) ::
     guarda op := parse_avanca(p)
     devolve no_com_filho("unario", "", "", op.marca, parse_unario(p), op.linha, op.coluna)
   fecha
@@ -504,10 +513,7 @@ campo parse_primario(p: Parser) -> No ::
   fecha
 
   veja atual.tipo == "nome" ou atual.tipo == "palavra" ::
-    solta nome_completo := atual.marca
-    gira parse_aceita(p, ".") ::
-      vira nome_completo := nome_completo + "." + parse_nome(p, "depois de .").marca
-    fecha
+    guarda nome_completo := atual.marca
 
     veja parse_generico_de_chamada(p) :: parse_pula_genericos(p) fecha
 
