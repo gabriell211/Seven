@@ -174,9 +174,9 @@ campo parse_selo(p: Parser) -> No ::
     solta no_variante := no("variante", variante.marca, "", "", variante.linha, variante.coluna)
     veja parse_aceita(p, "(") ::
       veja nao parse_proximo(p, ")") ::
-        lista_no_coloca(no_variante.filhos, no("carga", "", parse_tipo(p), "", variante.linha, variante.coluna))
+        lista_no_coloca(no_variante.filhos, parse_carga_variante(p, variante))
         gira parse_aceita(p, ",") ::
-          lista_no_coloca(no_variante.filhos, no("carga", "", parse_tipo(p), "", variante.linha, variante.coluna))
+          lista_no_coloca(no_variante.filhos, parse_carga_variante(p, variante))
         fecha
       fecha
       parse_espera(p, ")", "S0-PARSE-VARIANTE", "esperado ) na variante")
@@ -186,6 +186,18 @@ campo parse_selo(p: Parser) -> No ::
 
   parse_espera(p, "fecha", "S0-PARSE-FECHA", "esperado fecha no selo")
   devolve saida
+fecha
+
+
+campo parse_carga_variante(p: Parser, variante: Token) -> No ::
+  solta nome := ""
+
+  veja parse_atual(p).tipo == "nome" e parse_olha(p, 1).marca == ":" ::
+    vira nome := parse_avanca(p).marca
+    parse_espera(p, ":", "S0-PARSE-VARIANTE-CAMPO", "esperado : no campo da variante")
+  fecha
+
+  devolve no("carga", nome, parse_tipo(p), "", variante.linha, variante.coluna)
 fecha
 
 campo parse_externo(p: Parser) -> No ::

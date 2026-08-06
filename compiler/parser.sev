@@ -874,12 +874,12 @@ fecha
 campo ler_primaria(cursor: CursorTokens) -> Expressao ::
   guarda atual := atual_token(cursor)
 
-  veja atual.tipo == Numero ::
+  veja token_marca_numero(atual.marca) ::
     avanca_token(cursor)
     devolve ExprLiteral(LitNum(numero(atual.literal)))
   fecha
 
-  veja atual.tipo == TextoLit ::
+  veja token_marca_texto(atual.marca) ::
     avanca_token(cursor)
     devolve ExprLiteral(LitTexto(atual.literal))
   fecha
@@ -906,7 +906,7 @@ campo ler_primaria(cursor: CursorTokens) -> Expressao ::
     devolve ExprCampo(ler_campo_anonimo(cursor))
   fecha
 
-  veja atual.tipo == Nome ::
+  veja token_marca_nome(atual.marca) ::
     avanca_token(cursor)
     guarda nome_expr := ExprNome(NomeExpr {
       nome: atual.marca,
@@ -1026,7 +1026,7 @@ campo parece_especializacao(cursor: CursorTokens) -> Bit ::
           devolve depois == "(" ou depois == "{" ou depois == "."
         fecha
       outro ::
-        veja t.tipo == Fim ou t.marca == "::" ou t.marca == ":=" ::
+        veja t.marca == "" ou t.marca == "::" ou t.marca == ":=" ::
           devolve nao
         fecha
       fecha

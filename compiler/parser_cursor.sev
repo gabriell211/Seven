@@ -66,7 +66,7 @@ campo token_seguinte(cursor: CursorTokens, distancia: U64) -> Token ::
 fecha
 
 campo fim(cursor: CursorTokens) -> Bit ::
-  devolve atual_token(cursor).tipo == Fim
+  devolve atual_token(cursor).marca == ""
 fecha
 
 campo avanca_token(cursor: CursorTokens) -> Token ::
@@ -117,7 +117,7 @@ fecha
 campo espera_nome(cursor: CursorTokens, contexto: Texto) -> Token ::
   guarda encontrado := atual_token(cursor)
 
-  veja encontrado.tipo == Nome ::
+  veja token_marca_nome(encontrado.marca) ::
     devolve avanca_token(cursor)
   fecha
 
@@ -140,7 +140,7 @@ fecha
 campo espera_texto(cursor: CursorTokens, contexto: Texto) -> Token ::
   guarda encontrado := atual_token(cursor)
 
-  veja encontrado.tipo == TextoLit ::
+  veja token_marca_texto(encontrado.marca) ::
     devolve avanca_token(cursor)
   fecha
 

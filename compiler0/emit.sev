@@ -462,13 +462,17 @@ campo emite_variante(contexto: ContextoCampo, expr: No) -> Nada ::
   emite_const_texto(contexto, expr.nome)
   solta argumentos: U32 := 4
   solta indice: U64 := 0
+  guarda declaracao := variante_por_nome(contexto.emissao.unidade.programa, expr.nome)
 
   para cada valor em expr.filhos ::
-    veja lista_no_tamanho(expr.filhos) == 1 ::
-      emite_const_texto(contexto, "valor")
-    outro ::
-      emite_const_texto(contexto, texto_u64(indice))
+    solta campo := ""
+    veja declaracao.especie == "variante" e indice < lista_no_tamanho(declaracao.filhos) ::
+      vira campo := lista_no_pega(declaracao.filhos, indice).nome
     fecha
+    veja campo == "" e lista_no_tamanho(expr.filhos) == 1 :: vira campo := "valor" fecha
+    veja campo == "" :: vira campo := texto_u64(indice) fecha
+
+    emite_const_texto(contexto, campo)
     emite_expressao(contexto, valor)
     vira argumentos := argumentos + 2
     vira indice := indice + 1
@@ -668,6 +672,24 @@ campo constante_por_nome(programa: Programa, nome: Texto) -> No ::
     guarda item := lista_no_pega(programa.itens, indice)
     veja item.especie == "const" e item.nome == nome :: devolve item fecha
     vira indice := indice + 1
+  fecha
+  devolve no("ausente", "", "", "", 0, 0)
+fecha
+
+
+campo variante_por_nome(programa: Programa, nome: Texto) -> No ::
+  solta indice_item: U64 := 0
+  gira indice_item < lista_no_tamanho(programa.itens) ::
+    guarda item := lista_no_pega(programa.itens, indice_item)
+    veja item.especie == "selo" ::
+      solta indice_variante: U64 := 0
+      gira indice_variante < lista_no_tamanho(item.filhos) ::
+        guarda variante := lista_no_pega(item.filhos, indice_variante)
+        veja variante.especie == "variante" e variante.nome == nome :: devolve variante fecha
+        vira indice_variante := indice_variante + 1
+      fecha
+    fecha
+    vira indice_item := indice_item + 1
   fecha
   devolve no("ausente", "", "", "", 0, 0)
 fecha

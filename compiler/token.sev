@@ -47,8 +47,37 @@ campo token_e(valor: Token, marca: Texto) -> Bit ::
   devolve valor.marca == marca
 fecha
 
+
+campo token_marca_letra(caractere: Texto) -> Bit ::
+  devolve (caractere >= "a" e caractere <= "z") ou (caractere >= "A" e caractere <= "Z") ou caractere == "_"
+fecha
+
+campo token_marca_digito(caractere: Texto) -> Bit ::
+  devolve caractere >= "0" e caractere <= "9"
+fecha
+
+campo token_marca_nome(marca: Texto) -> Bit ::
+  guarda total := sys_texto_tamanho(marca)
+  veja total == 0 ou nao token_marca_letra(sys_texto_caractere(marca, 0)) :: devolve nao fecha
+  solta indice: U64 := 1
+  gira indice < total ::
+    guarda caractere := sys_texto_caractere(marca, indice)
+    veja nao token_marca_letra(caractere) e nao token_marca_digito(caractere) :: devolve nao fecha
+    vira indice := indice + 1
+  fecha
+  devolve sim
+fecha
+
+campo token_marca_numero(marca: Texto) -> Bit ::
+  devolve sys_texto_tamanho(marca) > 0 e token_marca_digito(sys_texto_caractere(marca, 0))
+fecha
+
+campo token_marca_texto(marca: Texto) -> Bit ::
+  devolve sys_texto_tamanho(marca) >= 2 e sys_texto_caractere(marca, 0) == """
+fecha
+
 campo token_nome(valor: Token) -> Bit ::
-  devolve valor.tipo == Nome
+  devolve token_marca_nome(valor.marca)
 fecha
 
 campo fluxo_tem_erros(fluxo: FluxoTokens) -> Bit ::
