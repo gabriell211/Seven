@@ -6,6 +6,9 @@ on:
       - agent/seven-web-build
     paths:
       - .github/workflows/web-bootstrap-inspect.yml
+  pull_request:
+    paths:
+      - .github/workflows/web-bootstrap-inspect.yml
   workflow_dispatch:
 
 permissions:
