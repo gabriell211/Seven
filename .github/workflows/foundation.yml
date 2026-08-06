@@ -43,34 +43,45 @@ jobs:
       - name: Exercise Windows compiler and deterministic bytecode
         shell: cmd
         run: |
-          build\native-seeds\seven-windows.exe --version
-          build\native-seeds\seven-windows.exe check examples\hello.sev
-          build\native-seeds\seven-windows.exe check conformance\invalid\unknown_name.sev && exit /b 1
-          build\native-seeds\seven-windows.exe run examples\hello.sev
-          build\native-seeds\seven-windows.exe build compiler\seven.sev build\seven.svbc
-          build\native-seeds\seven-windows.exe build compiler\seven.sev build\seven.self.svbc
-          build\native-seeds\seven-windows.exe build runtime\host\seven.sev build\seven.host.svbc
-          build\native-seeds\seven-windows.exe build runtime\launcher\seven.sev build\seven.launcher.svbc
-          fc /b build\seven.svbc build\seven.self.svbc
-          build\native-seeds\seven-windows.exe doctor
+          set "SEVEN=%CD%\build\native-seeds\seven-windows.exe"
+          "%SEVEN%" --version
+          if errorlevel 1 exit /b 1
+          "%SEVEN%" check "%CD%\examples\hello.sev"
+          if errorlevel 1 exit /b 1
+          "%SEVEN%" check "%CD%\conformance\invalid\unknown_name.sev"
+          if not errorlevel 1 exit /b 1
+          "%SEVEN%" run "%CD%\examples\hello.sev"
+          if errorlevel 1 exit /b 1
+          "%SEVEN%" build "%CD%\compiler\seven.sev" "%CD%\build\seven.svbc"
+          if errorlevel 1 exit /b 1
+          "%SEVEN%" build "%CD%\compiler\seven.sev" "%CD%\build\seven.self.svbc"
+          if errorlevel 1 exit /b 1
+          "%SEVEN%" build "%CD%\runtime\host\seven.sev" "%CD%\build\seven.host.svbc"
+          if errorlevel 1 exit /b 1
+          "%SEVEN%" build "%CD%\runtime\launcher\seven.sev" "%CD%\build\seven.launcher.svbc"
+          if errorlevel 1 exit /b 1
+          fc /b "%CD%\build\seven.svbc" "%CD%\build\seven.self.svbc"
+          if errorlevel 1 exit /b 1
+          "%SEVEN%" doctor
+          if errorlevel 1 exit /b 1
 
       - name: Assemble Windows bundle
         shell: cmd
         run: |
           set "B=build\installers\seven-0.1.0-windows-x64"
-          mkdir "%B%\payload\bin"
-          mkdir "%B%\payload\std"
-          copy /y build\native-seeds\seven-installer-windows.exe "%B%\seven-installer.exe"
-          copy /y build\native-seeds\seven-windows.exe "%B%\payload\bin\seven.exe"
-          copy /y build\seven.svbc "%B%\payload\seven.svbc"
-          copy /y build\seven.host.svbc "%B%\payload\seven.host.svbc"
-          copy /y build\seven.launcher.svbc "%B%\payload\seven.launcher.svbc"
-          copy /y brand\seven.ico "%B%\payload\seven.ico"
-          copy /y brand\seven-mark.svg "%B%\payload\seven-mark.svg"
-          copy /y LICENSE "%B%\payload\LICENSE"
-          copy /y NOTICE "%B%\payload\NOTICE"
-          xcopy std "%B%\payload\std" /E /I /Y >nul
-          certutil -hashfile "%B%\seven-installer.exe" SHA256 > "%B%\seven-installer.exe.sha256"
+          mkdir "%B%\payload\bin" || exit /b 1
+          mkdir "%B%\payload\std" || exit /b 1
+          copy /y build\native-seeds\seven-installer-windows.exe "%B%\seven-installer.exe" || exit /b 1
+          copy /y build\native-seeds\seven-windows.exe "%B%\payload\bin\seven.exe" || exit /b 1
+          copy /y build\seven.svbc "%B%\payload\seven.svbc" || exit /b 1
+          copy /y build\seven.host.svbc "%B%\payload\seven.host.svbc" || exit /b 1
+          copy /y build\seven.launcher.svbc "%B%\payload\seven.launcher.svbc" || exit /b 1
+          copy /y brand\seven.ico "%B%\payload\seven.ico" || exit /b 1
+          copy /y brand\seven-mark.svg "%B%\payload\seven-mark.svg" || exit /b 1
+          copy /y LICENSE "%B%\payload\LICENSE" || exit /b 1
+          copy /y NOTICE "%B%\payload\NOTICE" || exit /b 1
+          xcopy std "%B%\payload\std" /E /I /Y >nul || exit /b 1
+          certutil -hashfile "%B%\seven-installer.exe" SHA256 > "%B%\seven-installer.exe.sha256" || exit /b 1
 
       - name: Install, execute and uninstall on Windows
         shell: cmd
@@ -84,9 +95,13 @@ jobs:
           if not exist "%LOCALAPPDATA%\Programs\Seven\seven.svbc" exit /b 1
           if not exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Seven.url" exit /b 1
           "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" --version
+          if errorlevel 1 exit /b 1
           "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" check "%CD%\examples\hello.sev"
+          if errorlevel 1 exit /b 1
           reg query HKCU\Software\Classes\.sev >nul
+          if errorlevel 1 exit /b 1
           reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Seven.Language >nul
+          if errorlevel 1 exit /b 1
           pushd "%B%"
           start /wait "" ".\seven-installer.exe" --uninstall
           if errorlevel 1 exit /b 1
