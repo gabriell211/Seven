@@ -1,0 +1,219 @@
+modulo seven.compiler.types
+
+usa seven.compiler.ast
+usa seven.compiler.symbols
+usa seven.compiler.source
+usa seven.compiler.diagnostic
+
+selo Tipo ::
+  TipoBase(nome: Texto)
+  TipoMolde(nome: Texto)
+  TipoSelo(nome: Texto)
+  TipoLista(item: Tipo)
+  TipoFatia(item: Tipo)
+  TipoPonteiro(item: Tipo)
+  TipoAplicado(nome: Texto, argumentos: Lista<Tipo>)
+  TipoCampo(parametros: Lista<Tipo>, retorno: Tipo)
+  TipoGenerico(nome: Texto)
+  TipoDesconhecido
+  TipoNada
+fecha
+
+molde AssinaturaCampo ::
+  nome: Texto
+  parametros: Lista<Tipo>
+  retorno: Tipo
+  efeitos: Lista<Texto>
+  span: Span
+fecha
+
+molde VinculoTipo ::
+  nome: Texto
+  tipo: Tipo
+  mutavel: Bit
+  span: Span
+fecha
+
+molde TabelaTipos ::
+  tipos: Mapa<Texto, Tipo>
+  campos: Mapa<Texto, AssinaturaCampo>
+  membros: Mapa<Texto, Tipo>
+  diagnosticos: Lista<Diagnostico>
+fecha
+
+campo mede_tipos(programas: Lista<Programa>, simbolos: TabelaSimbolos) -> TabelaTipos ::
+  guarda tabela := tabela_tipos_base()
+
+  para cada programa em programas ::
+    registra_declaracoes(programa, tabela)
+  fecha
+
+  para cada programa em programas ::
+    registra_assinaturas(programa, tabela)
+  fecha
+
+  para cada programa em programas ::
+    confere_programa(programa, simbolos, tabela)
+  fecha
+
+  devolve tabela
+fecha
+
+campo tabela_tipos_base() -> TabelaTipos ::
+  solta tabela := TabelaTipos {
+    tipos: mapa<Texto, Tipo>(),
+    campos: mapa<Texto, AssinaturaCampo>(),
+    membros: mapa<Texto, Tipo>(),
+    diagnosticos: lista<Diagnostico>()
+  }
+
+  para cada nome em tipos_primitivos() ::
+    veja nome == "Nada" ::
+      mapa_coloca(tabela.tipos, nome, TipoNada)
+    outro ::
+      mapa_coloca(tabela.tipos, nome, TipoBase(nome))
+    fecha
+  fecha
+
+  devolve tabela
+fecha
+
+campo tipos_primitivos() -> Lista<Texto> ::
+  solta nomes := lista<Texto>()
+  lista_coloca(nomes, "Bit")
+  lista_coloca(nomes, "Byte")
+  lista_coloca(nomes, "Num")
+  lista_coloca(nomes, "I8")
+  lista_coloca(nomes, "I16")
+  lista_coloca(nomes, "I32")
+  lista_coloca(nomes, "I64")
+  lista_coloca(nomes, "U8")
+  lista_coloca(nomes, "U16")
+  lista_coloca(nomes, "U32")
+  lista_coloca(nomes, "U64")
+  lista_coloca(nomes, "Real32")
+  lista_coloca(nomes, "Real64")
+  lista_coloca(nomes, "Texto")
+  lista_coloca(nomes, "Nada")
+  devolve nomes
+fecha
+
+campo registra_declaracoes(programa: Programa, tabela: TabelaTipos) -> Nada ::
+  para cada item em programa.itens ::
+    veja item e ItemMolde ::
+      registra_tipo_nome(tabela, item.valor.nome, TipoMolde(item.valor.nome), item.valor.span)
+      registra_genericos(item.valor.genericos, tabela)
+    fecha
+
+    veja item e ItemSelo ::
+      registra_tipo_nome(tabela, item.valor.nome, TipoSelo(item.valor.nome), item.valor.span)
+      registra_genericos(item.valor.genericos, tabela)
+    fecha
+
+    veja item e ItemCampo ::
+      registra_genericos(item.valor.genericos, tabela)
+    fecha
+  fecha
+
+  para cada item em programa.itens ::
+    veja item e ItemMolde ::
+      para cada membro em item.valor.membros ::
+        guarda chave := item.valor.nome + "." + membro.nome
+        veja mapa_tem(tabela.membros, chave) ::
+          reporta_tipo(tabela, "SV-TIPO-MEMBRO-DUPLICADO", "membro '" + membro.nome + "' esta duplicado", membro.span)
+        outro ::
+          mapa_coloca(tabela.membros, chave, resolve_tipo(membro.tipo, item.valor.genericos, tabela))
+        fecha
+      fecha
+    fecha
+  fecha
+fecha
+
+campo registra_genericos(genericos: Lista<Texto>, tabela: TabelaTipos) -> Nada ::
+  para cada generico em genericos ::
+    veja nao mapa_tem(tabela.tipos, generico) ::
+      mapa_coloca(tabela.tipos, generico, TipoGenerico(generico))
+    fecha
+  fecha
+fecha
+
+campo registra_tipo_nome(tabela: TabelaTipos, nome: Texto, tipo: Tipo, local: Span) -> Nada ::
+  veja mapa_tem(tabela.tipos, nome) ::
+    reporta_tipo(tabela, "SV-TIPO-DUPLICADO", "tipo '" + nome + "' ja existe", local)
+  outro ::
+    mapa_coloca(tabela.tipos, nome, tipo)
+  fecha
+fecha
+
+campo registra_assinaturas(programa: Programa, tabela: TabelaTipos) -> Nada ::
+  para cada item em programa.itens ::
+    veja item e ItemCampo ::
+      registra_campo(item.valor.nome, item.valor.parametros, item.valor.retorno, item.valor.efeitos, item.valor.genericos, item.valor.span, tabela)
+    fecha
+
+    veja item e ItemExterno ::
+      registra_campo(item.valor.nome, item.valor.parametros, item.valor.retorno, lista<Texto>(), lista<Texto>(), item.valor.span, tabela)
+    fecha
+
+    veja item e ItemSelo ::
+      para cada variante em item.valor.variantes ::
+        solta parametros := lista<Tipo>()
+        para cada carga em variante.carga ::
+          lista_coloca(parametros, resolve_tipo(carga.tipo, item.valor.genericos, tabela))
+        fecha
+        registra_assinatura(tabela, AssinaturaCampo {
+          nome: variante.nome,
+          parametros: parametros,
+          retorno: TipoSelo(item.valor.nome),
+          efeitos: lista<Texto>(),
+          span: variante.span
+        })
+      fecha
+    fecha
+  fecha
+fecha
+
+campo registra_campo(
+  nome: Texto,
+  parametros_sintaxe: Lista<Parametro>,
+  retorno_sintaxe: TipoSintaxe,
+  efeitos: Lista<Texto>,
+  genericos: Lista<Texto>,
+  local: Span,
+  tabela: TabelaTipos
+) -> Nada ::
+  solta parametros := lista<Tipo>()
+  para cada parametro em parametros_sintaxe ::
+    lista_coloca(parametros, resolve_tipo(parametro.tipo, genericos, tabela))
+  fecha
+
+  registra_assinatura(tabela, AssinaturaCampo {
+    nome: nome,
+    parametros: parametros,
+    retorno: resolve_tipo(retorno_sintaxe, genericos, tabela),
+    efeitos: efeitos,
+    span: local
+  })
+fecha
+
+campo registra_assinatura(tabela: TabelaTipos, assinatura: AssinaturaCampo) -> Nada ::
+  veja mapa_tem(tabela.campos, assinatura.nome) ::
+    reporta_tipo(tabela, "SV-TIPO-CAMPO-DUPLICADO", "campo '" + assinatura.nome + "' ja possui assinatura", assinatura.span)
+  outro ::
+    mapa_coloca(tabela.campos, assinatura.nome, assinatura)
+  fecha
+fecha
+
+campo confere_programa(programa: Programa, simbolos: TabelaSimbolos, tabela: TabelaTipos) -> Nada ::
+  para cada item em programa.itens ::
+    veja item e ItemCampo ::
+      confere_campo(item.valor, programa, simbolos, tabela)
+    fecha
+
+    veja item e ItemConst ::
+      guarda esperado := resolve_tipo(item.valor.tipo, lista<Texto>(), tabela)
+      guarda recebido := infere_expressao(item.valor.valor, mapa<Texto, VinculoTipo>(), programa, simbolos, tabela)
+      exige_compativel(tabela, esperado, recebido, item.valor.span, "constante " + item.valor.nome)
+    fecha
+  fecha
+fecha
