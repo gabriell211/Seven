@@ -34,10 +34,10 @@ jobs:
           set -euo pipefail
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo '65d229213805c2b0866f897bbb411e43983e51d655dc85927af572bea4864a6a  build/native-seeds.zip' | sha256sum --check
+          echo '360c21b9d4c5e3f37dbd006cd94313d5e36e88f24608b7dfa5d9e6edc527fdd4  build/native-seeds.zip' | sha256sum --check
           unzip -t build/native-seeds.zip
           unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '18c1d1e9a9b92be1514561fd726770258053fc201777c3d69b792345235d4f1a  build/native-seeds/seven-windows.exe' | sha256sum --check
+          echo 'da242440d266e4feae6ec1c8a7c4edd8e76d2ff8f025c7979c67e5070a99e3ce  build/native-seeds/seven-windows.exe' | sha256sum --check
           echo 'e4847375d1e800425e23253d36394bc8d2a2d9a97598f8905a30986310f176ed  build/native-seeds/seven-installer-windows.exe' | sha256sum --check
 
       - name: Exercise Windows compiler and deterministic bytecode
@@ -124,7 +124,7 @@ jobs:
           set -euo pipefail
           mkdir -p build/native-seeds
           cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo '65d229213805c2b0866f897bbb411e43983e51d655dc85927af572bea4864a6a  build/native-seeds.zip' | sha256sum --check
+          echo '360c21b9d4c5e3f37dbd006cd94313d5e36e88f24608b7dfa5d9e6edc527fdd4  build/native-seeds.zip' | sha256sum --check
           unzip -t build/native-seeds.zip
           unzip -q build/native-seeds.zip -d build/native-seeds
           echo '2f073ab8101742006728a491b3093ddb093d202289002d13cc2a6a03dfa55dcb  build/native-seeds/seven-linux' | sha256sum --check
