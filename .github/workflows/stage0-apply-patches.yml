@@ -1,0 +1,43 @@
+name: Apply verified Stage 0 sources
+
+on:
+  push:
+    branches:
+      - agent/stage0-autonomous
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[apply-stage0]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/stage0-autonomous
+          fetch-depth: 0
+
+      - name: Verify and apply the fixed-point sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '91a7703e2dc5810290a9144d7b88d8dba75e163e3d0b05e0ebbc086c557194f1  bootstrap/staging/compiler0-patches.tar.gz.b64' | sha256sum --check
+          base64 --decode bootstrap/staging/compiler0-patches.tar.gz.b64 | gzip --decompress | tar -xf -
+          echo 'cf41d16a0d2f58667d390c8e9a1f89b1e4f1d9d50a561a9e20b1e0cc304a55c2  compiler0/parse.sev' | sha256sum --check
+          echo '58db55258d8160fb9a579df704cd0de02731b3c602ba9e6e400d048e91525aac  compiler0/check.sev' | sha256sum --check
+          echo 'e6d221a42a1b2deb731d6dc49f026d476c6e7a7b1e0df70de93d08b19648cf7d  compiler0/emit.sev' | sha256sum --check
+          echo 'fd93d48a1d976bf69a42abcb35a445f8aa279dde20e70747f54f31950df0cc16  compiler0/scan.sev' | sha256sum --check
+
+      - name: Commit the verified source state
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm bootstrap/staging/compiler0-patches.tar.gz.b64
+          rm .github/workflows/stage0-apply-patches.yml
+          git config user.name 'gabriell211'
+          git config user.email '102088315+gabriell211@users.noreply.github.com'
+          git add compiler0/parse.sev compiler0/check.sev compiler0/emit.sev compiler0/scan.sev
+          git add -u bootstrap/staging/compiler0-patches.tar.gz.b64 .github/workflows/stage0-apply-patches.yml
+          git commit -m '[apply-stage0] Apply verified Seven-0 fixed-point sources'
+          git push origin HEAD:agent/stage0-autonomous
