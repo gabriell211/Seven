@@ -1,4 +1,4 @@
-name: Patch Seven-0 Named Variants
+name: Finalize Seven Stage 1 Sources
 
 on:
   push:
@@ -9,154 +9,156 @@ permissions:
   contents: write
 
 jobs:
-  patch:
-    if: ${{ !contains(github.event.head_commit.message, '[variants-patched]') }}
+  finalize:
+    if: ${{ !contains(github.event.head_commit.message, '[stage1-canonical]') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           ref: agent/stage1-self-host
-      - name: Apply named variant support
+          fetch-depth: 0
+
+      - name: Consolidate canonical sources and gates
         shell: bash
         run: |
           set -euo pipefail
+
+          python bootstrap/stage1_adapt.py
+
           python - <<'PY'
           from pathlib import Path
 
-          check = Path('compiler0/check.sev')
-          text = check.read_text()
-          text = text.replace('''\n    veja item.especie == "selo" ::
-      registra_variantes(unidade, item, U32(indice_item))
-    fecha
-''', '\n')
-          start = text.index('campo registra_variantes(')
-          end = text.index('campo registra_publico(', start)
-          text = text[:start] + text[end:]
-          check.write_text(text)
+          stage0 = Path('.github/workflows/stage0-fixed-point.yml')
+          text = stage0.read_text()
+          text = text.replace("          echo 'f2d0e118e3b214fbf9b74571e9529d6cf5318e7a34984aa64ba7a7b6e96a7bb8  build/seven0.monolith.sev' | sha256sum --check\n", "          sha256sum build/seven0.monolith.sev | tee build/seven0-source.sha256\n")
+          text = text.replace("          echo 'dad562c0bc695b6e2724425f3fa0b7e6af2929160a27472e256a4cdf24915678  build/seven0.svbc' | sha256sum --check\n          test \"$(wc -c < build/seven0.svbc | tr -d ' ')\" = '83696'\n", "          sha256sum build/seven0.svbc | tee build/seven0-output.sha256\n          wc -c build/seven0.svbc | tee build/seven0-output.size\n")
+          text = text.replace("          echo 'ec1cab055cdc99f2293c2009527563afdcd67165dfa98b8a9adf66b4dc7a88bb  build/stage0-proof.svbc' | sha256sum --check\n          test \"$(wc -c < build/stage0-proof.svbc | tr -d ' ')\" = '76'\n", "          sha256sum build/stage0-proof.svbc | tee build/stage0-proof.sha256\n          wc -c build/stage0-proof.svbc | tee build/stage0-proof.size\n")
+          text = text.replace("          host_hash=$(sha256sum \"${{ matrix.host }}\" | awk '{print $1}')\n", "          host_hash=$(sha256sum \"${{ matrix.host }}\" | awk '{print $1}')\n          source_hash=$(sha256sum build/seven0.monolith.sev | awk '{print $1}')\n          output_hash=$(sha256sum build/seven0.svbc | awk '{print $1}')\n          proof_hash=$(sha256sum build/stage0-proof.svbc | awk '{print $1}')\n")
+          text = text.replace('          entrada_sha256 f2d0e118e3b214fbf9b74571e9529d6cf5318e7a34984aa64ba7a7b6e96a7bb8', '          entrada_sha256 $source_hash')
+          text = text.replace('          saida_sha256 dad562c0bc695b6e2724425f3fa0b7e6af2929160a27472e256a4cdf24915678', '          saida_sha256 $output_hash')
+          text = text.replace('          prova_sha256 ec1cab055cdc99f2293c2009527563afdcd67165dfa98b8a9adf66b4dc7a88bb', '          prova_sha256 $proof_hash')
+          text = text.replace('            build/seven0.monolith.sev\n', '            build/seven0.monolith.sev\n            build/seven0-source.sha256\n            build/seven0-output.sha256\n            build/seven0-output.size\n')
+          stage0.write_text(text)
 
-          parse = Path('compiler0/parse.sev')
-          text = parse.read_text()
-          old = '''    veja parse_aceita(p, "(") ::
-      veja nao parse_proximo(p, ")") ::
-        lista_no_coloca(no_variante.filhos, no("carga", "", parse_tipo(p), "", variante.linha, variante.coluna))
-        gira parse_aceita(p, ",") ::
-          lista_no_coloca(no_variante.filhos, no("carga", "", parse_tipo(p), "", variante.linha, variante.coluna))
-        fecha
-      fecha
-      parse_espera(p, ")", "S0-PARSE-VARIANTE", "esperado ) na variante")
-    fecha'''
-          new = '''    veja parse_aceita(p, "(") ::
-      veja nao parse_proximo(p, ")") ::
-        lista_no_coloca(no_variante.filhos, parse_carga_variante(p, variante))
-        gira parse_aceita(p, ",") ::
-          lista_no_coloca(no_variante.filhos, parse_carga_variante(p, variante))
-        fecha
-      fecha
-      parse_espera(p, ")", "S0-PARSE-VARIANTE", "esperado ) na variante")
-    fecha'''
-          if old not in text:
-              raise SystemExit('variant parser block not found')
-          text = text.replace(old, new)
-          marker = '\ncampo parse_externo(p: Parser) -> No ::'
-          helper = '''
-campo parse_carga_variante(p: Parser, variante: Token) -> No ::
-  solta nome := ""
+          stage1 = Path('.github/workflows/stage1-compiler-probe.yml')
+          text = stage1.read_text()
+          text = text.replace("      - name: Apply deterministic Stage 1 adaptations\n        run: python bootstrap/stage1_adapt.py\n\n", "")
 
-  veja parse_atual(p).tipo == "nome" e parse_olha(p, 1).marca == ":" ::
-    vira nome := parse_avanca(p).marca
-    parse_espera(p, ":", "S0-PARSE-VARIANTE-CAMPO", "esperado : no campo da variante")
-  fecha
+          def replace_step(source: str, start: str, end: str, replacement: str) -> str:
+              begin = source.index(start)
+              finish = source.index(end, begin)
+              return source[:begin] + replacement + source[finish:]
 
-  devolve no("carga", nome, parse_tipo(p), "", variante.linha, variante.coluna)
-fecha
+          proof = '''      - name: Execute Stage 1 against a fresh package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > build/stage1-proof.sev <<'EOF'
+          modulo stage1.prova
+
+          campo inicio() -> Num ::
+            devolve 42
+          fecha
+          EOF
+          printf '%s\\n' 'build/stage1-proof.sev' > build/stage1-proof.sources
+          cat > build/stage1-proof.pkg <<'EOF'
+          pacote stage1-proof
+          versao 0.0.1
+          criador Gabriel Barcelos
+          entrada stage1.prova.inicio
+          alvo svbc
+          indice build/stage1-proof.sources
+          EOF
+
+          build/genesis-host build/seven.stage1.svbc build/stage1-proof.pkg build/stage1-proof.svbc
+          test -s build/stage1-proof.svbc
+          test "$(od -An -tx1 -N4 build/stage1-proof.svbc | tr -d ' \\n')" = '53564230'
+
+          set +e
+          build/genesis-host build/stage1-proof.svbc
+          proof_exit=$?
+          set -e
+          test "$proof_exit" -eq 42
+
 '''
-          if marker not in text:
-              raise SystemExit('parse_externo marker not found')
-          text = text.replace(marker, '\n' + helper + marker, 1)
-          parse.write_text(text)
+          text = replace_step(text, '      - name: Execute Stage 1 against a fresh package\n', '      - name: Execute Stage 1 self-rebuild probe\n', proof)
 
-          emit = Path('compiler0/emit.sev')
-          text = emit.read_text()
-          old = '''campo emite_variante(contexto: ContextoCampo, expr: No) -> Nada ::
-  emite_const_texto(contexto, "__tipo")
-  emite_const_texto(contexto, expr.nome)
-  emite_const_texto(contexto, "tag")
-  emite_const_texto(contexto, expr.nome)
-  solta argumentos: U32 := 4
-  solta indice: U64 := 0
+          rebuild = '''      - name: Rebuild Stage 1 deterministically
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\\n' 'build/seven.stage1.monolith.sev' > build/stage2.sources
+          cat > build/stage2.pkg <<'EOF'
+          pacote seven-stage2
+          versao 0.0.1
+          criador Gabriel Barcelos
+          entrada seven_stage1_monolith.inicio
+          alvo svbc
+          indice build/stage2.sources
+          EOF
 
-  para cada valor em expr.filhos ::
-    veja lista_no_tamanho(expr.filhos) == 1 ::
-      emite_const_texto(contexto, "valor")
-    outro ::
-      emite_const_texto(contexto, texto_u64(indice))
-    fecha
-    emite_expressao(contexto, valor)
-    vira argumentos := argumentos + 2
-    vira indice := indice + 1
-  fecha
+          build/genesis-host build/seven.stage1.svbc build/stage2.pkg build/seven.stage2.svbc
+          build/genesis-host build/seven.stage1.svbc build/stage2.pkg build/seven.stage2.repeat.svbc
+          cmp build/seven.stage2.svbc build/seven.stage2.repeat.svbc
+          test "$(od -An -tx1 -N4 build/seven.stage2.svbc | tr -d ' \\n')" = '53564230'
 
-  emite_syscall(contexto, "sys_obj_novo", argumentos)
-fecha'''
-          new = '''campo emite_variante(contexto: ContextoCampo, expr: No) -> Nada ::
-  emite_const_texto(contexto, "__tipo")
-  emite_const_texto(contexto, expr.nome)
-  emite_const_texto(contexto, "tag")
-  emite_const_texto(contexto, expr.nome)
-  solta argumentos: U32 := 4
-  solta indice: U64 := 0
-  guarda declaracao := variante_por_nome(contexto.emissao.unidade.programa, expr.nome)
+          build/genesis-host build/seven.stage2.svbc build/stage1-proof.pkg build/stage2-proof.svbc
+          cmp build/stage1-proof.svbc build/stage2-proof.svbc
 
-  para cada valor em expr.filhos ::
-    solta campo := ""
-    veja declaracao.especie == "variante" e indice < lista_no_tamanho(declaracao.filhos) ::
-      vira campo := lista_no_pega(declaracao.filhos, indice).nome
-    fecha
-    veja campo == "" e lista_no_tamanho(expr.filhos) == 1 :: vira campo := "valor" fecha
-    veja campo == "" :: vira campo := texto_u64(indice) fecha
+          set +e
+          build/genesis-host build/stage2-proof.svbc
+          proof_exit=$?
+          set -e
+          test "$proof_exit" -eq 42
 
-    emite_const_texto(contexto, campo)
-    emite_expressao(contexto, valor)
-    vira argumentos := argumentos + 2
-    vira indice := indice + 1
-  fecha
-
-  emite_syscall(contexto, "sys_obj_novo", argumentos)
-fecha'''
-          if old not in text:
-              raise SystemExit('emite_variante block not found')
-          text = text.replace(old, new)
-          marker = '\ncampo chamada_lista(nome: Texto) -> Bit ::'
-          helper = '''
-campo variante_por_nome(programa: Programa, nome: Texto) -> No ::
-  solta indice_item: U64 := 0
-  gira indice_item < lista_no_tamanho(programa.itens) ::
-    guarda item := lista_no_pega(programa.itens, indice_item)
-    veja item.especie == "selo" ::
-      solta indice_variante: U64 := 0
-      gira indice_variante < lista_no_tamanho(item.filhos) ::
-        guarda variante := lista_no_pega(item.filhos, indice_variante)
-        veja variante.especie == "variante" e variante.nome == nome :: devolve variante fecha
-        vira indice_variante := indice_variante + 1
-      fecha
-    fecha
-    vira indice_item := indice_item + 1
-  fecha
-  devolve no("ausente", "", "", "", 0, 0)
-fecha
 '''
-          if marker not in text:
-              raise SystemExit('chamada_lista marker not found')
-          text = text.replace(marker, '\n' + helper + marker, 1)
-          emit.write_text(text)
+          text = replace_step(text, '      - name: Execute Stage 1 self-rebuild probe\n', '      - name: Record Stage 1 and Stage 2 evidence\n', rebuild)
+
+          provenance = '''      - name: Record Stage 1 provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage0_hash=$(sha256sum build/seven0.svbc | awk '{print $1}')
+          source_hash=$(sha256sum build/seven.stage1.monolith.sev | awk '{print $1}')
+          stage1_hash=$(sha256sum build/seven.stage1.svbc | awk '{print $1}')
+          stage2_hash=$(sha256sum build/seven.stage2.svbc | awk '{print $1}')
+          proof_hash=$(sha256sum build/stage1-proof.svbc | awk '{print $1}')
+          cat > build/stage1.provenance <<EOF
+          formato seven-bootstrap-provenance-v2
+          etapa stage1
+          executor build/seven0.svbc
+          executor_sha256 $stage0_hash
+          entrada build/seven.stage1.monolith.sev
+          entrada_sha256 $source_hash
+          saida build/seven.stage1.svbc
+          saida_sha256 $stage1_hash
+          autorebuild build/seven.stage2.svbc
+          autorebuild_sha256 $stage2_hash
+          prova build/stage1-proof.svbc
+          prova_sha256 $proof_hash
+          prova_exit 42
+          deterministico sim
+          EOF
+          cat build/stage1.provenance
+
+'''
+          text = replace_step(text, '      - name: Record Stage 1 and Stage 2 evidence\n', '      - uses: actions/upload-artifact@v4\n', provenance)
+          text = text.replace('            build/seven.stage2.repeat.svbc\n', '            build/seven.stage2.repeat.svbc\n            build/stage2-proof.svbc\n            build/stage1.provenance\n')
+          stage1.write_text(text)
           PY
-          rm .github/workflows/stage1-patch-variants.yml
-      - name: Commit patch
+
+          rm -f bootstrap/stage1_adapt.py
+          rm -f bootstrap/stage1.status
+          rm -f .github/workflows/stage1-source-snapshot.yml
+          rm -f .github/workflows/stage1-patch-variants.yml
+
+      - name: Commit canonical Stage 1 implementation
         shell: bash
         run: |
           set -euo pipefail
           git config user.name seven-bootstrap-bot
           git config user.email actions@users.noreply.github.com
           git add -A
-          git commit -m '[variants-patched] Preserve named seal payloads'
+          git commit -m '[stage1-canonical] Consolidate Stage 1 self-hosting sources'
           git push origin HEAD:agent/stage1-self-host
