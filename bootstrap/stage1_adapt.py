@@ -138,6 +138,38 @@ fecha
     path.write_text(text.replace(marker, "\n" + helper + marker, 1), encoding="utf-8")
 
 
+def patch_driver_trace() -> None:
+    path = Path("compiler/driver.sev")
+    text = path.read_text(encoding="utf-8")
+    if '"stage1-fontes="' in text:
+        return
+
+    old_frontend = '''  guarda fontes := fonte_carrega_pacote(pedido.pacote)
+  guarda tokens := varre_unidade(fontes)
+  guarda sintaxe := monta_unidade(tokens)'''
+    new_frontend = '''  guarda fontes := fonte_carrega_pacote(pedido.pacote)
+  diga "stage1-fontes=" + texto(lista_tamanho(fontes.arquivos))
+  guarda tokens := varre_unidade(fontes)
+  diga "stage1-fluxos=" + texto(lista_tamanho(tokens))
+  guarda sintaxe := monta_unidade(tokens)
+  diga "stage1-programas=" + texto(lista_tamanho(sintaxe.programas))
+  diga "stage1-diagnosticos-sintaxe=" + texto(lista_tamanho(sintaxe.diagnosticos))'''
+    if old_frontend not in text:
+        raise RuntimeError("driver frontend pipeline not found")
+    text = text.replace(old_frontend, new_frontend, 1)
+
+    old_ir = '''  guarda meio := baixa_ir(sintaxe.programas, semantica.tipos, semantica.efeitos)
+  guarda otimizado := otimiza_ir(meio, pedido.modo)'''
+    new_ir = '''  guarda meio := baixa_ir(sintaxe.programas, semantica.tipos, semantica.efeitos)
+  diga "stage1-ir-campos=" + texto(lista_tamanho(meio.campos))
+  diga "stage1-ir-constantes=" + texto(lista_tamanho(meio.constantes))
+  guarda otimizado := otimiza_ir(meio, pedido.modo)'''
+    if old_ir not in text:
+        raise RuntimeError("driver IR pipeline not found")
+    path.write_text(text.replace(old_ir, new_ir, 1), encoding="utf-8")
+
+
 patch_checker()
 patch_parser()
 patch_emitter()
+patch_driver_trace()
