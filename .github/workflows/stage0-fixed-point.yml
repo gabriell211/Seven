@@ -73,7 +73,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          clang -O2 -std=c11 -Wall -Wextra -Werror build/genesis-host.c -o build/genesis-host.exe
+          clang -D_CRT_SECURE_NO_WARNINGS -O2 -std=c11 -Wall -Wextra -Werror build/genesis-host.c -o build/genesis-host.exe
 
       - name: Rebuild Seven-0 to a fixed point
         shell: bash
