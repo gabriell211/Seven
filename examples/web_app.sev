@@ -1,0 +1,42 @@
+modulo examples.web_app
+
+usa std.frontend.intrinsics
+
+campo inicio() -> Num toca frontend, rede ::
+  frontend_injeta_css(
+    "body{margin:0;font-family:system-ui;background:#0b1020;color:#f8fafc}" +
+    "main{max-width:720px;margin:64px auto;padding:32px;background:#111827;border-radius:18px}" +
+    "button,input{font:inherit;padding:10px 14px;border-radius:10px;border:1px solid #334155}" +
+    "button{cursor:pointer;background:#2563eb;color:white}#status{margin-top:18px;color:#93c5fd}"
+  )
+  frontend_monta(
+    "#seven-app",
+    "<h1>Seven Web</h1>" +
+    "<p>Aplicacao compilada de .sev para WebAssembly.</p>" +
+    "<input id=\"nome\" placeholder=\"Digite seu nome\"> " +
+    "<button id=\"saudar\">Saudar</button>" +
+    "<button id=\"carregar\">Testar HTTP</button>" +
+    "<p id=\"status\">Pronto.</p>"
+  )
+  frontend_escuta("#saudar", "click", "saudar")
+  frontend_escuta("#carregar", "click", "carregar")
+  devolve 0
+fecha
+
+campo saudar() -> Num toca frontend ::
+  guarda nome := frontend_evento_valor()
+  frontend_armazena("ultimo-nome", nome)
+  frontend_texto("#status", nome)
+  devolve 0
+fecha
+
+campo carregar() -> Num toca frontend, rede ::
+  frontend_fetch_texto("./seven.web.json", "recebe_manifesto")
+  devolve 0
+fecha
+
+campo recebe_manifesto() -> Num toca frontend, rede ::
+  guarda resposta := frontend_resposta_texto()
+  frontend_texto("#status", resposta)
+  devolve frontend_resposta_status()
+fecha
