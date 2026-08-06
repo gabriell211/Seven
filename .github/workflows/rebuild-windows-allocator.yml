@@ -1,0 +1,78 @@
+name: Rebuild Seven Windows Allocator
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/rebuild-windows-allocator.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: seven-windows-allocator-rebuild
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/seven-web-build
+          fetch-depth: 0
+
+      - name: Recover audited transition builder
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .github/scripts
+          git show d786cf8b432e72283163a5dc43bfc8d5f4d7105b:.github/scripts/rebuild-web-seeds.sh > .github/scripts/rebuild-web-seeds.sh
+          git show d786cf8b432e72283163a5dc43bfc8d5f4d7105b:.github/scripts/run-rebuild-web-seeds.sh > .github/scripts/run-rebuild-web-seeds.sh
+          chmod +x .github/scripts/rebuild-web-seeds.sh .github/scripts/run-rebuild-web-seeds.sh
+
+      - name: Patch portable allocation and Windows argv
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCRIPT=.github/scripts/rebuild-web-seeds.sh python - <<'PY'
+          import base64
+          import os
+          from pathlib import Path
+
+          path = Path(os.environ['SCRIPT'])
+          text = path.read_text()
+          anchor = 'path.write_text(source)\nPYWEB'
+          if anchor not in text:
+              raise SystemExit('inner bootstrap patch anchor not found')
+
+          token_old = base64.b64encode(b'''static void toks_add(Tokens*t,TokKind k,const char*s,size_t n,int line,int col){if(t->n>=MAX_TOKENS){printf("SV-LEX-LIMITE: too many tokens\\n");exit(65);}if(t->n==t->cap){t->cap=t->cap?t->cap*2:1024;t->v=(Token*)realloc(t->v,(size_t)t->cap*sizeof(Token));if(!t->v)die_oom();}t->v[t->n++]=(Token){k,xstrndup(s,n),line,col};}''').decode()
+          token_new = base64.b64encode(b'''static void toks_add(Tokens*t,TokKind k,const char*s,size_t n,int line,int col){if(t->n>=MAX_TOKENS){printf("SV-LEX-LIMITE: too many tokens\\n");exit(65);}if(t->n==t->cap){t->cap=t->cap?t->cap*2:1024;Token*novo=t->v?(Token*)realloc(t->v,(size_t)t->cap*sizeof(Token)):(Token*)xmalloc((size_t)t->cap*sizeof(Token));if(!novo)die_oom();t->v=novo;}t->v[t->n++]=(Token){k,xstrndup(s,n),line,col};}''').decode()
+          buffer_old = base64.b64encode(b'''unsigned char*p=(unsigned char*)realloc(b->p,cap);if(!p)return 0;b->p=p;b->cap=cap;return 1;''').decode()
+          buffer_new = base64.b64encode(b'''unsigned char*p=b->p?(unsigned char*)realloc(b->p,cap):(unsigned char*)malloc(cap);if(!p)return 0;b->p=p;b->cap=cap;return 1;''').decode()
+          parser_old = base64.b64encode(b'''static int parse_cmdline(char*s,char**argv,int max){int argc=0;while(*s&&argc<max){while(*s==' '||*s=='\\t')s++;if(!*s)break;char*out=s;argv[argc++]=out;int q=0;while(*s){if(*s=='"'){q=!q;s++;continue;}if(!q&&(*s==' '||*s=='\\t'))break;*out++=*s++;}*out=0;if(*s)s++;}return argc;}''').decode()
+          parser_new = base64.b64encode(b'''static int parse_cmdline(char*s,char**argv,int max){int argc=0;while(*s&&argc<max){while(*s==' '||*s=='\\t')s++;if(!*s)break;char*out=s;argv[argc++]=out;int q=0;while(*s){char c=*s++;if(c=='"'){q=!q;continue;}if(!q&&(c==' '||c=='\\t'))break;*out++=c;}*out=0;}return argc;}''').decode()
+
+          injected = '''import base64\nfor old64, new64, label in [\n    ("''' + token_old + '''", "''' + token_new + '''", "token allocator"),\n    ("''' + buffer_old + '''", "''' + buffer_new + '''", "Wasm buffer allocator"),\n    ("''' + parser_old + '''", "''' + parser_new + '''", "Windows argv parser"),\n]:\n    old = base64.b64decode(old64).decode()\n    new = base64.b64decode(new64).decode()\n    if old not in source:\n        raise SystemExit(label + " target not found")\n    source = source.replace(old, new, 1)\npath.write_text(source)\nPYWEB'''
+          path.write_text(text.replace(anchor, injected, 1))
+          PY
+
+      - name: Rebuild and publish audited seeds
+        shell: bash
+        run: bash .github/scripts/run-rebuild-web-seeds.sh
+
+      - name: Commit permanent hashes and remove diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/scripts/rebuild-web-seeds.sh \
+            .github/scripts/run-rebuild-web-seeds.sh \
+            .github/scripts/rebuild-semantic-seeds.sh \
+            .github/scripts/enable-generic-fields.py
+          git rm -f .github/workflows/rebuild-windows-allocator.yml .github/workflows/diagnose-windows-seed.yml
+          git add .github/workflows/foundation.yml .github/workflows/readiness.yml .github/workflows/web.yml
+          git config user.name gabriell211
+          git config user.email 102088315+gabriell211@users.noreply.github.com
+          git commit -m 'fix portable transition seed allocation on Windows'
+          git push origin HEAD:agent/seven-web-build
