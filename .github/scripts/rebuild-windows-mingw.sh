@@ -1,48 +1,87 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-archive_sha='b0017401ec6b14eca6efc33008f48fd516cb309075623d7882f5b9fb69fad812'
-windows_sha='1f1c99a8444b2e2bdc1d98be7207dc3623954298f2f759971f7da5c45cfccbcb'
-old_archive_sha='5b18c8a0e647d2abcac3059160ed6f73ade753c06ba8af29e1bf0d3a5b5ec3a8'
-old_windows_sha='205760f611a198ace66358ded62b620aa58ac24954e80efed1f804ce2a177863'
-
-work="${RUNNER_TEMP:-/tmp}/seven-seed-sync"
+work="${RUNNER_TEMP:-/tmp}/seven-windows-stack"
 rm -rf "$work"
-mkdir -p "$work/native-seeds"
-cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > "$work/native-seeds.zip"
-echo "$archive_sha  $work/native-seeds.zip" | sha256sum --check
-unzip -q "$work/native-seeds.zip" -d "$work/native-seeds"
-echo "$windows_sha  $work/native-seeds/seven-windows.exe" | sha256sum --check
+mkdir -p "$work" .github/scripts
 
-ARCHIVE_SHA="$archive_sha" WINDOWS_SHA="$windows_sha" OLD_ARCHIVE_SHA="$old_archive_sha" OLD_WINDOWS_SHA="$old_windows_sha" python - <<'PY'
-import os
+git show e4a709ae6a3f0af55c8b7db84beb8a5d09d49241:.github/scripts/rebuild-semantic-seeds.sh > .github/scripts/rebuild-semantic-seeds.sh
+git show e4a709ae6a3f0af55c8b7db84beb8a5d09d49241:.github/scripts/enable-generic-fields.py > .github/scripts/enable-generic-fields.py
+python .github/scripts/enable-generic-fields.py
+
+python - <<'PY'
 from pathlib import Path
 
-archive_sha = os.environ['ARCHIVE_SHA']
-windows_sha = os.environ['WINDOWS_SHA']
-old_archive_sha = os.environ['OLD_ARCHIVE_SHA']
-old_windows_sha = os.environ['OLD_WINDOWS_SHA']
+path = Path('.github/scripts/rebuild-semantic-seeds.sh')
+text = path.read_text()
+build_marker = '\ngcc -std=c11 -O2 -s -Wall -Wextra -Wno-unused-parameter "$work/seven-bootstrap.c" -o "$work/seven-linux"\n'
+entry_patch = r"""
+CHECKER_SOURCE="$work/seven-bootstrap.c" python - <<'PYENTRY'
+import os
+import re
+from pathlib import Path
 
-for name in ('.github/workflows/foundation.yml', '.github/workflows/readiness.yml'):
-    path = Path(name)
-    text = path.read_text()
-    archive_count = text.count(old_archive_sha)
-    windows_count = text.count(old_windows_sha)
-    if archive_count < 1:
-        raise SystemExit(f'{name}: old archive hash not found')
-    if windows_count < 1:
-        raise SystemExit(f'{name}: old Windows hash not found')
-    text = text.replace(old_archive_sha, archive_sha)
-    text = text.replace(old_windows_sha, windows_sha)
-    path.write_text(text)
+path = Path(os.environ["CHECKER_SOURCE"])
+source = path.read_text()
+old_entry = '''#ifndef _WIN32
+int main(int argc,char**argv){return core_main(argc,argv);}
+#else
+static int parse_cmdline(char*s,char**argv,int max){int argc=0;while(*s&&argc<max){while(*s==' '||*s=='\\t')s++;if(!*s)break;char*out=s;argv[argc++]=out;int q=0;while(*s){if(*s=='"'){q=!q;s++;continue;}if(!q&&(*s==' '||*s=='\\t'))break;*out++=*s++;}*out=0;if(*s)s++;}return argc;}
+void mainCRTStartup(void){char*cmd=GetCommandLineA();char*argv[128];int argc=parse_cmdline(cmd,argv,128);ExitProcess((unsigned)core_main(argc,argv));}
+#endif'''
+new_entry = 'int main(int argc,char**argv){return core_main(argc,argv);}'
+if old_entry not in source:
+    raise SystemExit('Windows CRT entrypoint target not found')
+source = source.replace(old_entry, new_entry, 1)
+
+io_pattern = re.compile(r'#ifdef _WIN32\n(?:(?!#else).)*GetFileAttributesA(?:(?!#else).)*#else', re.S)
+new_io = '''#ifdef _WIN32
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <string.h>
+#include <ctype.h>
+#include <windows.h>
+#define strtoll _strtoi64
+#define snprintf _snprintf
+#else'''
+source, count = io_pattern.subn(new_io, source, count=1)
+if count != 1:
+    raise SystemExit(f'Windows native import block count was {count}')
+path.write_text(source)
+PYENTRY
+"""
+if build_marker not in text:
+    raise SystemExit('Linux compiler build marker not found')
+text = text.replace(build_marker, '\n' + entry_patch + build_marker, 1)
+
+start = text.index('cat > "$work/kernel32.def"')
+end_line = '"$link" /subsystem:console /entry:mainCRTStartup /nodefaultlib /out:"$work/seven-windows.exe" "$work/seven-windows.obj" "$work/kernel32.lib" "$work/msvcrt.lib"\n'
+end = text.index(end_line, start) + len(end_line)
+mingw = (
+    'x86_64-w64-mingw32-gcc -std=c11 -O2 -s -Wall -Wextra '
+    '-Wno-unused-parameter "$work/seven-bootstrap.c" '
+    '-Wl,--stack,16777216,1048576 -o "$work/seven-windows.exe"\n'
+)
+text = text[:start] + mingw + text[end:]
+
+old_hash = 'archive_sha=$(sha256sum "$work/native-seeds.zip" | cut -d\' \' -f1)'
+new_hash = (
+    'cat seed/native/final/v1/part*.b64 | tr -d \'\\r\\n\\t \' | '
+    'base64 --decode > "$work/reconstructed.zip"\n'
+    'cmp "$work/native-seeds.zip" "$work/reconstructed.zip"\n'
+    'archive_sha=$(sha256sum "$work/reconstructed.zip" | cut -d\' \' -f1)'
+)
+if old_hash not in text:
+    raise SystemExit('archive hash target not found')
+text = text.replace(old_hash, new_hash, 1)
+text = text.replace(
+    "git commit -m 'rebuild semantic seeds with delimiter-aware checker'",
+    "git commit -m 'rebuild Windows seed with 16 MiB stack reserve'",
+    1,
+)
+path.write_text(text)
 PY
 
-git config user.name gabriell211
-git config user.email 102088315+gabriell211@users.noreply.github.com
-git add .github/workflows/foundation.yml .github/workflows/readiness.yml
-git diff --cached --check
-if git diff --cached --quiet; then
-  exit 0
-fi
-git commit -m 'sync workflows with rebuilt Windows seed'
-git push origin HEAD:gabriell211/production-readiness
+bash .github/scripts/rebuild-semantic-seeds.sh
