@@ -1,0 +1,64 @@
+modulo tests.compiler.frontend
+
+usa std.test.spec
+usa seven.compiler.source
+usa seven.compiler.token
+usa seven.compiler.lexer
+usa seven.compiler.parser
+usa seven.compiler.diagnostic
+
+campo suite_frontend() -> Suite ::
+  solta s := suite("compiler frontend")
+
+  testa(s, "programa valido", campo() -> Nada ::
+    guarda codigo := "modulo app\n\ncampo soma(a: Num, b: Num) -> Num ::\n  devolve a + b\nfecha\n"
+    guarda fonte := fonte_de_texto("valido.sev", codigo)
+    guarda fluxo := varre(fonte)
+    solta fluxos := lista<FluxoTokens>()
+    lista_coloca(fluxos, fluxo)
+    guarda saida := monta_unidade(fluxos)
+
+    espera(nao diagnosticos_tem_erros(saida.diagnosticos), "programa valido gerou diagnosticos")
+    espera(lista_tamanho(saida.programas) == 1, "parser nao produziu o programa")
+  fecha)
+
+  testa(s, "texto nao fechado", campo() -> Nada ::
+    guarda codigo := "campo inicio() -> Num ::\n  diga \"aberto\n  devolve 0\nfecha\n"
+    guarda fluxo := varre(fonte_de_texto("texto-invalido.sev", codigo))
+
+    espera(diagnosticos_tem_erros(fluxo.diagnosticos), "lexer aceitou texto nao fechado")
+    espera(tem_codigo(fluxo.diagnosticos, "SV-LEX-TEXTO-LINHA") ou tem_codigo(fluxo.diagnosticos, "SV-LEX-TEXTO"), "diagnostico lexical esperado nao foi emitido")
+  fecha)
+
+  testa(s, "fecha ausente", campo() -> Nada ::
+    guarda codigo := "campo inicio() -> Num ::\n  devolve 0\n"
+    guarda fluxo := varre(fonte_de_texto("fecha-ausente.sev", codigo))
+    solta fluxos := lista<FluxoTokens>()
+    lista_coloca(fluxos, fluxo)
+    guarda saida := monta_unidade(fluxos)
+
+    espera(diagnosticos_tem_erros(saida.diagnosticos), "parser aceitou bloco sem fecha")
+    espera(tem_codigo(saida.diagnosticos, "SV-PARSE-FECHA"), "diagnostico SV-PARSE-FECHA ausente")
+  fecha)
+
+  testa(s, "precedencia aritmetica", campo() -> Nada ::
+    guarda codigo := "campo inicio() -> Num ::\n  guarda valor: Num := 2 + 3 * 4\n  devolve valor\nfecha\n"
+    guarda fluxo := varre(fonte_de_texto("precedencia.sev", codigo))
+    solta fluxos := lista<FluxoTokens>()
+    lista_coloca(fluxos, fluxo)
+    guarda saida := monta_unidade(fluxos)
+
+    espera(nao diagnosticos_tem_erros(saida.diagnosticos), "expressao com precedencia nao foi aceita")
+  fecha)
+
+  devolve s
+fecha
+
+campo tem_codigo(diagnosticos: Lista<Diagnostico>, codigo: Texto) -> Bit ::
+  para cada diagnostico em diagnosticos ::
+    veja diagnostico.codigo == codigo ::
+      devolve sim
+    fecha
+  fecha
+  devolve nao
+fecha

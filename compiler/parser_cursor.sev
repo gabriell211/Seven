@@ -1,0 +1,203 @@
+modulo seven.compiler.parser_cursor
+
+usa seven.compiler.token
+usa seven.compiler.source
+usa seven.compiler.diagnostic
+
+molde CursorTokens ::
+  fluxo: FluxoTokens
+  posicao: U64
+  diagnosticos: BolsaDiagnosticos
+fecha
+
+campo cursor_tokens(fluxo: FluxoTokens) -> CursorTokens ::
+  solta bolsa := bolsa_diagnosticos(100)
+  diagnosticos_junta(bolsa, fluxo.diagnosticos)
+
+  devolve CursorTokens {
+    fluxo: fluxo,
+    posicao: 0,
+    diagnosticos: bolsa
+  }
+fecha
+
+campo atual_token(cursor: CursorTokens) -> Token ::
+  guarda total := lista_tamanho(cursor.fluxo.tokens)
+
+  veja total == 0 ::
+    guarda vazio := Span {
+      arquivo: cursor.fluxo.fonte.caminho,
+      inicio: 0,
+      fim: 0,
+      linha: 1,
+      coluna: 1
+    }
+    devolve token_fim(vazio)
+  fecha
+
+  veja cursor.posicao >= total ::
+    devolve lista_pega(cursor.fluxo.tokens, total - 1)
+  fecha
+
+  devolve lista_pega(cursor.fluxo.tokens, cursor.posicao)
+fecha
+
+campo token_anterior(cursor: CursorTokens) -> Token ::
+  veja cursor.posicao == 0 ::
+    devolve atual_token(cursor)
+  fecha
+
+  devolve lista_pega(cursor.fluxo.tokens, cursor.posicao - 1)
+fecha
+
+campo token_seguinte(cursor: CursorTokens, distancia: U64) -> Token ::
+  guarda alvo := cursor.posicao + distancia
+  guarda total := lista_tamanho(cursor.fluxo.tokens)
+
+  veja total == 0 ::
+    devolve atual_token(cursor)
+  fecha
+
+  veja alvo >= total ::
+    devolve lista_pega(cursor.fluxo.tokens, total - 1)
+  fecha
+
+  devolve lista_pega(cursor.fluxo.tokens, alvo)
+fecha
+
+campo fim(cursor: CursorTokens) -> Bit ::
+  devolve atual_token(cursor).tipo == Fim
+fecha
+
+campo avanca_token(cursor: CursorTokens) -> Token ::
+  guarda atual := atual_token(cursor)
+
+  veja nao fim(cursor) ::
+    vira cursor.posicao := cursor.posicao + 1
+  fecha
+
+  devolve atual
+fecha
+
+campo proximo_e(cursor: CursorTokens, marca: Texto) -> Bit ::
+  devolve atual_token(cursor).marca == marca
+fecha
+
+campo seguinte_e(cursor: CursorTokens, marca: Texto) -> Bit ::
+  devolve token_seguinte(cursor, 1).marca == marca
+fecha
+
+campo aceita(cursor: CursorTokens, marca: Texto) -> Bit ::
+  veja proximo_e(cursor, marca) ::
+    avanca_token(cursor)
+    devolve sim
+  fecha
+
+  devolve nao
+fecha
+
+campo espera(cursor: CursorTokens, marca: Texto, codigo: Texto, mensagem: Texto) -> Token ::
+  veja proximo_e(cursor, marca) ::
+    devolve avanca_token(cursor)
+  fecha
+
+  guarda encontrado := atual_token(cursor)
+  diagnosticos_adiciona(cursor.diagnosticos, erro_com_ajuda(
+    codigo,
+    mensagem + "; encontrado '" + encontrado.marca + "'",
+    encontrado.span.arquivo,
+    encontrado.span.linha,
+    encontrado.span.coluna,
+    "esperado '" + marca + "'"
+  ))
+
+  devolve encontrado
+fecha
+
+campo espera_nome(cursor: CursorTokens, contexto: Texto) -> Token ::
+  guarda encontrado := atual_token(cursor)
+
+  veja encontrado.tipo == Nome ::
+    devolve avanca_token(cursor)
+  fecha
+
+  diagnosticos_adiciona(cursor.diagnosticos, erro_com_ajuda(
+    "SV-PARSE-NOME",
+    "esperado nome " + contexto,
+    encontrado.span.arquivo,
+    encontrado.span.linha,
+    encontrado.span.coluna,
+    "use um identificador iniciado por letra ou _"
+  ))
+
+  veja nao fim(cursor) ::
+    avanca_token(cursor)
+  fecha
+
+  devolve encontrado
+fecha
+
+campo espera_texto(cursor: CursorTokens, contexto: Texto) -> Token ::
+  guarda encontrado := atual_token(cursor)
+
+  veja encontrado.tipo == TextoLit ::
+    devolve avanca_token(cursor)
+  fecha
+
+  diagnosticos_adiciona(cursor.diagnosticos, erro_com_ajuda(
+    "SV-PARSE-TEXTO",
+    "esperado texto " + contexto,
+    encontrado.span.arquivo,
+    encontrado.span.linha,
+    encontrado.span.coluna,
+    "use um literal entre aspas duplas"
+  ))
+
+  veja nao fim(cursor) ::
+    avanca_token(cursor)
+  fecha
+
+  devolve encontrado
+fecha
+
+campo reporta_atual(cursor: CursorTokens, codigo: Texto, mensagem: Texto, ajuda: Texto) -> Nada ::
+  guarda encontrado := atual_token(cursor)
+  diagnosticos_adiciona(cursor.diagnosticos, erro_com_ajuda(
+    codigo,
+    mensagem,
+    encontrado.span.arquivo,
+    encontrado.span.linha,
+    encontrado.span.coluna,
+    ajuda
+  ))
+fecha
+
+campo sincroniza_item(cursor: CursorTokens) -> Nada ::
+  gira nao fim(cursor) ::
+    veja proximo_e(cursor, "campo") ou proximo_e(cursor, "extern") ou proximo_e(cursor, "molde") ou proximo_e(cursor, "selo") ou proximo_e(cursor, "const") ::
+      devolve nulo
+    fecha
+
+    avanca_token(cursor)
+  fecha
+fecha
+
+campo sincroniza_comando(cursor: CursorTokens) -> Nada ::
+  gira nao fim(cursor) ::
+    veja proximo_e(cursor, "guarda") ou proximo_e(cursor, "solta") ou proximo_e(cursor, "vira") ou proximo_e(cursor, "diga") ou proximo_e(cursor, "veja") ou proximo_e(cursor, "gira") ou proximo_e(cursor, "para") ou proximo_e(cursor, "devolve") ou proximo_e(cursor, "caixa") ou proximo_e(cursor, "marca") ou proximo_e(cursor, "pega") ou proximo_e(cursor, "zona") ou proximo_e(cursor, "falha") ou proximo_e(cursor, "outro") ou proximo_e(cursor, "fecha") ::
+      devolve nulo
+    fecha
+
+    avanca_token(cursor)
+  fecha
+fecha
+
+campo span_junta(inicio: Span, fim_span: Span) -> Span ::
+  devolve Span {
+    arquivo: inicio.arquivo,
+    inicio: inicio.inicio,
+    fim: fim_span.fim,
+    linha: inicio.linha,
+    coluna: inicio.coluna
+  }
+fecha

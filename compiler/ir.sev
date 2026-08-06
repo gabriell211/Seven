@@ -5,12 +5,15 @@ usa seven.compiler.types
 usa seven.compiler.effects
 
 molde UnidadeIr ::
+  nomes: Lista<Texto>
   campos: Lista<CampoIr>
   constantes: Lista<ConstanteIr>
 fecha
 
 molde CampoIr ::
   nome: Texto
+  parametros: U32
+  efeitos: Lista<Texto>
   locais: Lista<Tipo>
   blocos: Lista<BlocoIr>
 fecha
@@ -25,12 +28,14 @@ selo InstrucaoIr ::
   IrMove(destino: U32, origem: U32)
   IrBin(destino: U32, operador: Texto, esquerda: U32, direita: U32)
   IrChama(destino: U32, campo: Texto, argumentos: Lista<U32>)
+  IrSyscall(destino: U32, nome: Texto, argumentos: Lista<U32>)
   IrSalta(bloco: Texto)
   IrSaltaSeNao(condicao: U32, bloco: Texto)
   IrRetorna(origem: U32)
   IrCaixa(destino: U32, tamanho: U32)
   IrMarcaByte(bloco: U32, indice: U32, valor: U32)
   IrPegaByte(destino: U32, bloco: U32, indice: U32)
+  IrPare
 fecha
 
 selo ValorIr ::
@@ -45,8 +50,19 @@ molde ConstanteIr ::
   valor: ValorIr
 fecha
 
+molde ContextoIr ::
+  unidade: UnidadeIr
+  campo: CampoIr
+  bloco: BlocoIr
+  locais: Mapa<Texto, U32>
+  proximo_bloco: U32
+  tipos: TabelaTipos
+  efeitos: TabelaEfeitos
+fecha
+
 campo baixa_ir(programas: Lista<Programa>, tipos: TabelaTipos, efeitos: TabelaEfeitos) -> UnidadeIr ::
   solta unidade := UnidadeIr {
+    nomes: lista<Texto>(),
     campos: lista<CampoIr>(),
     constantes: lista<ConstanteIr>()
   }
@@ -55,11 +71,581 @@ campo baixa_ir(programas: Lista<Programa>, tipos: TabelaTipos, efeitos: TabelaEf
     baixa_programa(programa, tipos, efeitos, unidade)
   fecha
 
+  garante_nomes_campos_primeiro(unidade)
   devolve unidade
+fecha
+
+campo baixa_programa(
+  programa: Programa,
+  tipos: TabelaTipos,
+  efeitos: TabelaEfeitos,
+  unidade: UnidadeIr
+) -> Nada ::
+  para cada item em programa.itens ::
+    veja item e ItemConst ::
+      guarda valor := valor_constante(item.valor.valor)
+      registra_constante(unidade, item.valor.nome, valor)
+    fecha
+
+    veja item e ItemCampo ::
+      baixa_campo(item.valor, tipos, efeitos, unidade)
+    fecha
+  fecha
+fecha
+
+campo baixa_campo(campo: Campo, tipos: TabelaTipos, efeitos: TabelaEfeitos, unidade: UnidadeIr) -> Nada ::
+  solta campo_ir := CampoIr {
+    nome: campo.nome,
+    parametros: U32(lista_tamanho(campo.parametros)),
+    efeitos: campo.efeitos,
+    locais: lista<Tipo>(),
+    blocos: lista<BlocoIr>()
+  }
+  solta entrada := BlocoIr {
+    nome: "entrada",
+    instrucoes: lista<InstrucaoIr>()
+  }
+  lista_coloca(campo_ir.blocos, entrada)
+  registra_nome(unidade, campo.nome)
+
+  solta contexto := ContextoIr {
+    unidade: unidade,
+    campo: campo_ir,
+    bloco: entrada,
+    locais: mapa<Texto, U32>(),
+    proximo_bloco: 0,
+    tipos: tipos,
+    efeitos: efeitos
+  }
+
+  para cada parametro em campo.parametros ::
+    guarda tipo := resolve_tipo(parametro.tipo, campo.genericos, tipos)
+    guarda indice := novo_local(contexto, tipo)
+    mapa_coloca(contexto.locais, parametro.nome, indice)
+  fecha
+
+  para cada comando em campo.corpo ::
+    baixa_comando(comando, contexto)
+  fecha
+
+  veja nao bloco_terminado(contexto.bloco) ::
+    guarda nulo := emite_constante(contexto, ValorNulo)
+    emite(contexto, IrRetorna(nulo))
+  fecha
+
+  lista_coloca(unidade.campos, campo_ir)
+fecha
+
+campo baixa_comando(comando: Comando, contexto: ContextoIr) -> Nada ::
+  veja comando e CmdCria ::
+    guarda valor := baixa_expressao(comando.valor.valor, contexto)
+    guarda tipo := TipoDesconhecido
+    veja comando.valor.tipo.nome != "" ::
+      vira tipo := resolve_tipo(comando.valor.tipo, lista<Texto>(), contexto.tipos)
+    fecha
+    guarda local := novo_local(contexto, tipo)
+    mapa_coloca(contexto.locais, comando.valor.nome, local)
+    emite(contexto, IrMove(local, valor))
+    devolve nulo
+  fecha
+
+  veja comando e CmdVira ::
+    baixa_atribuicao(comando.valor.alvo, comando.valor.valor, contexto)
+    devolve nulo
+  fecha
+
+  veja comando e CmdDiga ::
+    guarda valor := baixa_expressao(comando.valor.valor, contexto)
+    solta argumentos := lista<U32>()
+    lista_coloca(argumentos, valor)
+    emite_syscall(contexto, "terminal_diga", argumentos)
+    devolve nulo
+  fecha
+
+  veja comando e CmdVeja ::
+    baixa_veja(comando.valor, contexto)
+    devolve nulo
+  fecha
+
+  veja comando e CmdGira ::
+    baixa_gira(comando.valor, contexto)
+    devolve nulo
+  fecha
+
+  veja comando e CmdParaCada ::
+    baixa_para_cada(comando.valor, contexto)
+    devolve nulo
+  fecha
+
+  veja comando e CmdDevolve ::
+    guarda valor := baixa_expressao(comando.valor.valor, contexto)
+    emite(contexto, IrRetorna(valor))
+    devolve nulo
+  fecha
+
+  veja comando e CmdCaixa ::
+    guarda tamanho := baixa_expressao(comando.valor.tamanho, contexto)
+    guarda local := novo_local(contexto, TipoPonteiro(TipoBase("Byte")))
+    mapa_coloca(contexto.locais, comando.valor.nome, local)
+    emite(contexto, IrCaixa(local, tamanho))
+    devolve nulo
+  fecha
+
+  veja comando e CmdMarca ::
+    guarda bloco := local_nome(contexto, comando.valor.bloco)
+    guarda indice := baixa_expressao(comando.valor.indice, contexto)
+    guarda valor := baixa_expressao(comando.valor.valor, contexto)
+    emite(contexto, IrMarcaByte(bloco, indice, valor))
+    devolve nulo
+  fecha
+
+  veja comando e CmdPega ::
+    guarda bloco := local_nome(contexto, comando.valor.bloco)
+    guarda indice := baixa_expressao(comando.valor.indice, contexto)
+    guarda destino := novo_local(contexto, TipoBase("Byte"))
+    mapa_coloca(contexto.locais, comando.valor.destino, destino)
+    emite(contexto, IrPegaByte(destino, bloco, indice))
+    devolve nulo
+  fecha
+
+  veja comando e CmdZona ::
+    para cada interno em comando.valor.corpo ::
+      baixa_comando(interno, contexto)
+    fecha
+    devolve nulo
+  fecha
+
+  veja comando e CmdFalha ::
+    guarda codigo := emite_constante(contexto, ValorTexto(comando.valor.codigo))
+    guarda mensagem := emite_constante(contexto, ValorTexto(comando.valor.mensagem))
+    solta argumentos := lista<U32>()
+    lista_coloca(argumentos, codigo)
+    lista_coloca(argumentos, mensagem)
+    emite_syscall(contexto, "sys_falha", argumentos)
+    devolve nulo
+  fecha
+
+  veja comando e CmdExpressao ::
+    baixa_expressao(comando.valor.valor, contexto)
+  fecha
+fecha
+
+campo baixa_veja(comando: Veja, contexto: ContextoIr) -> Nada ::
+  guarda condicao := baixa_expressao(comando.condicao, contexto)
+  guarda nome_entao := novo_nome_bloco(contexto, "veja_entao")
+  guarda nome_senao := novo_nome_bloco(contexto, "veja_senao")
+  guarda nome_fim := novo_nome_bloco(contexto, "veja_fim")
+
+  emite(contexto, IrSaltaSeNao(condicao, nome_senao))
+  emite(contexto, IrSalta(nome_entao))
+
+  muda_bloco(contexto, cria_bloco(contexto, nome_entao))
+  para cada interno em comando.entao ::
+    baixa_comando(interno, contexto)
+  fecha
+  veja nao bloco_terminado(contexto.bloco) ::
+    emite(contexto, IrSalta(nome_fim))
+  fecha
+
+  muda_bloco(contexto, cria_bloco(contexto, nome_senao))
+  para cada interno em comando.senao ::
+    baixa_comando(interno, contexto)
+  fecha
+  veja nao bloco_terminado(contexto.bloco) ::
+    emite(contexto, IrSalta(nome_fim))
+  fecha
+
+  muda_bloco(contexto, cria_bloco(contexto, nome_fim))
+fecha
+
+campo baixa_gira(comando: Gira, contexto: ContextoIr) -> Nada ::
+  guarda nome_condicao := novo_nome_bloco(contexto, "gira_condicao")
+  guarda nome_corpo := novo_nome_bloco(contexto, "gira_corpo")
+  guarda nome_fim := novo_nome_bloco(contexto, "gira_fim")
+
+  emite(contexto, IrSalta(nome_condicao))
+  muda_bloco(contexto, cria_bloco(contexto, nome_condicao))
+  guarda condicao := baixa_expressao(comando.condicao, contexto)
+  emite(contexto, IrSaltaSeNao(condicao, nome_fim))
+  emite(contexto, IrSalta(nome_corpo))
+
+  muda_bloco(contexto, cria_bloco(contexto, nome_corpo))
+  para cada interno em comando.corpo ::
+    baixa_comando(interno, contexto)
+  fecha
+  veja nao bloco_terminado(contexto.bloco) ::
+    emite(contexto, IrSalta(nome_condicao))
+  fecha
+
+  muda_bloco(contexto, cria_bloco(contexto, nome_fim))
+fecha
+
+campo baixa_para_cada(comando: ParaCada, contexto: ContextoIr) -> Nada ::
+  guarda colecao := baixa_expressao(comando.colecao, contexto)
+  solta args_iterador := lista<U32>()
+  lista_coloca(args_iterador, colecao)
+  guarda iterador := emite_syscall(contexto, "sys_iterador_novo", args_iterador)
+
+  guarda nome_condicao := novo_nome_bloco(contexto, "para_condicao")
+  guarda nome_corpo := novo_nome_bloco(contexto, "para_corpo")
+  guarda nome_fim := novo_nome_bloco(contexto, "para_fim")
+  emite(contexto, IrSalta(nome_condicao))
+
+  muda_bloco(contexto, cria_bloco(contexto, nome_condicao))
+  solta args_tem := lista<U32>()
+  lista_coloca(args_tem, iterador)
+  guarda tem := emite_syscall(contexto, "sys_iterador_tem", args_tem)
+  emite(contexto, IrSaltaSeNao(tem, nome_fim))
+  emite(contexto, IrSalta(nome_corpo))
+
+  muda_bloco(contexto, cria_bloco(contexto, nome_corpo))
+  solta args_atual := lista<U32>()
+  lista_coloca(args_atual, iterador)
+  guarda atual := emite_syscall(contexto, "sys_iterador_atual", args_atual)
+  mapa_coloca(contexto.locais, comando.nome, atual)
+
+  para cada interno em comando.corpo ::
+    baixa_comando(interno, contexto)
+  fecha
+
+  solta args_avanca := lista<U32>()
+  lista_coloca(args_avanca, iterador)
+  emite_syscall(contexto, "sys_iterador_avanca", args_avanca)
+  veja nao bloco_terminado(contexto.bloco) ::
+    emite(contexto, IrSalta(nome_condicao))
+  fecha
+
+  muda_bloco(contexto, cria_bloco(contexto, nome_fim))
+fecha
+
+campo baixa_atribuicao(alvo: Expressao, valor_expr: Expressao, contexto: ContextoIr) -> Nada ::
+  guarda valor := baixa_expressao(valor_expr, contexto)
+
+  veja alvo e ExprNome ::
+    guarda destino := local_nome(contexto, alvo.valor.nome)
+    emite(contexto, IrMove(destino, valor))
+    devolve nulo
+  fecha
+
+  veja alvo e ExprAcesso ::
+    guarda base := baixa_expressao(alvo.valor.base, contexto)
+    guarda membro := emite_constante(contexto, ValorTexto(alvo.valor.membro))
+    solta argumentos := lista<U32>()
+    lista_coloca(argumentos, base)
+    lista_coloca(argumentos, membro)
+    lista_coloca(argumentos, valor)
+    emite_syscall(contexto, "sys_obj_define", argumentos)
+    devolve nulo
+  fecha
+
+  veja alvo e ExprIndice ::
+    guarda base := baixa_expressao(alvo.valor.base, contexto)
+    guarda indice := baixa_expressao(alvo.valor.indice, contexto)
+    solta argumentos := lista<U32>()
+    lista_coloca(argumentos, base)
+    lista_coloca(argumentos, indice)
+    lista_coloca(argumentos, valor)
+    emite_syscall(contexto, "sys_indice_define", argumentos)
+    devolve nulo
+  fecha
+fecha
+
+campo baixa_expressao(expressao: Expressao, contexto: ContextoIr) -> U32 ::
+  veja expressao e ExprLiteral ::
+    veja expressao.valor e LitNum ::
+      devolve emite_constante(contexto, ValorNum(expressao.valor.valor))
+    fecha
+    veja expressao.valor e LitTexto ::
+      devolve emite_constante(contexto, ValorTexto(expressao.valor.valor))
+    fecha
+    veja expressao.valor e LitBit ::
+      devolve emite_constante(contexto, ValorBit(expressao.valor.valor))
+    fecha
+    devolve emite_constante(contexto, ValorNulo)
+  fecha
+
+  veja expressao e ExprNome ::
+    devolve local_ou_constante(contexto, expressao.valor.nome)
+  fecha
+
+  veja expressao e ExprUnaria ::
+    guarda direita := baixa_expressao(expressao.valor.direita, contexto)
+    veja expressao.valor.operador == "nao" ::
+      solta argumentos := lista<U32>()
+      lista_coloca(argumentos, direita)
+      devolve emite_syscall(contexto, "sys_bit_nao", argumentos)
+    fecha
+    guarda zero := emite_constante(contexto, ValorNum(0))
+    guarda destino := novo_local(contexto, TipoDesconhecido)
+    emite(contexto, IrBin(destino, "-", zero, direita))
+    devolve destino
+  fecha
+
+  veja expressao e ExprBinaria ::
+    guarda esquerda := baixa_expressao(expressao.valor.esquerda, contexto)
+    guarda direita := baixa_expressao(expressao.valor.direita, contexto)
+
+    veja expressao.valor.operador == "%" ou expressao.valor.operador == "e" ou expressao.valor.operador == "ou" ::
+      solta argumentos := lista<U32>()
+      lista_coloca(argumentos, esquerda)
+      lista_coloca(argumentos, direita)
+      devolve emite_syscall(contexto, syscall_operador(expressao.valor.operador), argumentos)
+    fecha
+
+    guarda destino := novo_local(contexto, TipoDesconhecido)
+    emite(contexto, IrBin(destino, expressao.valor.operador, esquerda, direita))
+    devolve destino
+  fecha
+
+  veja expressao e ExprChamada ::
+    solta argumentos := lista<U32>()
+    para cada argumento em expressao.valor.argumentos ::
+      lista_coloca(argumentos, baixa_expressao(argumento, contexto))
+    fecha
+
+    guarda nome := nome_alvo(expressao.valor.alvo)
+    veja mapa_tem(contexto.tipos.campos, nome) ::
+      guarda destino := novo_local(contexto, TipoDesconhecido)
+      emite(contexto, IrChama(destino, nome, argumentos))
+      devolve destino
+    fecha
+
+    devolve emite_syscall(contexto, nome, argumentos)
+  fecha
+
+  veja expressao e ExprAcesso ::
+    guarda base := baixa_expressao(expressao.valor.base, contexto)
+    guarda membro := emite_constante(contexto, ValorTexto(expressao.valor.membro))
+    solta argumentos := lista<U32>()
+    lista_coloca(argumentos, base)
+    lista_coloca(argumentos, membro)
+    devolve emite_syscall(contexto, "sys_obj_pega", argumentos)
+  fecha
+
+  veja expressao e ExprIndice ::
+    guarda base := baixa_expressao(expressao.valor.base, contexto)
+    guarda indice := baixa_expressao(expressao.valor.indice, contexto)
+    solta argumentos := lista<U32>()
+    lista_coloca(argumentos, base)
+    lista_coloca(argumentos, indice)
+    devolve emite_syscall(contexto, "sys_indice_pega", argumentos)
+  fecha
+
+  veja expressao e ExprEspecializa ::
+    devolve baixa_expressao(expressao.valor.alvo, contexto)
+  fecha
+
+  veja expressao e ExprConstrucao ::
+    solta argumentos := lista<U32>()
+    guarda tipo_nome := emite_constante(contexto, ValorTexto(expressao.valor.tipo.nome))
+    lista_coloca(argumentos, tipo_nome)
+    para cada campo em expressao.valor.campos ::
+      lista_coloca(argumentos, emite_constante(contexto, ValorTexto(campo.nome)))
+      lista_coloca(argumentos, baixa_expressao(campo.valor, contexto))
+    fecha
+    devolve emite_syscall(contexto, "sys_obj_novo", argumentos)
+  fecha
+
+  veja expressao e ExprCampo ::
+    guarda marcador := emite_constante(contexto, ValorTexto("<campo-anonimo>"))
+    solta argumentos := lista<U32>()
+    lista_coloca(argumentos, marcador)
+    devolve emite_syscall(contexto, "sys_closure_nova", argumentos)
+  fecha
+
+  devolve emite_constante(contexto, ValorNulo)
+fecha
+
+campo emite_constante(contexto: ContextoIr, valor: ValorIr) -> U32 ::
+  guarda destino := novo_local(contexto, tipo_valor_ir(valor))
+  registra_constante(contexto.unidade, "", valor)
+  emite(contexto, IrConst(destino, valor))
+  devolve destino
+fecha
+
+campo emite_syscall(contexto: ContextoIr, nome: Texto, argumentos: Lista<U32>) -> U32 ::
+  guarda destino := novo_local(contexto, TipoDesconhecido)
+  registra_nome(contexto.unidade, nome)
+  emite(contexto, IrSyscall(destino, nome, argumentos))
+  devolve destino
+fecha
+
+campo emite(contexto: ContextoIr, instrucao: InstrucaoIr) -> Nada ::
+  lista_coloca(contexto.bloco.instrucoes, instrucao)
+fecha
+
+campo novo_local(contexto: ContextoIr, tipo: Tipo) -> U32 ::
+  guarda indice := U32(lista_tamanho(contexto.campo.locais))
+  lista_coloca(contexto.campo.locais, tipo)
+  devolve indice
+fecha
+
+campo local_nome(contexto: ContextoIr, nome: Texto) -> U32 ::
+  guarda local := mapa_pega(contexto.locais, nome)
+  veja local e Algo ::
+    devolve local.valor
+  fecha
+  devolve emite_constante(contexto, ValorNulo)
+fecha
+
+campo local_ou_constante(contexto: ContextoIr, nome: Texto) -> U32 ::
+  guarda local := mapa_pega(contexto.locais, nome)
+  veja local e Algo ::
+    devolve local.valor
+  fecha
+
+  para cada constante em contexto.unidade.constantes ::
+    veja constante.nome == nome ::
+      devolve emite_constante(contexto, constante.valor)
+    fecha
+  fecha
+
+  devolve emite_constante(contexto, ValorNulo)
+fecha
+
+campo cria_bloco(contexto: ContextoIr, nome: Texto) -> BlocoIr ::
+  solta bloco := BlocoIr {
+    nome: nome,
+    instrucoes: lista<InstrucaoIr>()
+  }
+  lista_coloca(contexto.campo.blocos, bloco)
+  devolve bloco
+fecha
+
+campo muda_bloco(contexto: ContextoIr, bloco: BlocoIr) -> Nada ::
+  vira contexto.bloco := bloco
+fecha
+
+campo novo_nome_bloco(contexto: ContextoIr, prefixo: Texto) -> Texto ::
+  guarda nome := prefixo + "_" + texto(contexto.proximo_bloco)
+  vira contexto.proximo_bloco := contexto.proximo_bloco + 1
+  devolve nome
+fecha
+
+campo bloco_terminado(bloco: BlocoIr) -> Bit ::
+  veja lista_tamanho(bloco.instrucoes) == 0 ::
+    devolve nao
+  fecha
+
+  guarda ultima := lista_pega(bloco.instrucoes, lista_tamanho(bloco.instrucoes) - 1)
+  devolve ultima == IrPare ou ultima e IrRetorna ou ultima e IrSalta
+fecha
+
+campo registra_constante(unidade: UnidadeIr, nome: Texto, valor: ValorIr) -> Nada ::
+  para cada atual em unidade.constantes ::
+    veja atual.nome == nome e valor_ir_igual(atual.valor, valor) ::
+      devolve nulo
+    fecha
+  fecha
+  lista_coloca(unidade.constantes, ConstanteIr { nome: nome, valor: valor })
+fecha
+
+campo registra_nome(unidade: UnidadeIr, nome: Texto) -> Nada ::
+  para cada atual em unidade.nomes ::
+    veja atual == nome ::
+      devolve nulo
+    fecha
+  fecha
+  lista_coloca(unidade.nomes, nome)
+fecha
+
+campo garante_nomes_campos_primeiro(unidade: UnidadeIr) -> Nada ::
+  solta nomes := lista<Texto>()
+  para cada campo em unidade.campos ::
+    lista_coloca(nomes, campo.nome)
+  fecha
+  para cada nome em unidade.nomes ::
+    veja nao lista_contem_texto(nomes, nome) ::
+      lista_coloca(nomes, nome)
+    fecha
+  fecha
+  vira unidade.nomes := nomes
+fecha
+
+campo lista_contem_texto(itens: Lista<Texto>, procurado: Texto) -> Bit ::
+  para cada item em itens ::
+    veja item == procurado ::
+      devolve sim
+    fecha
+  fecha
+  devolve nao
+fecha
+
+campo nome_alvo(expressao: Expressao) -> Texto ::
+  veja expressao e ExprNome ::
+    devolve expressao.valor.nome
+  fecha
+  veja expressao e ExprAcesso ::
+    devolve expressao.valor.membro
+  fecha
+  veja expressao e ExprEspecializa ::
+    devolve nome_alvo(expressao.valor.alvo)
+  fecha
+  devolve "sys_chamada_dinamica"
+fecha
+
+campo syscall_operador(operador: Texto) -> Texto ::
+  veja operador == "%" :: devolve "sys_num_mod" fecha
+  veja operador == "e" :: devolve "sys_bit_e" fecha
+  devolve "sys_bit_ou"
+fecha
+
+campo tipo_valor_ir(valor: ValorIr) -> Tipo ::
+  veja valor e ValorNum :: devolve TipoBase("Num") fecha
+  veja valor e ValorTexto :: devolve TipoBase("Texto") fecha
+  veja valor e ValorBit :: devolve TipoBase("Bit") fecha
+  devolve TipoNada
+fecha
+
+campo valor_constante(expressao: Expressao) -> ValorIr ::
+  veja expressao e ExprLiteral ::
+    veja expressao.valor e LitNum :: devolve ValorNum(expressao.valor.valor) fecha
+    veja expressao.valor e LitTexto :: devolve ValorTexto(expressao.valor.valor) fecha
+    veja expressao.valor e LitBit :: devolve ValorBit(expressao.valor.valor) fecha
+  fecha
+  devolve ValorNulo
+fecha
+
+campo valor_ir_igual(a: ValorIr, b: ValorIr) -> Bit ::
+  veja a e ValorNum ::
+    veja b e ValorNum :: devolve a.valor == b.valor fecha
+  fecha
+  veja a e ValorTexto ::
+    veja b e ValorTexto :: devolve a.valor == b.valor fecha
+  fecha
+  veja a e ValorBit ::
+    veja b e ValorBit :: devolve a.valor == b.valor fecha
+  fecha
+  veja a e ValorNulo ::
+    veja b e ValorNulo :: devolve sim fecha
+  fecha
+  devolve nao
 fecha
 
 campo otimiza_ir(unidade: UnidadeIr, modo: Texto) -> UnidadeIr ::
   guarda sem_morto := remove_codigo_morto(unidade)
-  guarda constantes := dobra_constantes(sem_morto)
-  devolve constantes
+  devolve dobra_constantes(sem_morto)
+fecha
+
+campo remove_codigo_morto(unidade: UnidadeIr) -> UnidadeIr ::
+  para cada campo em unidade.campos ::
+    para cada bloco em campo.blocos ::
+      solta novas := lista<InstrucaoIr>()
+      solta terminou := nao
+      para cada instrucao em bloco.instrucoes ::
+        veja nao terminou ::
+          lista_coloca(novas, instrucao)
+          veja instrucao e IrRetorna :: vira terminou := sim fecha
+          veja instrucao e IrSalta :: vira terminou := sim fecha
+          veja instrucao == IrPare :: vira terminou := sim fecha
+        fecha
+      fecha
+      vira bloco.instrucoes := novas
+    fecha
+  fecha
+  devolve unidade
+fecha
+
+campo dobra_constantes(unidade: UnidadeIr) -> UnidadeIr ::
+  devolve unidade
 fecha

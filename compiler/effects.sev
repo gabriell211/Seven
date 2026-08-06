@@ -11,12 +11,14 @@ selo Efeito ::
   Tempo
   Ambiente
   Cru
+  Frontend
   Teste
 fecha
 
 molde AssinaturaEfeitos ::
   campo: Texto
   efeitos: Lista<Efeito>
+  span: Span
 fecha
 
 molde TabelaEfeitos ::
@@ -31,8 +33,323 @@ campo mede_efeitos(programas: Lista<Programa>, simbolos: TabelaSimbolos) -> Tabe
   }
 
   para cada programa em programas ::
+    registra_efeitos_programa(programa, tabela)
+  fecha
+
+  para cada programa em programas ::
     confere_efeitos_programa(programa, simbolos, tabela)
   fecha
 
   devolve tabela
+fecha
+
+campo registra_efeitos_programa(programa: Programa, tabela: TabelaEfeitos) -> Nada ::
+  para cada item em programa.itens ::
+    veja item e ItemCampo ::
+      solta efeitos := lista<Efeito>()
+      para cada nome em item.valor.efeitos ::
+        guarda convertido := efeito_de_nome(nome, item.valor.span, tabela)
+        veja convertido e Algo ::
+          veja nao lista_contem_efeito(efeitos, convertido.valor) ::
+            lista_coloca(efeitos, convertido.valor)
+          outro ::
+            lista_coloca(tabela.diagnosticos, aviso(
+              "SV-EFEITO-DUPLICADO",
+              "efeito '" + nome + "' foi declarado mais de uma vez",
+              item.valor.span.arquivo,
+              item.valor.span.linha,
+              item.valor.span.coluna
+            ))
+          fecha
+        fecha
+      fecha
+
+      mapa_coloca(tabela.assinaturas, item.valor.nome, AssinaturaEfeitos {
+        campo: item.valor.nome,
+        efeitos: efeitos,
+        span: item.valor.span
+      })
+    fecha
+  fecha
+fecha
+
+campo confere_efeitos_programa(programa: Programa, simbolos: TabelaSimbolos, tabela: TabelaEfeitos) -> Nada ::
+  para cada item em programa.itens ::
+    veja item e ItemCampo ::
+      guarda assinatura := mapa_pega(tabela.assinaturas, item.valor.nome)
+      veja assinatura e Algo ::
+        para cada comando em item.valor.corpo ::
+          confere_efeitos_comando(comando, assinatura.valor, tabela)
+        fecha
+      fecha
+    fecha
+  fecha
+fecha
+
+campo confere_efeitos_comando(comando: Comando, atual: AssinaturaEfeitos, tabela: TabelaEfeitos) -> Nada ::
+  veja comando e CmdCria ::
+    confere_efeitos_expressao(comando.valor.valor, atual, tabela)
+  fecha
+
+  veja comando e CmdVira ::
+    confere_efeitos_expressao(comando.valor.alvo, atual, tabela)
+    confere_efeitos_expressao(comando.valor.valor, atual, tabela)
+  fecha
+
+  veja comando e CmdDiga ::
+    exige_efeito(atual, Terminal, "diga escreve no terminal", comando.valor.span, tabela)
+    confere_efeitos_expressao(comando.valor.valor, atual, tabela)
+  fecha
+
+  veja comando e CmdVeja ::
+    confere_efeitos_expressao(comando.valor.condicao, atual, tabela)
+    para cada interno em comando.valor.entao ::
+      confere_efeitos_comando(interno, atual, tabela)
+    fecha
+    para cada interno em comando.valor.senao ::
+      confere_efeitos_comando(interno, atual, tabela)
+    fecha
+  fecha
+
+  veja comando e CmdGira ::
+    confere_efeitos_expressao(comando.valor.condicao, atual, tabela)
+    para cada interno em comando.valor.corpo ::
+      confere_efeitos_comando(interno, atual, tabela)
+    fecha
+  fecha
+
+  veja comando e CmdParaCada ::
+    confere_efeitos_expressao(comando.valor.colecao, atual, tabela)
+    para cada interno em comando.valor.corpo ::
+      confere_efeitos_comando(interno, atual, tabela)
+    fecha
+  fecha
+
+  veja comando e CmdDevolve ::
+    confere_efeitos_expressao(comando.valor.valor, atual, tabela)
+  fecha
+
+  veja comando e CmdZona ::
+    guarda necessario := efeito_por_texto(comando.valor.efeito)
+    veja necessario e Algo ::
+      exige_efeito(atual, necessario.valor, "zona exige efeito declarado", comando.valor.span, tabela)
+    fecha
+    para cada interno em comando.valor.corpo ::
+      confere_efeitos_comando(interno, atual, tabela)
+    fecha
+  fecha
+
+  veja comando e CmdExpressao ::
+    confere_efeitos_expressao(comando.valor.valor, atual, tabela)
+  fecha
+fecha
+
+campo confere_efeitos_expressao(expressao: Expressao, atual: AssinaturaEfeitos, tabela: TabelaEfeitos) -> Nada ::
+  veja expressao e ExprChamada ::
+    confere_efeitos_expressao(expressao.valor.alvo, atual, tabela)
+    para cada argumento em expressao.valor.argumentos ::
+      confere_efeitos_expressao(argumento, atual, tabela)
+    fecha
+
+    guarda nome := nome_chamada(expressao.valor.alvo)
+    veja nome != "" ::
+      guarda assinatura := mapa_pega(tabela.assinaturas, nome)
+      veja assinatura e Algo ::
+        para cada efeito em assinatura.valor.efeitos ::
+          exige_efeito(atual, efeito, "chamada de " + nome + " propaga efeito", expressao.valor.span, tabela)
+        fecha
+      outro ::
+        guarda intrinseco := efeito_intrinseco(nome)
+        veja intrinseco e Algo ::
+          exige_efeito(atual, intrinseco.valor, "intrinseco " + nome + " exige efeito", expressao.valor.span, tabela)
+        fecha
+      fecha
+    fecha
+  fecha
+
+  veja expressao e ExprBinaria ::
+    confere_efeitos_expressao(expressao.valor.esquerda, atual, tabela)
+    confere_efeitos_expressao(expressao.valor.direita, atual, tabela)
+  fecha
+
+  veja expressao e ExprUnaria ::
+    confere_efeitos_expressao(expressao.valor.direita, atual, tabela)
+  fecha
+
+  veja expressao e ExprAcesso ::
+    confere_efeitos_expressao(expressao.valor.base, atual, tabela)
+  fecha
+
+  veja expressao e ExprIndice ::
+    confere_efeitos_expressao(expressao.valor.base, atual, tabela)
+    confere_efeitos_expressao(expressao.valor.indice, atual, tabela)
+  fecha
+
+  veja expressao e ExprEspecializa ::
+    confere_efeitos_expressao(expressao.valor.alvo, atual, tabela)
+  fecha
+
+  veja expressao e ExprConstrucao ::
+    para cada campo em expressao.valor.campos ::
+      confere_efeitos_expressao(campo.valor, atual, tabela)
+    fecha
+  fecha
+
+  veja expressao e ExprCampo ::
+    guarda anonima := AssinaturaEfeitos {
+      campo: "<anonimo>",
+      efeitos: nomes_para_efeitos(expressao.valor.efeitos, expressao.valor.span, tabela),
+      span: expressao.valor.span
+    }
+    para cada comando em expressao.valor.corpo ::
+      confere_efeitos_comando(comando, anonima, tabela)
+    fecha
+  fecha
+fecha
+
+campo exige_efeito(
+  assinatura: AssinaturaEfeitos,
+  necessario: Efeito,
+  motivo: Texto,
+  local: Span,
+  tabela: TabelaEfeitos
+) -> Nada ::
+  veja lista_contem_efeito(assinatura.efeitos, necessario) ::
+    devolve nulo
+  fecha
+
+  lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+    "SV-EFEITO-VAZOU",
+    motivo + ", mas o campo '" + assinatura.campo + "' nao declara " + efeito_nome(necessario),
+    local.arquivo,
+    local.linha,
+    local.coluna,
+    "adicione 'toca " + efeito_nome(necessario) + "' a assinatura ou remova a operacao"
+  ))
+fecha
+
+campo nomes_para_efeitos(nomes: Lista<Texto>, local: Span, tabela: TabelaEfeitos) -> Lista<Efeito> ::
+  solta efeitos := lista<Efeito>()
+  para cada nome em nomes ::
+    guarda efeito := efeito_de_nome(nome, local, tabela)
+    veja efeito e Algo ::
+      lista_coloca(efeitos, efeito.valor)
+    fecha
+  fecha
+  devolve efeitos
+fecha
+
+campo efeito_de_nome(nome: Texto, local: Span, tabela: TabelaEfeitos) -> Talvez<Efeito> ::
+  guarda convertido := efeito_por_texto(nome)
+  veja convertido e Nada ::
+    lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+      "SV-EFEITO-INEXISTENTE",
+      "efeito '" + nome + "' nao existe",
+      local.arquivo,
+      local.linha,
+      local.coluna,
+      "efeitos validos: terminal, disco, rede, tempo, ambiente, cru, frontend, teste"
+    ))
+  fecha
+  devolve convertido
+fecha
+
+campo efeito_por_texto(nome: Texto) -> Talvez<Efeito> ::
+  veja nome == "terminal" ::
+    devolve Algo(Terminal)
+  fecha
+  veja nome == "disco" ::
+    devolve Algo(Disco)
+  fecha
+  veja nome == "rede" ::
+    devolve Algo(Rede)
+  fecha
+  veja nome == "tempo" ::
+    devolve Algo(Tempo)
+  fecha
+  veja nome == "ambiente" ::
+    devolve Algo(Ambiente)
+  fecha
+  veja nome == "cru" ::
+    devolve Algo(Cru)
+  fecha
+  veja nome == "frontend" ::
+    devolve Algo(Frontend)
+  fecha
+  veja nome == "teste" ::
+    devolve Algo(Teste)
+  fecha
+  devolve Nada
+fecha
+
+campo efeito_intrinseco(nome: Texto) -> Talvez<Efeito> ::
+  veja texto_comeca(nome, "terminal_") ou texto_comeca(nome, "sys_terminal_") ::
+    devolve Algo(Terminal)
+  fecha
+  veja texto_comeca(nome, "arquivo_") ou texto_comeca(nome, "diretorio_") ou texto_comeca(nome, "sys_arquivo_") ::
+    devolve Algo(Disco)
+  fecha
+  veja texto_comeca(nome, "sys_tcp_") ou texto_comeca(nome, "sys_udp_") ou texto_comeca(nome, "sys_dns_") ou texto_comeca(nome, "sys_tls_") ou texto_comeca(nome, "sys_http_") ou texto_comeca(nome, "sys_db_") ou texto_comeca(nome, "sys_smtp_") ou texto_comeca(nome, "sys_imap_") ::
+    devolve Algo(Rede)
+  fecha
+  veja texto_comeca(nome, "sys_tempo_") ou nome == "tempo_agora" ou nome == "dorme" ::
+    devolve Algo(Tempo)
+  fecha
+  veja texto_comeca(nome, "sys_env") ou texto_comeca(nome, "sys_args") ou texto_comeca(nome, "sys_processo_") ::
+    devolve Algo(Ambiente)
+  fecha
+  veja texto_comeca(nome, "sys_mem_") ou texto_comeca(nome, "sys_ptr_") ou texto_comeca(nome, "sys_ffi_") ::
+    devolve Algo(Cru)
+  fecha
+  veja texto_comeca(nome, "frontend_") ou texto_comeca(nome, "sys_frontend_") ::
+    devolve Algo(Frontend)
+  fecha
+  devolve Nada
+fecha
+
+campo lista_contem_efeito(efeitos: Lista<Efeito>, procurado: Efeito) -> Bit ::
+  para cada efeito em efeitos ::
+    veja efeito == procurado ::
+      devolve sim
+    fecha
+  fecha
+  devolve nao
+fecha
+
+campo nome_chamada(expressao: Expressao) -> Texto ::
+  veja expressao e ExprNome ::
+    devolve expressao.valor.nome
+  fecha
+  veja expressao e ExprAcesso ::
+    devolve expressao.valor.membro
+  fecha
+  veja expressao e ExprEspecializa ::
+    devolve nome_chamada(expressao.valor.alvo)
+  fecha
+  devolve ""
+fecha
+
+campo efeito_nome(efeito: Efeito) -> Texto ::
+  veja efeito == Terminal ::
+    devolve "terminal"
+  fecha
+  veja efeito == Disco ::
+    devolve "disco"
+  fecha
+  veja efeito == Rede ::
+    devolve "rede"
+  fecha
+  veja efeito == Tempo ::
+    devolve "tempo"
+  fecha
+  veja efeito == Ambiente ::
+    devolve "ambiente"
+  fecha
+  veja efeito == Cru ::
+    devolve "cru"
+  fecha
+  veja efeito == Frontend ::
+    devolve "frontend"
+  fecha
+  devolve "teste"
 fecha

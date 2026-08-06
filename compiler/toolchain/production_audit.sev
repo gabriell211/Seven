@@ -43,14 +43,41 @@ campo audita_prontidao_producao(contexto: ContextoToolchain) -> RelatorioProduca
   item_producao(rel, "P02", "seven0 compila compiler/seven.sev", arquivo_existe("build/seven.svbc"), "build/seven.svbc existe")
   item_producao(rel, "P03", "runtime executa build/seven.svbc verify foundation", runtime_verify_foundation_ok(), "SVBC produtivo e comando retorna 0")
   item_producao(rel, "P04", "self-hosting fecha seven == seven.self", hash_seven != "" e hash_seven == hash_self, "hashes equivalentes")
-  item_producao(rel, "P05", "CI usa caminho Seven", arquivo_existe(".github/workflows/foundation.yml"), "workflow com gate de transicao")
-  item_producao(rel, "P06", "PowerShell fora do caminho oficial", arquivo_existe("tools/LEGACY.md"), "scripts marcados como legado")
-  item_producao(rel, "P07", "host e launcher Seven substituem bin/seven.exe", launcher_contrato_valido() e host_executavel_contrato_valido() e artefato_svbc_produtivo("build/seven.host.svbc") e artefato_svbc_produtivo("build/seven.launcher.svbc"), "host, launcher, runtime SVBC e imagens SVBC declarados")
+  item_producao(rel, "P05", "CI executa Seven diretamente", ci_sete_nativo(), "workflow sem shell PowerShell e sem scripts de ponte")
+  item_producao(rel, "P06", "ponte PowerShell removida", ponte_powershell_ausente(), "nenhum .ps1 ou .psm1 permanece no caminho oficial")
+  item_producao(rel, "P07", "host e launcher Seven substituem binario de transicao", launcher_contrato_valido() e host_executavel_contrato_valido() e artefato_svbc_produtivo("build/seven.host.svbc") e artefato_svbc_produtivo("build/seven.launcher.svbc"), "host, launcher e imagens SVBC produtivas")
   item_producao(rel, "P08", "compilador endurecido", arquivo_existe("compiler/semantic.sev") e arquivo_existe("compiler/effects.sev") e arquivo_existe("compiler/memory.sev"), "semantica, efeitos e memoria")
-  item_producao(rel, "P09", "runtime endurecido", arquivo_existe("runtime/svbc/verifier.sev") e arquivo_existe("runtime/svbc/command_runner.sev"), "verificador SVBC e runner de comando")
-  item_producao(rel, "P10", "release, instalador, biblioteca e libs reais", plano.binario != "" e plano.host != "" e plano.host_bytecode != "" e plano.launcher != "" e plano.launcher_bytecode != "" e plano.stdlib != "" e release_ok e biblioteca.ok, "installer, host, launcher, release, stdlib e conformance/libs em Seven")
+  item_producao(rel, "P09", "runtime endurecido", arquivo_existe("runtime/svbc/verifier.sev") e arquivo_existe("runtime/svbc/command_runner.sev") e arquivo_existe("runtime/platform/svbc/install.sev"), "verificador, runner e intrinsecos de instalacao")
+  item_producao(rel, "P10", "release e instaladores Windows/Linux", plano.binario != "" e plano.compilador_bytecode != "" e plano.host_bytecode != "" e plano.launcher_bytecode != "" e plano.stdlib != "" e arquivo_existe("brand/seven.ico") e arquivo_existe("brand/seven-mark.svg") e release_ok e biblioteca.ok, "compilador, instaladores, icones, stdlib e checksums gerados pela toolchain Seven")
 
   devolve rel
+fecha
+
+campo ci_sete_nativo() -> Bit toca disco ::
+  veja arquivo_existe(".github/workflows/foundation.yml") == nao ::
+    devolve nao
+  fecha
+
+  guarda workflow := arquivo_texto(".github/workflows/foundation.yml")
+  veja workflow e Falha ::
+    devolve nao
+  fecha
+
+  devolve texto_contem(workflow.valor, "seven.exe") e
+    texto_contem(workflow.valor, "pwsh") == nao e
+    texto_contem(workflow.valor, ".ps1") == nao e
+    texto_contem(workflow.valor, ".psm1") == nao
+fecha
+
+campo ponte_powershell_ausente() -> Bit toca disco ::
+  devolve arquivo_existe("tools/seven-dev.ps1") == nao e
+    arquivo_existe("tools/seven-lsp.ps1") == nao e
+    arquivo_existe("tools/verify-foundation.ps1") == nao e
+    arquivo_existe("tools/Seven.Foundation.psm1") == nao
+fecha
+
+campo texto_contem(valor: Texto, trecho: Texto) -> Bit ::
+  devolve sys_texto_contem(valor, trecho)
 fecha
 
 campo item_producao(rel: RelatorioProducao, codigo: Texto, nome: Texto, ok: Bit, detalhe: Texto) -> Nada ::

@@ -1,0 +1,37 @@
+modulo seven.runtime.platform.intrinsic_installer
+
+usa seven.runtime.platform.intrinsic
+usa seven.runtime.platform.svbc.install
+usa seven.runtime.platform.svbc.pure
+usa seven.runtime.svbc.value
+
+campo intrinsecos_instalador() -> Lista<Intrinseco> ::
+  solta itens := lista<Intrinseco>()
+
+  lista_coloca(itens, intrinseco("sys_texto_contem", "puro", intr_texto_contem))
+  lista_coloca(itens, intrinseco("sys_plataforma_atual", "ambiente", intr_plataforma_atual))
+  lista_coloca(itens, intrinseco("sys_executavel_diretorio", "ambiente", intr_executavel_diretorio))
+  lista_coloca(itens, intrinseco("sys_diretorio_cria", "disco", intr_diretorio_cria))
+  lista_coloca(itens, intrinseco("sys_diretorio_copia", "disco", intr_diretorio_copia))
+  lista_coloca(itens, intrinseco("sys_diretorio_remove_arvore", "disco", intr_diretorio_remove_arvore))
+  lista_coloca(itens, intrinseco("sys_arquivo_grava_bytes", "disco", intr_arquivo_grava_bytes))
+  lista_coloca(itens, intrinseco("sys_arquivo_copia", "disco", intr_arquivo_copia))
+  lista_coloca(itens, intrinseco("sys_arquivo_remove", "disco", intr_arquivo_remove))
+  lista_coloca(itens, intrinseco("sys_arquivo_permissao", "disco", intr_arquivo_permissao))
+  lista_coloca(itens, intrinseco("sys_arquivo_link_simbolico", "disco", intr_arquivo_link_simbolico))
+  lista_coloca(itens, intrinseco("sys_path_usuario_adiciona", "ambiente", intr_path_usuario_adiciona))
+  lista_coloca(itens, intrinseco("sys_path_usuario_remove", "ambiente", intr_path_usuario_remove))
+  lista_coloca(itens, intrinseco("sys_windows_atalho_cria", "ambiente", intr_windows_atalho_cria))
+  lista_coloca(itens, intrinseco("sys_windows_associacao_registra", "ambiente", intr_windows_associacao_registra))
+  lista_coloca(itens, intrinseco("sys_windows_associacao_remove", "ambiente", intr_windows_associacao_remove))
+  lista_coloca(itens, intrinseco("sys_windows_desinstalador_registra", "ambiente", intr_windows_desinstalador_registra))
+  lista_coloca(itens, intrinseco("sys_windows_desinstalador_remove", "ambiente", intr_windows_desinstalador_remove))
+  lista_coloca(itens, intrinseco("sys_linux_desktop_atualiza", "ambiente", intr_linux_desktop_atualiza))
+  lista_coloca(itens, intrinseco("sys_linux_mime_atualiza", "ambiente", intr_linux_mime_atualiza))
+
+  devolve itens
+fecha
+
+campo intr_executavel_diretorio(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca ambiente ::
+  devolve Valor(VmTexto(sys_host_executavel_diretorio()))
+fecha

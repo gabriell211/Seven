@@ -2,30 +2,26 @@
 
 # Seven `.sev`
 
-Seven e uma linguagem de programacao propria, criada para ir do baixo nivel ao alto nivel sem depender de uma linguagem hospedeira como identidade tecnica.
+Seven e uma linguagem de programacao de sistemas e aplicacoes criada por
+**Gabriel Barcelos** (`gabriell211`). O compilador, o runtime, a biblioteca
+padrao e a toolchain oficial sao escritos em Seven.
 
-Criador: **Gabriel Barcelos** (`gabriell211`).
+- Extensao oficial: `.sev`
+- Compilador: `seven`
+- Bytecode: `SVBC`
+- Alvos: Windows x64, Linux x64, SVBC e web
 
-A extensao oficial e `.sev`.
-O compilador oficial se chama `seven`.
-A fonte do compilador oficial vive em Seven.
+## Principios
 
-## Visao
-
-Seven deve ser completa, genial e competitiva por desenho: simples para comecar, profunda para sistemas grandes, precisa para baixo nivel e elegante para codigo humano.
-
-## Norte tecnico
-
-Seven existe para competir com linguagens modernas em quatro frentes:
-
-- **Controle**: memoria, layout, bytes, ABI e binarios previsiveis.
-- **Seguranca**: tipos fortes, erros explicitos, efeitos declarados e limites verificados.
-- **Escala**: modulos, pacotes, compilacao incremental e ferramentas de projeto.
-- **Produtividade**: sintaxe limpa, mensagens de erro boas, biblioteca padrao coerente.
+- **Controle:** memoria, bytes, layout, ABI e binarios previsiveis.
+- **Seguranca:** tipos fortes, falhas explicitas, efeitos e limites verificados.
+- **Escala:** modulos, pacotes, compilacao, testes e ferramentas de projeto.
+- **Produtividade:** sintaxe legivel, diagnosticos estaveis e biblioteca coerente.
+- **Autonomia:** nenhuma ponte PowerShell implementa ou valida o nucleo oficial.
 
 ## Exemplo
 
-```sv
+```sev
 modulo app
 
 campo inicio() -> Num toca terminal ::
@@ -35,180 +31,166 @@ campo inicio() -> Num toca terminal ::
 fecha
 ```
 
-## Estrutura do repositorio
-
-- `docs/language.md`: especificacao central da linguagem.
-- `docs/identity.md`: identidade, autoria e principios da Seven.
-- `docs/references.md`: referencias oficiais, citacao e atribuicao.
-- `docs/community-growth.md`: plano publico de comunidade, reputacao e contribuicoes legitimas.
-- `docs/grammar.svbnf`: gramatica inicial.
-- `docs/compiler-architecture.md`: arquitetura do compilador.
-- `docs/type-system.md`: tipos, genericos e contratos.
-- `docs/memory-model.md`: memoria segura, memoria crua e posse.
-- `docs/effects.md`: sistema de efeitos.
-- `docs/fullstack.md`: APIs oficiais para frontend, backend e fullstack.
-- `docs/frontend.md`: frontend, CSS, temas, assets e bundle.
-- `docs/intelligence.md`: arquitetura de inteligencia da linguagem.
-- `docs/platform.md`: intrinsecos de plataforma Seven.
-- `docs/runtime.md`: VM, runtime e execucao de bytecode.
-- `docs/debugger.md`: debugger inicial e contrato de breakpoints.
-- `docs/toolchain.md`: CLI, instalador, formatter, test runner, LSP e release
-  oficiais em Seven.
-- `docs/targets.md`: alvos `svbc`, `web` e nativo.
-- `docs/readiness.md`: estado de prontidao do release.
-- `docs/enterprise-readiness.md`: matriz de adocao corporativa, riscos e gates.
-- `docs/bytecode.md`: formato Seven Bytecode (`SVBC`).
-- `docs/package-system.md`: pacotes e resolucao de modulos.
-- `docs/c-interop.md`: interoperabilidade C/C++ por ABI explicita.
-- `editors/vscode/seven-language`: recursos estaticos de editor para `.sev`,
-  sem runtime JavaScript/TypeScript no nucleo oficial.
-- `docs/standard-library.md`: mapa da biblioteca padrao.
-- `docs/diagnostics.md`: codigos de erro estaveis.
-- `docs/roadmap.md`: caminho ate self-hosting e binarios.
-- `docs/market-readiness.md`: contrato para tornar Seven pronta para mercados
-  reais sem depender de outra linguagem como identidade tecnica.
-- `docs/c-js-parity.md`: matriz de capacidades para chegar ao nivel de C e
-  JavaScript sem copiar suas dependencias.
-- `docs/bridge-retirement.md`: plano para aposentar PowerShell e bootstrap
-  binario do caminho oficial.
-- `docs/production-gate.md`: checklist dos 10 pontos para producao self-hosted.
-- `std/`: biblioteca padrao escrita em Seven.
-- `compiler/`: compilador Seven escrito em Seven.
-- `compiler/toolchain/`: toolchain oficial Seven-native.
-- `compiler/toolchain/launcher.sev`: contrato do launcher e manifesto
-  `seven.launcher` usado por instalador/release.
-- `compiler0/`: compilador minimo Seven-0 usado no bootstrap.
-- `runtime/`: VM Seven, VM Seven-0 e executor do seed.
-- `bin/`: executavel de bootstrap e checksums.
-- `brand/`: logo, marca, favicon e icone oficial.
-- `CITATION.cff`: citacao oficial da linguagem.
-- `NOTICE`: aviso de autoria para fonte, binarios e releases.
-- `examples/`: programas de exemplo `.sev`.
-- `conformance/`: suite de conformidade da linguagem.
-- `seed/`: especificacao do seed minimo auditavel.
-- `bootstrap/`: estagios planejados de nascimento.
-- `build/`: imagens hexadecimais auditaveis de bootstrap.
-
-## Contrato do projeto
-
-- A linguagem oficial e Seven.
-- O criador da Seven e Gabriel Barcelos.
-- O perfil oficial do criador e `gabriell211`.
-- O compilador oficial e Seven.
-- O seed inicial e apenas uma centelha auditavel para gerar o primeiro `seven`.
-- Depois do bootstrap, Seven compila Seven.
-
-## Comandos planejados
+## Toolchain
 
 ```text
-seven build
-seven run examples/hello.sev
-seven check
-seven fmt
+seven --version
+seven check seven.pkg
+seven build seven.pkg build/seven.svbc
+seven run seven.pkg
 seven test
-seven doc
-seven install
+seven fmt
 seven lsp
-seven release
+seven pkg verify
 seven verify foundation
 seven verify bootstrap
 seven verify production
-seven web build examples/frontend-counter
-seven serve examples/api-server
+seven release
 ```
 
-## Verificacao de fundacao
-
-O release de fundacao pode ser validado no Windows com:
-
-```powershell
-.\tools\verify-foundation.ps1
-```
-
-Esse gate executa o `bin/seven.exe`, valida `check/build/run` em smoke tests,
-confere envelopes `SVBC`, percorre a conformidade valida e exige diagnosticos
-estaveis para a conformidade invalida por meio do checker de desenvolvimento.
-
-Tambem valida pacote/lock, LSP e FFI:
-
-```powershell
-.\tools\seven-dev.ps1 pkg add std.http 1.0.0 registry
-.\tools\seven-lsp.ps1 -SelfTest -File .\examples\hello.sev
-.\tools\seven-dev.ps1 ffi header .\examples\interop-c\main.sev .\build\interop-c.h
-```
-
-## Adocao por empresas
-
-Seven 0.1.0 e uma fundacao publica verificavel para avaliacao, pesquisa,
-pilotos internos e contribuicoes tecnicas. Para uso corporativo, comece por:
-
-- `docs/market-readiness.md`: autonomia tecnica, mercados-alvo e gates 1.0;
-- `docs/enterprise-readiness.md`: matriz de prontidao, riscos e gates;
-- `SECURITY.md`: politica de seguranca e reporte privado;
-- `SUPPORT.md`: escopo de suporte da fundacao;
-- `.\tools\verify-foundation.ps1`: gate local e de CI.
-
-Seven so deve ser chamado de compilador de producao depois que a cadeia abaixo
-passar com saida deterministica equivalente:
+A cadeia oficial de bootstrap e:
 
 ```text
 seed -> seven0 -> seven -> seven.self
 ```
 
-## Prontidao para qualquer mercado
+## Instalacao
 
-Seven deve crescer como uma linguagem completa, nao como wrapper permanente de
-outra linguagem. A regra do projeto e:
+A toolchain gera instaladores nativos sem scripts PowerShell:
 
-- compilador oficial em Seven;
-- runtime oficial em Seven;
-- biblioteca padrao oficial em Seven;
-- bootstrap apenas como nascimento auditavel;
-- interoperabilidade por FFI, WASM, ABI C, Win32/POSIX e navegadores como ponte
-  explicita, nao como dependencia estrutural.
+```text
+seven build seven.pkg build/seven.installer.svbc
+seven installer windows-x64
+seven installer linux-x64
+```
 
-O contrato de mercado esta em `docs/market-readiness.md` e cobre CLI, backend,
-frontend, full stack, sistemas, cloud, dados, IA, financeiro, governo, saude,
-IoT, desktop, mobile e jogos.
+### Windows x64
 
-## Full Stack Kit
+Artefato:
 
-Seven agora define APIs oficiais para:
+```text
+build/installers/seven-0.1.0-windows-x64/seven-installer.exe
+```
 
-- backend HTTP;
-- roteamento;
-- JSON;
-- HTML;
-- formularios;
-- cookies e sessoes;
-- banco de dados;
-- migracoes;
-- crypto;
-- arquivos;
-- ambiente;
-- logs;
-- async;
-- frontend DOM;
-- estado de UI;
-- cliente HTTP no navegador.
+O instalador usa `brand/seven.ico`, instala por padrao em
+`%LOCALAPPDATA%\Programs\Seven`, registra o compilador no PATH do usuario,
+cria atalho no Menu Iniciar, associa arquivos `.sev` e registra a
+Desinstalacao do Windows.
 
-Os exemplos oficiais ficam em:
+### Linux x64
 
-- `examples/api-server`
-- `examples/frontend-counter`
-- `examples/fullstack-blog`
-- `examples/auth-system`
-- `examples/mail-smtp`
-- `examples/snmp-monitor`
-- `examples/worker-queue`
-- `examples/ai-assistant`
+Artefato:
 
-## Estado atual
+```text
+build/installers/seven-0.1.0-linux-x64/seven-installer
+```
 
-Esta pasta contem a fundacao profissional da linguagem: especificacao, arquitetura, gramatica, standard library fullstack inicial, seed Seven-0, compilador minimo `compiler0`, fonte do compilador completo em `.sev`, exemplos de frontend/backend e conformidade.
+O instalador coloca a distribuicao em `~/.local/share/seven`, cria o link
+`~/.local/bin/seven`, instala `brand/seven-mark.svg` no tema de icones,
+registra `seven.desktop` e o MIME `text/x-seven`. O pacote tambem inclui
+`brand/seven.ico` no payload oficial.
 
-O proximo marco e materializar `seed/genesis.svhex` no primeiro alvo fisico, gerar `build/seven0.svbc` e ligar os intrinsecos de plataforma definidos em `docs/platform.md`.
+## Estrutura
 
-O bootstrap Windows continua sendo artefato de fundacao; a integracao final e
-levar o checker, a VM, o gerenciador de pacotes, o LSP e a FFI de
-`tools/seven-dev.ps1` para o `seven` self-hosted.
+- `compiler/`: compilador Seven.
+- `compiler0/`: compilador minimo do bootstrap.
+- `compiler/toolchain/`: CLI, formatter, testes, LSP, release e instaladores.
+- `runtime/`: VM, host, launcher, decoder, verificador e plataforma nativa.
+- `runtime/installer/`: entrada do instalador escrita em Seven.
+- `std/`: biblioteca padrao.
+- `conformance/`: testes de conformidade validos e invalidos.
+- `tests/`: testes da toolchain e do runtime.
+- `seed/`: seed minimo auditavel.
+- `brand/`: logo, marca SVG e icone ICO oficial.
+- `docs/`: especificacao e arquitetura.
+
+## Compilador
+
+O pipeline implementado e:
+
+```text
+fonte .sev
+  -> lexer
+  -> tokens e diagnosticos
+  -> parser
+  -> AST
+  -> simbolos, tipos, efeitos e memoria
+  -> IR
+  -> SVBC
+  -> VM ou backend nativo
+```
+
+O front-end suporta declaracoes, genericos, moldes, selos, campos, contratos,
+escopos, mutabilidade, retornos, chamadas, controle de fluxo, iteracao,
+operacoes de memoria e recuperacao de erros.
+
+## Biblioteca padrao
+
+A biblioteca inclui superficies para:
+
+- colecoes, texto, bytes, resultados e opcoes;
+- arquivos, ambiente, processos e tempo;
+- TCP, UDP, DNS, TLS, HTTP e WebSocket;
+- JSON, XML, YAML, TOML, CSV e formatos binarios;
+- banco de dados, Redis, filas e migracoes;
+- criptografia, tokens e autenticacao;
+- frontend, DOM, CSS, estado e cliente HTTP;
+- testes, logs, metricas e tracing.
+
+## Verificacao
+
+O workflow `.github/workflows/foundation.yml` executa o compilador diretamente,
+materializa as imagens SVBC, verifica a cadeia de bootstrap, gera os
+compiladores nativos e produz os dois instaladores.
+
+O gate rejeita a existencia de:
+
+```text
+tools/seven-dev.ps1
+tools/seven-lsp.ps1
+tools/verify-foundation.ps1
+tools/Seven.Foundation.psm1
+```
+
+Para auditoria local:
+
+```text
+seven verify foundation
+seven verify bootstrap
+seven verify production
+```
+
+## Documentacao principal
+
+- `docs/language.md`: especificacao da linguagem.
+- `docs/grammar.svbnf`: gramatica.
+- `docs/compiler-architecture.md`: arquitetura do compilador.
+- `docs/type-system.md`: sistema de tipos.
+- `docs/memory-model.md`: modelo de memoria.
+- `docs/effects.md`: efeitos.
+- `docs/runtime.md`: runtime e VM.
+- `docs/bytecode.md`: formato SVBC.
+- `docs/toolchain.md`: comandos e ferramentas.
+- `docs/targets.md`: alvos de compilacao.
+- `docs/bridge-retirement.md`: aposentadoria da ponte PowerShell.
+- `docs/production-gate.md`: criterios de producao.
+- `docs/enterprise-readiness.md`: prontidao corporativa.
+
+## Estado do projeto
+
+A Seven possui uma fundacao executavel do compilador, runtime SVBC, toolchain,
+biblioteca padrao e empacotamento nativo. O projeto somente deve ser anunciado
+como totalmente self-hosted depois que a equivalencia deterministica abaixo for
+comprovada pelos artefatos de release:
+
+```text
+hash(seven gerado por seven0)
+==
+hash(seven gerado por seven)
+==
+hash(seven gerado por seven.self)
+```
+
+## Licenca e autoria
+
+Consulte `LICENSE`, `NOTICE` e `CITATION.cff`.

@@ -1,6 +1,7 @@
 modulo seven.compiler.token
 
 usa seven.compiler.source
+usa seven.compiler.diagnostic
 
 selo TokenTipo ::
   Nome
@@ -8,24 +9,48 @@ selo TokenTipo ::
   TextoLit
   Palavra
   Sinal
+  Invalido
   Fim
 fecha
 
 molde Token ::
   tipo: TokenTipo
   marca: Texto
+  literal: Texto
   span: Span
 fecha
 
 molde FluxoTokens ::
   fonte: Fonte
   tokens: Lista<Token>
+  diagnosticos: Lista<Diagnostico>
 fecha
 
-campo token(tipo: TokenTipo, marca: Texto, span: Span) -> Token ::
+campo token(tipo: TokenTipo, marca: Texto, literal: Texto, span: Span) -> Token ::
   devolve Token {
     tipo: tipo,
     marca: marca,
+    literal: literal,
     span: span
   }
+fecha
+
+campo token_simples(tipo: TokenTipo, marca: Texto, span: Span) -> Token ::
+  devolve token(tipo, marca, marca, span)
+fecha
+
+campo token_fim(span: Span) -> Token ::
+  devolve token(Fim, "", "", span)
+fecha
+
+campo token_e(valor: Token, marca: Texto) -> Bit ::
+  devolve valor.marca == marca
+fecha
+
+campo token_nome(valor: Token) -> Bit ::
+  devolve valor.tipo == Nome
+fecha
+
+campo fluxo_tem_erros(fluxo: FluxoTokens) -> Bit ::
+  devolve diagnosticos_tem_erros(fluxo.diagnosticos)
 fecha

@@ -13,7 +13,15 @@ molde Diagnostico ::
   arquivo: Texto
   linha: U32
   coluna: U32
+  fim_linha: U32
+  fim_coluna: U32
   ajuda: Texto
+fecha
+
+molde BolsaDiagnosticos ::
+  itens: Lista<Diagnostico>
+  limite: U32
+  interrompida: Bit
 fecha
 
 campo diagnostico(
@@ -23,6 +31,8 @@ campo diagnostico(
   arquivo: Texto,
   linha: U32,
   coluna: U32,
+  fim_linha: U32,
+  fim_coluna: U32,
   ajuda: Texto
 ) -> Diagnostico ::
   devolve Diagnostico {
@@ -32,14 +42,82 @@ campo diagnostico(
     arquivo: arquivo,
     linha: linha,
     coluna: coluna,
+    fim_linha: fim_linha,
+    fim_coluna: fim_coluna,
     ajuda: ajuda
   }
 fecha
 
 campo erro(codigo: Texto, mensagem: Texto, arquivo: Texto, linha: U32, coluna: U32) -> Diagnostico ::
-  devolve diagnostico(Erro, codigo, mensagem, arquivo, linha, coluna, "")
+  devolve diagnostico(Erro, codigo, mensagem, arquivo, linha, coluna, linha, coluna + 1, "")
+fecha
+
+campo erro_com_ajuda(
+  codigo: Texto,
+  mensagem: Texto,
+  arquivo: Texto,
+  linha: U32,
+  coluna: U32,
+  ajuda: Texto
+) -> Diagnostico ::
+  devolve diagnostico(Erro, codigo, mensagem, arquivo, linha, coluna, linha, coluna + 1, ajuda)
+fecha
+
+campo aviso(codigo: Texto, mensagem: Texto, arquivo: Texto, linha: U32, coluna: U32) -> Diagnostico ::
+  devolve diagnostico(Aviso, codigo, mensagem, arquivo, linha, coluna, linha, coluna + 1, "")
+fecha
+
+campo bolsa_diagnosticos(limite: U32) -> BolsaDiagnosticos ::
+  devolve BolsaDiagnosticos {
+    itens: lista<Diagnostico>(),
+    limite: limite,
+    interrompida: nao
+  }
+fecha
+
+campo diagnosticos_adiciona(bolsa: BolsaDiagnosticos, diag: Diagnostico) -> Nada ::
+  veja bolsa.interrompida ::
+    devolve nulo
+  fecha
+
+  lista_coloca(bolsa.itens, diag)
+
+  veja lista_tamanho(bolsa.itens) >= bolsa.limite ::
+    vira bolsa.interrompida := sim
+    lista_coloca(bolsa.itens, erro_com_ajuda(
+      "SV-LIMITE-DIAGNOSTICOS",
+      "compilacao interrompida depois de muitos erros",
+      diag.arquivo,
+      diag.linha,
+      diag.coluna,
+      "corrija os primeiros erros e execute seven check novamente"
+    ))
+  fecha
+fecha
+
+campo diagnosticos_junta(destino: BolsaDiagnosticos, origem: Lista<Diagnostico>) -> Nada ::
+  para cada diag em origem ::
+    diagnosticos_adiciona(destino, diag)
+  fecha
+fecha
+
+campo diagnosticos_tem_erros(itens: Lista<Diagnostico>) -> Bit ::
+  para cada diag em itens ::
+    veja diag.nivel == Erro ::
+      devolve sim
+    fecha
+  fecha
+
+  devolve nao
 fecha
 
 campo formatar_diagnostico(diag: Diagnostico) -> Texto ::
-  devolve diag.arquivo + ":" + texto(diag.linha) + ":" + texto(diag.coluna) + " " + diag.codigo + " " + diag.mensagem
+  guarda local := diag.arquivo + ":" + texto(diag.linha) + ":" + texto(diag.coluna)
+  guarda principal := local + " " + diag.codigo + " " + diag.mensagem
+
+  veja diag.ajuda == "" ::
+    devolve principal
+  fecha
+
+  devolve principal + "\najuda: " + diag.ajuda
 fecha

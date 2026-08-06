@@ -1,0 +1,126 @@
+modulo seven.runtime.platform.svbc.install
+
+usa std.base.resultado
+usa seven.runtime.platform.svbc.bytes
+usa seven.runtime.svbc.value
+
+campo intr_plataforma_atual(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca ambiente ::
+  devolve Valor(VmTexto(sys_host_plataforma_atual()))
+fecha
+
+campo intr_diretorio_cria(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco ::
+  guarda resultado := sys_host_diretorio_cria(valor_texto(lista_pega(args, 0)))
+  devolve resultado_nada_vm(resultado)
+fecha
+
+campo intr_diretorio_copia(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco ::
+  guarda origem := valor_texto(lista_pega(args, 0))
+  guarda destino := valor_texto(lista_pega(args, 1))
+  devolve resultado_nada_vm(sys_host_diretorio_copia(origem, destino))
+fecha
+
+campo intr_diretorio_remove_arvore(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco ::
+  guarda resultado := sys_host_diretorio_remove_arvore(valor_texto(lista_pega(args, 0)))
+  devolve resultado_nada_vm(resultado)
+fecha
+
+campo intr_arquivo_grava_bytes(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco ::
+  guarda caminho := valor_texto(lista_pega(args, 0))
+  guarda dados := lista_pega(args, 1)
+
+  veja dados e VmBytes ::
+    devolve resultado_nada_vm(sys_host_arquivo_grava_bytes(caminho, dados.valor))
+  fecha
+
+  devolve Falha(nova_falha("SV-INSTALL-TIPO", "arquivo_grava_bytes esperava Bytes"))
+fecha
+
+campo intr_arquivo_copia(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco ::
+  guarda origem := valor_texto(lista_pega(args, 0))
+  guarda destino := valor_texto(lista_pega(args, 1))
+  devolve resultado_nada_vm(sys_host_arquivo_copia(origem, destino))
+fecha
+
+campo intr_arquivo_remove(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco ::
+  devolve resultado_nada_vm(sys_host_arquivo_remove(valor_texto(lista_pega(args, 0))))
+fecha
+
+campo intr_arquivo_permissao(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco ::
+  guarda caminho := valor_texto(lista_pega(args, 0))
+  guarda modo := valor_vm_u64(lista_pega(args, 1))
+  devolve resultado_nada_vm(sys_host_arquivo_permissao(caminho, modo))
+fecha
+
+campo intr_arquivo_link_simbolico(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco ::
+  guarda origem := valor_texto(lista_pega(args, 0))
+  guarda destino := valor_texto(lista_pega(args, 1))
+  devolve resultado_nada_vm(sys_host_arquivo_link_simbolico(origem, destino))
+fecha
+
+campo intr_path_usuario_adiciona(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco, ambiente ::
+  devolve resultado_nada_vm(sys_host_path_usuario_adiciona(valor_texto(lista_pega(args, 0))))
+fecha
+
+campo intr_path_usuario_remove(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco, ambiente ::
+  devolve resultado_nada_vm(sys_host_path_usuario_remove(valor_texto(lista_pega(args, 0))))
+fecha
+
+campo intr_windows_atalho_cria(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco, ambiente ::
+  devolve resultado_nada_vm(sys_host_windows_atalho_cria(
+    valor_texto(lista_pega(args, 0)),
+    valor_texto(lista_pega(args, 1)),
+    valor_texto(lista_pega(args, 2)),
+    valor_texto(lista_pega(args, 3)),
+    valor_texto(lista_pega(args, 4)),
+    valor_texto(lista_pega(args, 5))
+  ))
+fecha
+
+campo intr_windows_associacao_registra(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco, ambiente ::
+  devolve resultado_nada_vm(sys_host_windows_associacao_registra(
+    valor_texto(lista_pega(args, 0)),
+    valor_texto(lista_pega(args, 1)),
+    valor_texto(lista_pega(args, 2)),
+    valor_texto(lista_pega(args, 3)),
+    valor_texto(lista_pega(args, 4))
+  ))
+fecha
+
+campo intr_windows_associacao_remove(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco, ambiente ::
+  devolve resultado_nada_vm(sys_host_windows_associacao_remove(
+    valor_texto(lista_pega(args, 0)),
+    valor_texto(lista_pega(args, 1))
+  ))
+fecha
+
+campo intr_windows_desinstalador_registra(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco, ambiente ::
+  devolve resultado_nada_vm(sys_host_windows_desinstalador_registra(
+    valor_texto(lista_pega(args, 0)),
+    valor_texto(lista_pega(args, 1)),
+    valor_texto(lista_pega(args, 2)),
+    valor_texto(lista_pega(args, 3)),
+    valor_texto(lista_pega(args, 4)),
+    valor_texto(lista_pega(args, 5)),
+    valor_texto(lista_pega(args, 6))
+  ))
+fecha
+
+campo intr_windows_desinstalador_remove(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco, ambiente ::
+  devolve resultado_nada_vm(sys_host_windows_desinstalador_remove(valor_texto(lista_pega(args, 0))))
+fecha
+
+campo intr_linux_desktop_atualiza(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco, ambiente ::
+  devolve resultado_nada_vm(sys_host_linux_desktop_atualiza())
+fecha
+
+campo intr_linux_mime_atualiza(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> toca disco, ambiente ::
+  devolve resultado_nada_vm(sys_host_linux_mime_atualiza())
+fecha
+
+campo resultado_nada_vm(resultado: Resultado<Nada, Falha>) -> Resultado<ValorVm, Falha> ::
+  veja resultado e Falha ::
+    devolve Falha(resultado.valor)
+  fecha
+
+  devolve Valor(VmNada)
+fecha

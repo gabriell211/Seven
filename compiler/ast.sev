@@ -39,9 +39,11 @@ fecha
 
 molde Campo ::
   nome: Texto
+  genericos: Lista<Texto>
   parametros: Lista<Parametro>
   retorno: TipoSintaxe
   efeitos: Lista<Texto>
+  contratos: Lista<Expressao>
   corpo: Lista<Comando>
   span: Span
 fecha
@@ -54,6 +56,7 @@ fecha
 
 molde Molde ::
   nome: Texto
+  genericos: Lista<Texto>
   membros: Lista<Membro>
   span: Span
 fecha
@@ -66,6 +69,7 @@ fecha
 
 molde Selo ::
   nome: Texto
+  genericos: Lista<Texto>
   variantes: Lista<Variante>
   span: Span
 fecha
@@ -86,6 +90,7 @@ fecha
 molde TipoSintaxe ::
   nome: Texto
   argumentos: Lista<TipoSintaxe>
+  matriz: Bit
   span: Span
 fecha
 
@@ -95,11 +100,14 @@ selo Comando ::
   CmdDiga(Diga)
   CmdVeja(Veja)
   CmdGira(Gira)
+  CmdParaCada(ParaCada)
   CmdDevolve(Devolve)
   CmdCaixa(Caixa)
   CmdMarca(Marca)
   CmdPega(Pega)
   CmdZona(Zona)
+  CmdFalha(FalhaCmd)
+  CmdExpressao(ExpressaoCmd)
 fecha
 
 molde Cria ::
@@ -130,6 +138,13 @@ fecha
 
 molde Gira ::
   condicao: Expressao
+  corpo: Lista<Comando>
+  span: Span
+fecha
+
+molde ParaCada ::
+  nome: Texto
+  colecao: Expressao
   corpo: Lista<Comando>
   span: Span
 fecha
@@ -165,14 +180,28 @@ molde Zona ::
   span: Span
 fecha
 
+molde FalhaCmd ::
+  codigo: Texto
+  mensagem: Texto
+  span: Span
+fecha
+
+molde ExpressaoCmd ::
+  valor: Expressao
+  span: Span
+fecha
+
 selo Expressao ::
   ExprLiteral(Literal)
   ExprNome(NomeExpr)
   ExprAcesso(AcessoExpr)
+  ExprIndice(IndiceExpr)
   ExprChamada(ChamadaExpr)
+  ExprEspecializa(EspecializaExpr)
   ExprBinaria(BinariaExpr)
   ExprUnaria(UnariaExpr)
   ExprConstrucao(ConstrucaoExpr)
+  ExprCampo(CampoAnonimoExpr)
 fecha
 
 selo Literal ::
@@ -193,9 +222,21 @@ molde AcessoExpr ::
   span: Span
 fecha
 
+molde IndiceExpr ::
+  base: Expressao
+  indice: Expressao
+  span: Span
+fecha
+
 molde ChamadaExpr ::
   alvo: Expressao
   argumentos: Lista<Expressao>
+  span: Span
+fecha
+
+molde EspecializaExpr ::
+  alvo: Expressao
+  argumentos: Lista<TipoSintaxe>
   span: Span
 fecha
 
@@ -215,6 +256,14 @@ fecha
 molde ConstrucaoExpr ::
   tipo: TipoSintaxe
   campos: Lista<CampoValor>
+  span: Span
+fecha
+
+molde CampoAnonimoExpr ::
+  parametros: Lista<Parametro>
+  retorno: TipoSintaxe
+  efeitos: Lista<Texto>
+  corpo: Lista<Comando>
   span: Span
 fecha
 

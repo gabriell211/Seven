@@ -1,0 +1,46 @@
+modulo tests.toolchain.installer
+
+usa std.base.texto
+usa std.test.spec
+usa seven.compiler.toolchain.installer
+usa seven.compiler.toolchain.installer_builder
+
+campo suite_instalador() -> Suite ::
+  solta s := suite("native installer")
+
+  testa(s, "nomes de sistema", campo() -> Nada ::
+    espera(sistema_instalacao_nome(WindowsX64) == "windows-x64", "nome do alvo Windows incorreto")
+    espera(sistema_instalacao_nome(LinuxX64) == "linux-x64", "nome do alvo Linux incorreto")
+  fecha)
+
+  testa(s, "nomes de executavel", campo() -> Nada ::
+    espera(nome_instalador(WindowsX64) == "seven-installer.exe", "instalador Windows precisa ser EXE")
+    espera(nome_instalador(LinuxX64) == "seven-installer", "instalador Linux precisa ser ELF sem extensao")
+  fecha)
+
+  testa(s, "alvos aceitos", campo() -> Nada ::
+    guarda windows := sistema_instalacao_por_nome("windows-x64")
+    guarda linux := sistema_instalacao_por_nome("linux-x64")
+    guarda invalido := sistema_instalacao_por_nome("outro")
+
+    espera(windows e Valor, "windows-x64 deve ser aceito")
+    espera(linux e Valor, "linux-x64 deve ser aceito")
+    espera(invalido e Falha, "alvo desconhecido deve falhar")
+  fecha)
+
+  testa(s, "mime Seven", campo() -> Nada ::
+    guarda mime := mime_linux()
+    espera(texto_contem(mime, "text/x-seven"), "MIME Seven ausente")
+    espera(texto_contem(mime, "*.sev"), "glob .sev ausente")
+  fecha)
+
+  testa(s, "prefixo Linux", campo() -> Nada ::
+    espera(
+      prefixo_linux("", "/home/gabriel") == "/home/gabriel/.local/share/seven",
+      "prefixo de usuario Linux incorreto"
+    )
+    espera(prefixo_linux("/opt/seven", "/home/gabriel") == "/opt/seven", "prefixo explicito foi ignorado")
+  fecha)
+
+  devolve s
+fecha

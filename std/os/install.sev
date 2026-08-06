@@ -1,0 +1,144 @@
+modulo std.os.install
+
+usa std.base.resultado
+usa std.mem.bytes
+
+selo Plataforma ::
+  Windows
+  Linux
+  PlataformaDesconhecida
+fecha
+
+molde AtalhoAplicacao ::
+  nome: Texto
+  executavel: Texto
+  argumentos: Texto
+  icone: Texto
+  destino: Texto
+  descricao: Texto
+fecha
+
+molde AssociacaoArquivo ::
+  extensao: Texto
+  identificador: Texto
+  descricao: Texto
+  executavel: Texto
+  icone: Texto
+fecha
+
+molde RegistroDesinstalador ::
+  identificador: Texto
+  nome: Texto
+  versao: Texto
+  publicador: Texto
+  icone: Texto
+  comando: Texto
+  diretorio: Texto
+fecha
+
+campo plataforma_atual() -> Plataforma toca ambiente ::
+  guarda nome := sys_plataforma_atual()
+
+  veja nome == "windows" ::
+    devolve Windows
+  fecha
+
+  veja nome == "linux" ::
+    devolve Linux
+  fecha
+
+  devolve PlataformaDesconhecida
+fecha
+
+campo caminho_existe(caminho: Texto) -> Bit toca disco ::
+  devolve sys_arquivo_existe(caminho)
+fecha
+
+campo diretorio_cria(caminho: Texto) -> Resultado<Nada, Falha> toca disco ::
+  devolve sys_diretorio_cria(caminho)
+fecha
+
+campo diretorio_copia(origem: Texto, destino: Texto) -> Resultado<Nada, Falha> toca disco ::
+  devolve sys_diretorio_copia(origem, destino)
+fecha
+
+campo diretorio_remove_arvore(caminho: Texto) -> Resultado<Nada, Falha> toca disco ::
+  devolve sys_diretorio_remove_arvore(caminho)
+fecha
+
+campo arquivo_copia(origem: Texto, destino: Texto) -> Resultado<Nada, Falha> toca disco ::
+  devolve sys_arquivo_copia(origem, destino)
+fecha
+
+campo arquivo_remove(caminho: Texto) -> Resultado<Nada, Falha> toca disco ::
+  devolve sys_arquivo_remove(caminho)
+fecha
+
+campo arquivo_permissao_executavel(caminho: Texto) -> Resultado<Nada, Falha> toca disco ::
+  devolve sys_arquivo_permissao(caminho, 493)
+fecha
+
+campo arquivo_link_simbolico(origem: Texto, destino: Texto) -> Resultado<Nada, Falha> toca disco ::
+  devolve sys_arquivo_link_simbolico(origem, destino)
+fecha
+
+campo path_usuario_adiciona(caminho: Texto) -> Resultado<Nada, Falha> toca ambiente, disco ::
+  devolve sys_path_usuario_adiciona(caminho)
+fecha
+
+campo path_usuario_remove(caminho: Texto) -> Resultado<Nada, Falha> toca ambiente, disco ::
+  devolve sys_path_usuario_remove(caminho)
+fecha
+
+campo windows_atalho_cria(atalho: AtalhoAplicacao) -> Resultado<Nada, Falha> toca disco, ambiente ::
+  devolve sys_windows_atalho_cria(
+    atalho.nome,
+    atalho.executavel,
+    atalho.argumentos,
+    atalho.icone,
+    atalho.destino,
+    atalho.descricao
+  )
+fecha
+
+campo windows_associacao_registra(associacao: AssociacaoArquivo) -> Resultado<Nada, Falha> toca disco, ambiente ::
+  devolve sys_windows_associacao_registra(
+    associacao.extensao,
+    associacao.identificador,
+    associacao.descricao,
+    associacao.executavel,
+    associacao.icone
+  )
+fecha
+
+campo windows_associacao_remove(identificador: Texto, extensao: Texto) -> Resultado<Nada, Falha> toca disco, ambiente ::
+  devolve sys_windows_associacao_remove(identificador, extensao)
+fecha
+
+campo windows_desinstalador_registra(registro: RegistroDesinstalador) -> Resultado<Nada, Falha> toca disco, ambiente ::
+  devolve sys_windows_desinstalador_registra(
+    registro.identificador,
+    registro.nome,
+    registro.versao,
+    registro.publicador,
+    registro.icone,
+    registro.comando,
+    registro.diretorio
+  )
+fecha
+
+campo windows_desinstalador_remove(identificador: Texto) -> Resultado<Nada, Falha> toca disco, ambiente ::
+  devolve sys_windows_desinstalador_remove(identificador)
+fecha
+
+campo linux_desktop_atualiza() -> Resultado<Nada, Falha> toca disco, ambiente ::
+  devolve sys_linux_desktop_atualiza()
+fecha
+
+campo linux_mime_atualiza() -> Resultado<Nada, Falha> toca disco, ambiente ::
+  devolve sys_linux_mime_atualiza()
+fecha
+
+campo arquivo_grava_bytes(caminho: Texto, dados: Bytes) -> Resultado<Nada, Falha> toca disco ::
+  devolve sys_arquivo_grava_bytes(caminho, dados)
+fecha

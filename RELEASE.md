@@ -1,55 +1,101 @@
 # Seven 0.1.0 Release Notes
 
-Seven 0.1.0 is the first public foundation release.
+Seven 0.1.0 estabelece a fundacao publica da linguagem, do compilador, do
+runtime SVBC e da toolchain escrita em Seven.
 
-## Included
+## Destaques
 
-- Language specification.
-- Compiler architecture.
-- Seven-0 bootstrap path.
-- Runtime and VM design.
-- Full standard library surface.
-- Fullstack examples.
-- Frontend CSS system.
-- Official brand assets.
-- Bootstrap executable artifact.
+- compilador e runtime oficiais em `.sev`;
+- lexer, parser, AST, semantica, IR, bytecode e VM;
+- sistema de tipos, efeitos e verificacao de memoria;
+- CLI, formatter, test runner, LSP, pacotes e release;
+- backend nativo declarado para Windows x64 e Linux x64;
+- instaladores nativos produzidos pela toolchain Seven;
+- ponte PowerShell removida do repositorio e do CI.
 
-## Artifacts
+## Artefatos
 
-- `bin/seven.exe`
-- `bin/seven.exe.sha256`
-- `brand/seven.ico`
-- `brand/seven.ico.sha256`
-
-Artifact integrity is part of the release gate:
-
-```powershell
-.\tools\verify-foundation.ps1
-```
-
-The production gate is tracked by:
+### Nucleo
 
 ```text
+build/seven0.svbc
+build/seven.svbc
+build/seven.self.svbc
+build/seven.host.svbc
+build/seven.launcher.svbc
+build/seven.installer.svbc
+```
+
+### Compiladores nativos
+
+```text
+build/native/windows/seven.exe
+build/native/windows/seven.exe.sha256
+build/native/linux/seven
+build/native/linux/seven.sha256
+```
+
+### Instalador Windows x64
+
+```text
+build/installers/seven-0.1.0-windows-x64/seven-installer.exe
+build/installers/seven-0.1.0-windows-x64/seven-installer.exe.sha256
+build/installers/seven-0.1.0-windows-x64/seven-installer.manifest
+```
+
+O executavel incorpora `brand/seven.ico`. O payload inclui o compilador,
+bytecode, biblioteca padrao, licenca, aviso e os assets oficiais.
+
+### Instalador Linux x64
+
+```text
+build/installers/seven-0.1.0-linux-x64/seven-installer
+build/installers/seven-0.1.0-linux-x64/seven-installer.sha256
+build/installers/seven-0.1.0-linux-x64/seven-installer.manifest
+```
+
+O pacote instala `brand/seven-mark.svg` no tema de icones e inclui
+`brand/seven.ico` no payload.
+
+## Geracao
+
+```text
+seven build seven.pkg build/seven.svbc
+seven build seven.pkg build/seven.host.svbc
+seven build seven.pkg build/seven.launcher.svbc
+seven build seven.pkg build/seven.installer.svbc
+seven installer windows-x64
+seven installer linux-x64
+seven release
+```
+
+## Verificacao
+
+```text
+seven verify foundation
+seven verify bootstrap
 seven verify production
 ```
 
-For 0.1.0 this command is a Seven-native contract. It becomes a release blocker
-only after `build/seven.svbc` is real SVBC bytecode instead of the development
-VM envelope.
+O workflow oficial nao executa PowerShell. Os arquivos historicos
+`seven-dev.ps1`, `seven-lsp.ps1`, `verify-foundation.ps1` e
+`Seven.Foundation.psm1` foram removidos.
 
-## Creator
+## Integridade
 
-Gabriel Barcelos.
+Cada compilador e instalador possui SHA-256. O release tambem gera SBOM com os
+artefatos do host, launcher, compiladores, instaladores e icones.
 
-## Current Status
+## Limite do release
 
-Seven 0.1.0 is a foundation release. The repository contains the language, compiler sources, runtime sources, standard library contracts, examples, conformance suites and bootstrap artifacts.
-
-The remaining engineering milestone is completing self-hosting validation end to end:
+A declaracao de self-hosting completo depende da prova deterministica:
 
 ```text
 seed -> seven0 -> seven -> seven.self
 ```
 
-For company evaluation and pilot planning, see `docs/enterprise-readiness.md`,
-`docs/production-gate.md`, `SECURITY.md` and `SUPPORT.md`.
+Os hashes de `seven` e `seven.self` devem ser equivalentes no gate final.
+
+## Criador
+
+Gabriel Barcelos (`gabriell211`).

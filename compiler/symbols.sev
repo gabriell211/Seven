@@ -1,6 +1,7 @@
 modulo seven.compiler.symbols
 
 usa seven.compiler.ast
+usa seven.compiler.source
 usa seven.compiler.diagnostic
 usa seven.compiler.package
 
@@ -16,20 +17,28 @@ fecha
 molde Simbolo ::
   nome: Texto
   caminho: Texto
+  modulo: Texto
   tipo: SimboloTipo
   publico: Bit
+  span: Span
 fecha
 
 molde TabelaSimbolos ::
   simbolos: Mapa<Texto, Simbolo>
+  modulos: Mapa<Texto, Bit>
   diagnosticos: Lista<Diagnostico>
 fecha
 
 campo liga_unidade(programas: Lista<Programa>, pacote: Pacote) -> TabelaSimbolos ::
   solta tabela := TabelaSimbolos {
     simbolos: mapa<Texto, Simbolo>(),
+    modulos: mapa<Texto, Bit>(),
     diagnosticos: lista<Diagnostico>()
   }
+
+  para cada programa em programas ::
+    registra_modulo(tabela, programa)
+  fecha
 
   para cada programa em programas ::
     registra_itens(tabela, programa, pacote)
@@ -40,4 +49,192 @@ campo liga_unidade(programas: Lista<Programa>, pacote: Pacote) -> TabelaSimbolos
   fecha
 
   devolve tabela
+fecha
+
+campo registra_modulo(tabela: TabelaSimbolos, programa: Programa) -> Nada ::
+  veja programa.modulo == "" ::
+    devolve nulo
+  fecha
+
+  veja mapa_tem(tabela.modulos, programa.modulo) ::
+    guarda local := span_programa(programa)
+    lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+      "SV-MODULO-DUPLICADO",
+      "modulo '" + programa.modulo + "' foi declarado mais de uma vez",
+      local.arquivo,
+      local.linha,
+      local.coluna,
+      "cada modulo deve possuir um nome unico no pacote"
+    ))
+    devolve nulo
+  fecha
+
+  mapa_coloca(tabela.modulos, programa.modulo, sim)
+fecha
+
+campo registra_itens(tabela: TabelaSimbolos, programa: Programa, pacote: Pacote) -> Nada ::
+  para cada item em programa.itens ::
+    veja item e ItemCampo ::
+      registra_simbolo(tabela, simbolo(
+        item.valor.nome,
+        programa.modulo,
+        SimboloCampo,
+        item.valor.span
+      ))
+    fecha
+
+    veja item e ItemExterno ::
+      registra_simbolo(tabela, simbolo(
+        item.valor.nome,
+        programa.modulo,
+        SimboloExterno,
+        item.valor.span
+      ))
+    fecha
+
+    veja item e ItemMolde ::
+      registra_simbolo(tabela, simbolo(
+        item.valor.nome,
+        programa.modulo,
+        SimboloMolde,
+        item.valor.span
+      ))
+    fecha
+
+    veja item e ItemSelo ::
+      registra_simbolo(tabela, simbolo(
+        item.valor.nome,
+        programa.modulo,
+        SimboloSelo,
+        item.valor.span
+      ))
+    fecha
+
+    veja item e ItemConst ::
+      registra_simbolo(tabela, simbolo(
+        item.valor.nome,
+        programa.modulo,
+        SimboloConstante,
+        item.valor.span
+      ))
+    fecha
+  fecha
+fecha
+
+campo simbolo(nome: Texto, modulo: Texto, tipo: SimboloTipo, local: Span) -> Simbolo ::
+  solta caminho := nome
+
+  veja modulo != "" ::
+    vira caminho := modulo + "." + nome
+  fecha
+
+  devolve Simbolo {
+    nome: nome,
+    caminho: caminho,
+    modulo: modulo,
+    tipo: tipo,
+    publico: sim,
+    span: local
+  }
+fecha
+
+campo registra_simbolo(tabela: TabelaSimbolos, novo: Simbolo) -> Nada ::
+  veja mapa_tem(tabela.simbolos, novo.caminho) ::
+    lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+      "SV-NOME-DUPLICADO",
+      "nome '" + novo.caminho + "' ja foi declarado",
+      novo.span.arquivo,
+      novo.span.linha,
+      novo.span.coluna,
+      "renomeie uma das declaracoes ou mova-a para outro modulo"
+    ))
+    devolve nulo
+  fecha
+
+  mapa_coloca(tabela.simbolos, novo.caminho, novo)
+fecha
+
+campo resolve_usos(tabela: TabelaSimbolos, programa: Programa, pacote: Pacote) -> Nada ::
+  solta apelidos := mapa<Texto, Bit>()
+
+  para cada uso em programa.usos ::
+    veja nao mapa_tem(tabela.modulos, uso.caminho) e nao uso_externo_pacote(uso.caminho, pacote) ::
+      lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+        "SV-USO-INEXISTENTE",
+        "modulo '" + uso.caminho + "' nao foi encontrado",
+        uso.span.arquivo,
+        uso.span.linha,
+        uso.span.coluna,
+        "confira o caminho do modulo ou adicione a dependencia ao seven.pkg"
+      ))
+    fecha
+
+    guarda apelido := uso.apelido
+    veja apelido == "" ::
+      vira apelido := ultimo_segmento(uso.caminho)
+    fecha
+
+    veja mapa_tem(apelidos, apelido) ::
+      lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+        "SV-USO-APELIDO-DUPLICADO",
+        "apelido de modulo '" + apelido + "' esta duplicado",
+        uso.span.arquivo,
+        uso.span.linha,
+        uso.span.coluna,
+        "use 'como outro_nome' em uma das importacoes"
+      ))
+    outro ::
+      mapa_coloca(apelidos, apelido, sim)
+    fecha
+  fecha
+fecha
+
+campo uso_externo_pacote(caminho: Texto, pacote: Pacote) -> Bit ::
+  para cada dependencia em pacote.dependencias ::
+    veja texto_comeca(caminho, dependencia.nome + ".") ou caminho == dependencia.nome ::
+      devolve sim
+    fecha
+  fecha
+
+  devolve texto_comeca(caminho, "std.")
+fecha
+
+campo ultimo_segmento(caminho: Texto) -> Texto ::
+  devolve sys_caminho_ultimo_segmento(caminho)
+fecha
+
+campo simbolo_busca(tabela: TabelaSimbolos, modulo: Texto, nome: Texto) -> Talvez<Simbolo> ::
+  veja modulo != "" e mapa_tem(tabela.simbolos, modulo + "." + nome) ::
+    devolve mapa_pega(tabela.simbolos, modulo + "." + nome)
+  fecha
+
+  devolve mapa_pega(tabela.simbolos, nome)
+fecha
+
+campo span_programa(programa: Programa) -> Span ::
+  para cada item em programa.itens ::
+    veja item e ItemCampo ::
+      devolve item.valor.span
+    fecha
+    veja item e ItemMolde ::
+      devolve item.valor.span
+    fecha
+    veja item e ItemSelo ::
+      devolve item.valor.span
+    fecha
+    veja item e ItemConst ::
+      devolve item.valor.span
+    fecha
+    veja item e ItemExterno ::
+      devolve item.valor.span
+    fecha
+  fecha
+
+  devolve Span {
+    arquivo: programa.modulo,
+    inicio: 0,
+    fim: 0,
+    linha: 1,
+    coluna: 1
+  }
 fecha

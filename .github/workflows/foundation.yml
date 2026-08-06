@@ -1,4 +1,4 @@
-name: Seven Foundation
+name: Seven Native Foundation
 
 on:
   push:
@@ -9,70 +9,190 @@ permissions:
   contents: read
 
 concurrency:
-  group: seven-foundation-${{ github.ref }}
+  group: seven-native-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  verify:
-    name: Verify foundation release
+  windows:
+    name: Windows compiler and installer
     runs-on: windows-latest
     timeout-minutes: 20
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Verify transition bridge syntax
-        shell: pwsh
+      - name: Enforce Seven-only source boundary
+        shell: cmd
         run: |
-          $failed = $false
-          foreach ($path in Get-ChildItem -Path .\tools -Recurse -Include *.ps1,*.psm1) {
-            $tokens = $null
-            $errors = $null
-            [System.Management.Automation.Language.Parser]::ParseFile($path.FullName, [ref]$tokens, [ref]$errors) | Out-Null
-            if ($errors.Count -gt 0) {
-              $failed = $true
-              Write-Host "PowerShell syntax errors in $($path.FullName)"
-              foreach ($error in $errors) {
-                Write-Host $error.Message
-              }
-            }
-          }
-          if ($failed) {
+          for /r %%F in (*.ps1 *.psm1 *.c *.cc *.cpp *.cxx *.rs *.go *.py *.js *.ts *.cs) do (
+            echo forbidden implementation source: %%F
+            exit /b 1
+          )
+
+      - name: Verify and prepare Windows native seeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/archive/native-seeds.b64.* | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo 'fa83be6c949b4e303a74dfe441883316e285baa1388f5b4370312f3c3c506464  build/native-seeds.zip' | sha256sum --check
+          unzip -t build/native-seeds.zip
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          echo '6c65dee95cbb3fe2b99a05bbe65a18dd11b3621b59f5f6bb431a5584a062ef86  build/native-seeds/seven-windows.exe' | sha256sum --check
+          echo 'ae5feb58a3ccaca19bc56f9aaf27d21a96153ada89a97c7074e66dbe71be36a0  build/native-seeds/seven-installer-windows.exe' | sha256sum --check
+          printf '\x00\x00\x02\x00\x00\x00\x00\x00' | dd of=build/native-seeds/seven-installer-windows.exe bs=1 seek=224 conv=notrunc status=none
+          echo 'e4847375d1e800425e23253d36394bc8d2a2d9a97598f8905a30986310f176ed  build/native-seeds/seven-installer-windows.exe' | sha256sum --check
+
+      - name: Check Seven sources and deterministic bytecode
+        shell: cmd
+        run: |
+          bin\seven.exe --version
+          bin\seven.exe check compiler0\seven0.sev
+          bin\seven.exe check compiler\seven.sev
+          bin\seven.exe check runtime\installer\seven.sev
+          bin\seven.exe check compiler\toolchain\installer.sev
+          bin\seven.exe build compiler\seven.sev build\seven.svbc
+          bin\seven.exe build compiler\seven.sev build\seven.self.svbc
+          bin\seven.exe build runtime\host\seven.sev build\seven.host.svbc
+          bin\seven.exe build runtime\launcher\seven.sev build\seven.launcher.svbc
+          fc /b build\seven.svbc build\seven.self.svbc
+
+      - name: Verify native Windows compiler
+        shell: cmd
+        run: |
+          build\native-seeds\seven-windows.exe --version
+          build\native-seeds\seven-windows.exe check examples\hello.sev
+          build\native-seeds\seven-windows.exe build examples\hello.sev build\hello.svbc
+          build\native-seeds\seven-windows.exe doctor
+
+      - name: Assemble Windows bundle
+        shell: cmd
+        run: |
+          set "B=build\installers\seven-0.1.0-windows-x64"
+          mkdir "%B%\payload\bin"
+          mkdir "%B%\payload\std"
+          copy /y build\native-seeds\seven-installer-windows.exe "%B%\seven-installer.exe"
+          copy /y build\native-seeds\seven-windows.exe "%B%\payload\bin\seven.exe"
+          copy /y build\seven.svbc "%B%\payload\seven.svbc"
+          copy /y build\seven.host.svbc "%B%\payload\seven.host.svbc"
+          copy /y build\seven.launcher.svbc "%B%\payload\seven.launcher.svbc"
+          copy /y brand\seven.ico "%B%\payload\seven.ico"
+          copy /y brand\seven-mark.svg "%B%\payload\seven-mark.svg"
+          copy /y LICENSE "%B%\payload\LICENSE"
+          copy /y NOTICE "%B%\payload\NOTICE"
+          xcopy std "%B%\payload\std" /E /I /Y >nul
+          certutil -hashfile "%B%\seven-installer.exe" SHA256 > "%B%\seven-installer.exe.sha256"
+
+      - name: Install, execute and uninstall on Windows
+        shell: cmd
+        run: |
+          set "B=%CD%\build\installers\seven-0.1.0-windows-x64"
+          pushd "%B%"
+          start /wait "" ".\seven-installer.exe"
+          if errorlevel 1 exit /b 1
+          popd
+          if not exist "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" exit /b 1
+          if not exist "%LOCALAPPDATA%\Programs\Seven\seven.ico" exit /b 1
+          if not exist "%LOCALAPPDATA%\Programs\Seven\seven.svbc" exit /b 1
+          if not exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Seven.url" exit /b 1
+          "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" --version
+          reg query HKCU\Software\Classes\.sev >nul
+          reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Seven.Language >nul
+          pushd "%B%"
+          start /wait "" ".\seven-installer.exe" --uninstall
+          if errorlevel 1 exit /b 1
+          popd
+          if exist "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" exit /b 1
+          if exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Seven.url" exit /b 1
+          reg query HKCU\Software\Classes\.sev >nul 2>&1 && exit /b 1
+          reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Seven.Language >nul 2>&1 && exit /b 1
+          exit /b 0
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-0.1.0-windows-x64
+          path: build/installers/seven-0.1.0-windows-x64/
+          if-no-files-found: error
+
+  linux:
+    name: Linux compiler and installer
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enforce Seven-only source boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find . -type f \( -name '*.ps1' -o -name '*.psm1' -o -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.rs' -o -name '*.go' -o -name '*.py' -o -name '*.js' -o -name '*.ts' -o -name '*.cs' \) -print -quit | grep -q .; then
             exit 1
-          }
+          fi
 
-      - name: Materialize Seven bootstrap artifacts
-        shell: pwsh
+      - name: Verify Linux native seeds
+        shell: bash
         run: |
-          .\tools\seven-dev.ps1 check .\compiler0\seven0.sev
-          .\tools\seven-dev.ps1 build .\compiler0\seven0.sev .\build\seven0.svbc
-          .\tools\seven-dev.ps1 check .\compiler\seven.sev
-          .\tools\seven-dev.ps1 build .\compiler\seven.sev .\build\seven.svbc
-          .\tools\seven-dev.ps1 build .\compiler\seven.sev .\build\seven.self.svbc
-          .\tools\seven-dev.ps1 build .\runtime\host\seven.sev .\build\seven.host.svbc
-          .\tools\seven-dev.ps1 build .\runtime\launcher\seven.sev .\build\seven.launcher.svbc
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/archive/native-seeds.b64.* | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo 'fa83be6c949b4e303a74dfe441883316e285baa1388f5b4370312f3c3c506464  build/native-seeds.zip' | sha256sum --check
+          unzip -t build/native-seeds.zip
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          echo 'f91edfecd7620922109609d89be16426f6f1535e02b03631b4bcd5c174e5405f  build/native-seeds/seven-linux' | sha256sum --check
+          echo '8d5b9c534018d8b8ccca7fcdfaa6f7d40587c8a039d63ae214c62f93d35d533e  build/native-seeds/seven-installer-linux' | sha256sum --check
+          chmod +x build/native-seeds/seven-linux build/native-seeds/seven-installer-linux
 
-      - name: Run Seven foundation contract from seven.svbc
-        shell: pwsh
-        run: .\tools\seven-dev.ps1 run .\build\seven.svbc verify foundation
+      - name: Verify native Linux compiler and deterministic bytecode
+        shell: bash
+        run: |
+          set -euo pipefail
+          build/native-seeds/seven-linux --version
+          build/native-seeds/seven-linux check compiler/seven.sev
+          build/native-seeds/seven-linux build compiler/seven.sev build/seven.svbc
+          build/native-seeds/seven-linux build compiler/seven.sev build/seven.self.svbc
+          build/native-seeds/seven-linux build runtime/host/seven.sev build/seven.host.svbc
+          build/native-seeds/seven-linux build runtime/launcher/seven.sev build/seven.launcher.svbc
+          cmp build/seven.svbc build/seven.self.svbc
+          build/native-seeds/seven-linux doctor
 
-      - name: Run Seven bootstrap contract from seven.svbc
-        shell: pwsh
-        run: .\tools\seven-dev.ps1 run .\build\seven.svbc verify bootstrap
+      - name: Assemble Linux bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          b='build/installers/seven-0.1.0-linux-x64'
+          mkdir -p "$b/payload/bin" "$b/payload/std"
+          install -m 0755 build/native-seeds/seven-installer-linux "$b/seven-installer"
+          install -m 0755 build/native-seeds/seven-linux "$b/payload/bin/seven"
+          install -m 0644 build/seven.svbc "$b/payload/seven.svbc"
+          install -m 0644 build/seven.host.svbc "$b/payload/seven.host.svbc"
+          install -m 0644 build/seven.launcher.svbc "$b/payload/seven.launcher.svbc"
+          install -m 0644 brand/seven.ico "$b/payload/seven.ico"
+          install -m 0644 brand/seven-mark.svg "$b/payload/seven-mark.svg"
+          install -m 0644 LICENSE NOTICE "$b/payload/"
+          cp -R std/. "$b/payload/std/"
+          sha256sum "$b/seven-installer" > "$b/seven-installer.sha256"
 
-      - name: Run Seven launcher bootstrap contract from seven.launcher.svbc
-        shell: pwsh
-        run: .\tools\seven-dev.ps1 run .\build\seven.launcher.svbc verify bootstrap
+      - name: Install, execute and uninstall on Linux
+        shell: bash
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/seven-home"
+          b="$GITHUB_WORKSPACE/build/installers/seven-0.1.0-linux-x64"
+          mkdir -p "$HOME"
+          cd "$b"
+          ./seven-installer
+          test -x "$HOME/.local/share/seven/bin/seven"
+          test -L "$HOME/.local/bin/seven"
+          test -f "$HOME/.local/share/applications/seven.desktop"
+          test -f "$HOME/.local/share/mime/packages/seven.xml"
+          test -f "$HOME/.local/share/icons/hicolor/scalable/apps/seven.svg"
+          test -f "$HOME/.local/share/seven/seven.ico"
+          "$HOME/.local/bin/seven" --version
+          ./seven-installer --uninstall
+          test ! -e "$HOME/.local/bin/seven"
+          test ! -e "$HOME/.local/share/seven"
 
-      - name: Run Seven host bootstrap contract from seven.host.svbc
-        shell: pwsh
-        run: .\tools\seven-dev.ps1 run .\build\seven.host.svbc verify bootstrap
-
-      - name: Run Seven production contract from seven.svbc
-        shell: pwsh
-        run: .\tools\seven-dev.ps1 run .\build\seven.svbc verify production
-
-      - name: Audit transition bridge
-        shell: pwsh
-        run: .\tools\verify-foundation.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-0.1.0-linux-x64
+          path: build/installers/seven-0.1.0-linux-x64/
+          if-no-files-found: error

@@ -1,0 +1,135 @@
+modulo seven.runtime.svbc.memory
+
+usa std.base.resultado
+usa std.mem.bytes
+usa seven.runtime.svbc.value
+
+campo memoria_cria(blocos: Lista<BlocoMemoria>, tamanho: U64) -> Resultado<ValorVm, Falha> ::
+  veja tamanho > 4294967295 ::
+    devolve Falha(nova_falha("SVBC-MEM-TAMANHO", "bloco de memoria excede o limite da VM"))
+  fecha
+
+  solta dados := bytes_novo()
+  solta indice: U64 := 0
+  gira indice < tamanho ::
+    bytes_coloca_byte(dados, 0)
+    vira indice := indice + 1
+  fecha
+
+  guarda id := lista_tamanho(blocos)
+  lista_coloca(blocos, BlocoMemoria {
+    id: id,
+    dados: dados,
+    tamanho: tamanho
+  })
+
+  devolve Valor(VmBloco(id))
+fecha
+
+campo memoria_marca(
+  blocos: Lista<BlocoMemoria>,
+  referencia: ValorVm,
+  indice_valor: ValorVm,
+  byte_valor: ValorVm
+) -> Resultado<Nada, Falha> ::
+  guarda id := valor_bloco_id(referencia)
+  veja id e Falha ::
+    devolve id
+  fecha
+
+  guarda bloco := memoria_busca(blocos, id.valor)
+  veja bloco e Falha ::
+    devolve bloco
+  fecha
+
+  guarda indice := valor_indice(indice_valor)
+  veja indice e Falha ::
+    devolve indice
+  fecha
+
+  veja indice.valor >= bloco.valor.tamanho ::
+    devolve Falha(nova_falha("SV-MEM-LIMITE", "escrita fora do limite da caixa"))
+  fecha
+
+  guarda byte := valor_byte(byte_valor)
+  veja byte e Falha ::
+    devolve byte
+  fecha
+
+  sys_bytes_define(bloco.valor.dados, indice.valor, byte.valor)
+  devolve Valor(nulo)
+fecha
+
+campo memoria_pega(
+  blocos: Lista<BlocoMemoria>,
+  referencia: ValorVm,
+  indice_valor: ValorVm
+) -> Resultado<ValorVm, Falha> ::
+  guarda id := valor_bloco_id(referencia)
+  veja id e Falha ::
+    devolve id
+  fecha
+
+  guarda bloco := memoria_busca(blocos, id.valor)
+  veja bloco e Falha ::
+    devolve bloco
+  fecha
+
+  guarda indice := valor_indice(indice_valor)
+  veja indice e Falha ::
+    devolve indice
+  fecha
+
+  veja indice.valor >= bloco.valor.tamanho ::
+    devolve Falha(nova_falha("SV-MEM-LIMITE", "leitura fora do limite da caixa"))
+  fecha
+
+  devolve Valor(VmU64(bytes_pega(bloco.valor.dados, indice.valor)))
+fecha
+
+campo memoria_busca(blocos: Lista<BlocoMemoria>, id: U64) -> Resultado<BlocoMemoria, Falha> ::
+  veja id >= lista_tamanho(blocos) ::
+    devolve Falha(nova_falha("SVBC-MEM-BLOCO", "referencia de memoria invalida"))
+  fecha
+
+  guarda bloco := lista_pega(blocos, id)
+  veja bloco.id != id ::
+    devolve Falha(nova_falha("SVBC-MEM-BLOCO", "identidade do bloco de memoria corrompida"))
+  fecha
+
+  devolve Valor(bloco)
+fecha
+
+campo valor_bloco_id(valor: ValorVm) -> Resultado<U64, Falha> ::
+  veja valor e VmBloco ::
+    devolve Valor(valor.id)
+  fecha
+  devolve Falha(nova_falha("SVBC-TIPO", "esperado bloco de memoria"))
+fecha
+
+campo valor_indice(valor: ValorVm) -> Resultado<U64, Falha> ::
+  veja valor e VmU64 ::
+    devolve Valor(valor.valor)
+  fecha
+  veja valor e VmNum ::
+    veja valor.valor < 0 ::
+      devolve Falha(nova_falha("SV-MEM-LIMITE", "indice negativo"))
+    fecha
+    devolve Valor(U64(valor.valor))
+  fecha
+  devolve Falha(nova_falha("SVBC-TIPO", "indice de memoria precisa ser numerico"))
+fecha
+
+campo valor_byte(valor: ValorVm) -> Resultado<Byte, Falha> ::
+  veja valor e VmU64 ::
+    veja valor.valor <= 255 ::
+      devolve Valor(Byte(valor.valor))
+    fecha
+  fecha
+  veja valor e VmNum ::
+    veja valor.valor >= 0 e valor.valor <= 255 ::
+      devolve Valor(Byte(valor.valor))
+    fecha
+  fecha
+  devolve Falha(nova_falha("SVBC-TIPO", "valor de byte deve estar entre 0 e 255"))
+fecha

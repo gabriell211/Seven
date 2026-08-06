@@ -6,6 +6,14 @@ campo intr_lista_coloca(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
   devolve Valor(sys_vm_lista_coloca(lista_pega(args, 0), lista_pega(args, 1)))
 fecha
 
+campo intr_lista_insere(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(sys_vm_lista_insere(lista_pega(args, 0), lista_pega(args, 1), lista_pega(args, 2)))
+fecha
+
+campo intr_lista_remove(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(sys_vm_lista_remove(lista_pega(args, 0), lista_pega(args, 1)))
+fecha
+
 campo intr_lista_pega(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
   devolve Valor(sys_vm_lista_pega(lista_pega(args, 0), lista_pega(args, 1)))
 fecha
@@ -34,6 +42,10 @@ campo intr_texto_comeca(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
   devolve Valor(VmBit(sys_texto_comeca(valor_texto(lista_pega(args, 0)), valor_texto(lista_pega(args, 1)))))
 fecha
 
+campo intr_texto_contem(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(VmBit(sys_texto_contem(valor_texto(lista_pega(args, 0)), valor_texto(lista_pega(args, 1)))))
+fecha
+
 campo intr_numero(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
   devolve Valor(VmNum(numero(valor_texto(lista_pega(args, 0)))))
 fecha
@@ -44,4 +56,83 @@ fecha
 
 campo intr_vm_binaria(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
   devolve sys_vm_binaria(lista_pega(args, 0), valor_texto(lista_pega(args, 1)), lista_pega(args, 2))
+fecha
+
+campo intr_bit_nao(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(VmBit(nao valor_verdadeiro(lista_pega(args, 0))))
+fecha
+
+campo intr_bit_e(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(VmBit(valor_verdadeiro(lista_pega(args, 0)) e valor_verdadeiro(lista_pega(args, 1))))
+fecha
+
+campo intr_bit_ou(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(VmBit(valor_verdadeiro(lista_pega(args, 0)) ou valor_verdadeiro(lista_pega(args, 1))))
+fecha
+
+campo intr_num_mod(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  guarda esquerda := valor_num(lista_pega(args, 0))
+  guarda direita := valor_num(lista_pega(args, 1))
+
+  veja direita == 0 ::
+    devolve Falha(nova_falha("SVBC-DIV-ZERO", "modulo por zero"))
+  fecha
+
+  devolve Valor(VmNum(esquerda % direita))
+fecha
+
+campo intr_falha(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  guarda codigo := valor_texto(lista_pega(args, 0))
+  guarda mensagem := valor_texto(lista_pega(args, 1))
+  devolve Falha(nova_falha(codigo, mensagem))
+fecha
+
+campo intr_obj_novo(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(sys_vm_obj_novo(args))
+fecha
+
+campo intr_obj_pega(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(sys_vm_obj_pega(lista_pega(args, 0), lista_pega(args, 1)))
+fecha
+
+campo intr_obj_define(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(sys_vm_obj_define(lista_pega(args, 0), lista_pega(args, 1), lista_pega(args, 2)))
+fecha
+
+campo intr_indice_pega(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(sys_vm_indice_pega(lista_pega(args, 0), lista_pega(args, 1)))
+fecha
+
+campo intr_indice_define(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(sys_vm_indice_define(lista_pega(args, 0), lista_pega(args, 1), lista_pega(args, 2)))
+fecha
+
+campo intr_iterador_novo(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(sys_vm_iterador_novo(lista_pega(args, 0)))
+fecha
+
+campo intr_iterador_tem(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(VmBit(sys_vm_iterador_tem(lista_pega(args, 0))))
+fecha
+
+campo intr_iterador_atual(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(sys_vm_iterador_atual(lista_pega(args, 0)))
+fecha
+
+campo intr_iterador_avanca(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(sys_vm_iterador_avanca(lista_pega(args, 0)))
+fecha
+
+campo intr_closure_nova(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  devolve Valor(sys_vm_closure_nova(args))
+fecha
+
+campo valor_num(valor: ValorVm) -> Num ::
+  veja valor e VmNum ::
+    devolve valor.valor
+  fecha
+  veja valor e VmU64 ::
+    devolve Num(valor.valor)
+  fecha
+  devolve 0
 fecha

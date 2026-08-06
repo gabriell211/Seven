@@ -1,0 +1,71 @@
+modulo seven.runtime.installer
+
+usa seven.compiler.toolchain.installer
+usa std.base.lista
+usa std.io.console
+
+campo instalador_inicio(argumentos: Lista<Texto>) -> Num toca disco, ambiente, terminal ::
+  guarda prefixo := argumento_valor(argumentos, "--prefix", "")
+  guarda silencioso := argumento_existe(argumentos, "--quiet")
+  guarda remover := argumento_existe(argumentos, "--uninstall") ou argumento_existe(argumentos, "uninstall")
+  guarda plano := plano_instalacao_padrao(prefixo)
+
+  veja remover ::
+    guarda remocao := remove_instalacao(prefixo)
+
+    veja remocao e Falha ::
+      veja nao silencioso ::
+        diga("Seven nao foi removida: " + remocao.valor.mensagem)
+      fecha
+      devolve 1
+    fecha
+
+    veja nao silencioso ::
+      diga("Seven removida de " + remocao.valor.prefixo)
+    fecha
+    devolve 0
+  fecha
+
+  guarda instalacao := instala_seven(plano)
+
+  veja instalacao e Falha ::
+    veja nao silencioso ::
+      diga("Falha ao instalar Seven: " + instalacao.valor.mensagem)
+    fecha
+    devolve 1
+  fecha
+
+  veja nao silencioso ::
+    diga("Seven " + instalacao.valor.versao + " instalada")
+    diga("sistema: " + sistema_instalacao_nome(instalacao.valor.sistema))
+    diga("compilador: " + instalacao.valor.binario)
+    diga("biblioteca padrao: " + instalacao.valor.stdlib)
+    diga("reinicie o terminal para atualizar o PATH")
+  fecha
+
+  devolve 0
+fecha
+
+campo argumento_existe(argumentos: Lista<Texto>, procurado: Texto) -> Bit ::
+  para cada argumento em argumentos ::
+    veja argumento == procurado ::
+      devolve sim
+    fecha
+  fecha
+
+  devolve nao
+fecha
+
+campo argumento_valor(argumentos: Lista<Texto>, nome: Texto, padrao: Texto) -> Texto ::
+  solta indice: U64 := 0
+
+  gira indice < lista_tamanho(argumentos) ::
+    veja lista_pega(argumentos, indice) == nome e indice + 1 < lista_tamanho(argumentos) ::
+      devolve lista_pega(argumentos, indice + 1)
+    fecha
+
+    vira indice := indice + 1
+  fecha
+
+  devolve padrao
+fecha

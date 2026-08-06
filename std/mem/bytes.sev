@@ -15,6 +15,16 @@ campo bytes_novo() -> Bytes ::
   devolve sys_bytes_novo()
 fecha
 
+campo bytes_com_tamanho(tamanho: U64) -> Bytes ::
+  solta bytes := bytes_novo()
+  solta indice: U64 := 0
+  gira indice < tamanho ::
+    bytes_coloca_byte(bytes, 0)
+    vira indice := indice + 1
+  fecha
+  devolve bytes
+fecha
+
 campo texto_bytes(valor: Texto) -> Bytes ::
   devolve sys_texto_bytes(valor)
 fecha
@@ -29,6 +39,14 @@ fecha
 
 campo bytes_pega(bytes: Bytes, indice: U64) -> Byte ::
   devolve sys_bytes_pega(bytes, indice)
+fecha
+
+campo bytes_define(bytes: Bytes, indice: U64, valor: Byte) -> Resultado<Nada, Falha> ::
+  veja indice >= bytes.tamanho ::
+    devolve Falha(nova_falha("SV-MEM-LIMITE", "indice fora do limite"))
+  fecha
+  sys_bytes_define(bytes, indice, valor)
+  devolve Valor(nulo)
 fecha
 
 campo bytes_coloca_byte(bytes: Bytes, valor: Byte) -> Bytes ::
@@ -48,7 +66,7 @@ campo bytes_coloca_texto(bytes: Bytes, valor: Texto) -> Bytes ::
 fecha
 
 campo bytes_coloca_texto_com_tamanho(bytes: Bytes, valor: Texto) -> Bytes ::
-  bytes_coloca_u32(bytes, tamanho(valor))
+  bytes_coloca_u32(bytes, U32(tamanho(valor)))
   devolve bytes_coloca_texto(bytes, valor)
 fecha
 
@@ -56,6 +74,5 @@ campo byte_em(bytes: Bytes, indice: U64) -> Resultado<Byte, Falha> ::
   veja indice >= bytes.tamanho ::
     devolve Falha(nova_falha("SV-MEM-LIMITE", "indice fora do limite"))
   fecha
-
-  devolve Valor(bytes.dados @ indice)
+  devolve Valor(bytes_pega(bytes, indice))
 fecha

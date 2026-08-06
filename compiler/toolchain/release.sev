@@ -1,6 +1,8 @@
 modulo seven.compiler.toolchain.release
 
 usa seven.compiler.toolchain.command
+usa seven.compiler.toolchain.installer_builder
+usa seven.compiler.toolchain.native_build
 usa seven.compiler.toolchain.launcher
 usa seven.compiler.toolchain.native_host
 usa std.base.resultado
@@ -22,46 +24,81 @@ fecha
 campo prepara_release(contexto: ContextoToolchain) -> Resultado<PlanoRelease, Falha> toca disco ::
   solta artefatos := lista<ArtefatoRelease>()
 
-  lista_coloca(artefatos, ArtefatoRelease {
-    caminho: contexto.destino + "/seven.svbc",
-    hash: hash_release_ou_planejado(contexto.destino + "/seven.svbc"),
-    tipo: "svbc"
-  })
+  guarda compiladores := gera_compiladores_nativos(contexto)
+  veja compiladores e Falha ::
+    devolve Falha(compiladores.valor)
+  fecha
 
-  lista_coloca(artefatos, ArtefatoRelease {
-    caminho: launcher_release_caminho(contexto.destino),
-    hash: hash_release_ou_planejado(launcher_release_caminho(contexto.destino)),
-    tipo: "launcher-manifest"
-  })
+  guarda windows := gera_instalador(contexto, "windows-x64", "")
+  veja windows e Falha ::
+    devolve Falha(windows.valor)
+  fecha
 
-  lista_coloca(artefatos, ArtefatoRelease {
-    caminho: launcher_bytecode_release_caminho(contexto.destino),
-    hash: hash_release_ou_planejado(launcher_bytecode_release_caminho(contexto.destino)),
-    tipo: "launcher-svbc"
-  })
+  guarda linux := gera_instalador(contexto, "linux-x64", "")
+  veja linux e Falha ::
+    devolve Falha(linux.valor)
+  fecha
 
-  lista_coloca(artefatos, ArtefatoRelease {
-    caminho: host_manifesto_release_caminho(contexto.destino),
-    hash: hash_release_ou_planejado(host_manifesto_release_caminho(contexto.destino)),
-    tipo: "host-manifest"
-  })
-
-  lista_coloca(artefatos, ArtefatoRelease {
-    caminho: host_executavel_release_caminho(contexto.destino),
-    hash: hash_release_ou_planejado(host_executavel_release_caminho(contexto.destino)),
-    tipo: "host-svbc"
-  })
+  adiciona_artefato(artefatos, contexto.destino + "/seven.svbc", "svbc")
+  adiciona_artefato(artefatos, launcher_release_caminho(contexto.destino), "launcher-manifest")
+  adiciona_artefato(artefatos, launcher_bytecode_release_caminho(contexto.destino), "launcher-svbc")
+  adiciona_artefato(artefatos, host_manifesto_release_caminho(contexto.destino), "host-manifest")
+  adiciona_artefato(artefatos, host_executavel_release_caminho(contexto.destino), "host-svbc")
+  adiciona_artefato(artefatos, compiladores.valor.windows, "compiler-windows-x64")
+  adiciona_artefato(artefatos, compiladores.valor.windows_hash, "compiler-windows-checksum")
+  adiciona_artefato(artefatos, compiladores.valor.linux, "compiler-linux-x64")
+  adiciona_artefato(artefatos, compiladores.valor.linux_hash, "compiler-linux-checksum")
+  adiciona_pacote_instalador(artefatos, windows.valor)
+  adiciona_pacote_instalador(artefatos, linux.valor)
+  adiciona_artefato(artefatos, "brand/seven.ico", "windows-icon")
+  adiciona_artefato(artefatos, "brand/seven-mark.svg", "linux-icon")
 
   devolve Valor(PlanoRelease {
-    versao: "0.1.0",
+    versao: SevenVersao,
     artefatos: artefatos,
-    sbom: sbom_gera(contexto),
+    sbom: sbom_gera(contexto, compiladores.valor, windows.valor, linux.valor),
     assinado: nao
   })
 fecha
 
-campo sbom_gera(contexto: ContextoToolchain) -> Texto toca disco ::
-  devolve "seven-sbom 1\nmanifesto " + contexto.manifesto + "\nalvo " + contexto.alvo + "\nlauncher " + launcher_release_caminho(contexto.destino) + "\nlauncher_bytecode " + launcher_bytecode_release_caminho(contexto.destino) + "\nhost " + host_manifesto_release_caminho(contexto.destino) + "\nhost_bytecode " + host_executavel_release_caminho(contexto.destino) + "\n" + launcher_manifesto(launcher_padrao()) + host_executavel_manifesto(host_executavel_padrao())
+campo adiciona_pacote_instalador(artefatos: Lista<ArtefatoRelease>, pacote: PacoteInstalador) -> Nada toca disco ::
+  adiciona_artefato(artefatos, pacote.instalador, "installer-" + sistema_instalacao_nome(pacote.sistema))
+  adiciona_artefato(artefatos, pacote.manifesto, "installer-manifest")
+  adiciona_artefato(artefatos, pacote.checksum, "installer-checksum")
+  adiciona_artefato(artefatos, pacote.icone, "installer-icon")
+fecha
+
+campo adiciona_artefato(artefatos: Lista<ArtefatoRelease>, caminho: Texto, tipo: Texto) -> Nada toca disco ::
+  lista_coloca(artefatos, ArtefatoRelease {
+    caminho: caminho,
+    hash: hash_release_ou_planejado(caminho),
+    tipo: tipo
+  })
+fecha
+
+campo sbom_gera(
+  contexto: ContextoToolchain,
+  compiladores: CompiladoresNativos,
+  windows: PacoteInstalador,
+  linux: PacoteInstalador
+) -> Texto toca disco ::
+  devolve "seven-sbom 2\n" +
+    "manifesto " + contexto.manifesto + "\n" +
+    "alvo " + contexto.alvo + "\n" +
+    "launcher " + launcher_release_caminho(contexto.destino) + "\n" +
+    "launcher_bytecode " + launcher_bytecode_release_caminho(contexto.destino) + "\n" +
+    "host " + host_manifesto_release_caminho(contexto.destino) + "\n" +
+    "host_bytecode " + host_executavel_release_caminho(contexto.destino) + "\n" +
+    "compiler_windows " + compiladores.windows + "\n" +
+    "compiler_linux " + compiladores.linux + "\n" +
+    "installer_windows " + windows.instalador + "\n" +
+    "installer_linux " + linux.instalador + "\n" +
+    "icone_windows brand/seven.ico\n" +
+    "icone_linux brand/seven-mark.svg\n" +
+    "implementacao Seven\n" +
+    "powershell nao\n" +
+    launcher_manifesto(launcher_padrao()) +
+    host_executavel_manifesto(host_executavel_padrao())
 fecha
 
 campo hash_release_ou_planejado(caminho: Texto) -> Texto toca disco ::

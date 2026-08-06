@@ -1,0 +1,46 @@
+modulo tests.runtime.svbc_memory
+
+usa std.test.spec
+usa seven.runtime.svbc.value
+usa seven.runtime.svbc.memory
+
+campo suite_memoria_svbc() -> Suite ::
+  solta s := suite("svbc memory")
+
+  testa(s, "cria escreve e le", campo() -> Nada ::
+    solta blocos := lista<BlocoMemoria>()
+    guarda criado := memoria_cria(blocos, 4)
+
+    espera(criado e Valor, "nao criou bloco de memoria")
+    guarda escrita := memoria_marca(blocos, criado.valor, VmU64(2), VmU64(255))
+    espera(escrita e Valor, "nao escreveu byte valido")
+
+    guarda leitura := memoria_pega(blocos, criado.valor, VmU64(2))
+    espera(leitura e Valor, "nao leu byte valido")
+    veja leitura.valor e VmU64 ::
+      espera(leitura.valor.valor == 255, "byte lido difere do byte escrito")
+    outro ::
+      falha "SV-TEST-FALHOU" "leitura nao retornou VmU64"
+    fecha
+  fecha)
+
+  testa(s, "rejeita escrita fora do limite", campo() -> Nada ::
+    solta blocos := lista<BlocoMemoria>()
+    guarda criado := memoria_cria(blocos, 2)
+    guarda escrita := memoria_marca(blocos, criado.valor, VmU64(2), VmU64(1))
+
+    espera(escrita e Falha, "escrita fora do limite foi aceita")
+    espera(escrita.erro.codigo == "SV-MEM-LIMITE", "codigo de limite incorreto")
+  fecha)
+
+  testa(s, "rejeita byte maior que 255", campo() -> Nada ::
+    solta blocos := lista<BlocoMemoria>()
+    guarda criado := memoria_cria(blocos, 1)
+    guarda escrita := memoria_marca(blocos, criado.valor, VmU64(0), VmU64(256))
+
+    espera(escrita e Falha, "valor maior que Byte foi aceito")
+    espera(escrita.erro.codigo == "SVBC-TIPO", "codigo de tipo incorreto")
+  fecha)
+
+  devolve s
+fecha

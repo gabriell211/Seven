@@ -1,0 +1,75 @@
+modulo seven.compiler.toolchain.native_build
+
+usa seven.compiler.toolchain.command
+usa seven.runtime.platform.native.target
+usa seven.runtime.platform.native.linker
+usa seven.runtime.svbc.decoder
+usa std.base.resultado
+usa std.os.install
+
+molde CompiladoresNativos ::
+  windows: Texto
+  linux: Texto
+  windows_hash: Texto
+  linux_hash: Texto
+fecha
+
+campo gera_compiladores_nativos(contexto: ContextoToolchain) -> Resultado<CompiladoresNativos, Falha> toca disco ::
+  guarda host_caminho := contexto.destino + "/seven.host.svbc"
+
+  veja caminho_existe(host_caminho) == nao ::
+    devolve Falha(nova_falha("SV-NATIVE-HOST", "host SVBC ausente: " + host_caminho))
+  fecha
+
+  guarda carga := sys_arquivo_ler_bytes(host_caminho)
+  veja carga e Falha ::
+    devolve Falha(carga.valor)
+  fecha
+
+  guarda imagem := svbc_decodifica(carga.valor)
+  veja imagem e Falha ::
+    devolve Falha(imagem.valor)
+  fecha
+
+  guarda windows_dir := contexto.destino + "/native/windows"
+  guarda linux_dir := contexto.destino + "/native/linux"
+  guarda d1 := diretorio_cria(windows_dir)
+  veja d1 e Falha :: devolve Falha(d1.valor) fecha
+  guarda d2 := diretorio_cria(linux_dir)
+  veja d2 e Falha :: devolve Falha(d2.valor) fecha
+
+  guarda alvo_windows := alvo_win_x64()
+  lista_coloca(alvo_windows.recursos, RecursoNativo {
+    tipo: "icon",
+    nome: "SEVEN_ICON",
+    caminho: "brand/seven.ico"
+  })
+
+  guarda nativo_windows := baixa_nativo(imagem.valor, alvo_windows)
+  veja nativo_windows e Falha ::
+    devolve Falha(nativo_windows.valor)
+  fecha
+
+  guarda nativo_linux := baixa_nativo(imagem.valor, alvo_linux_x64())
+  veja nativo_linux e Falha ::
+    devolve Falha(nativo_linux.valor)
+  fecha
+
+  guarda windows := windows_dir + "/seven.exe"
+  guarda linux := linux_dir + "/seven"
+
+  guarda w := grava_nativo(nativo_windows.valor, windows)
+  veja w e Falha :: devolve Falha(w.valor) fecha
+  guarda l := grava_nativo(nativo_linux.valor, linux)
+  veja l e Falha :: devolve Falha(l.valor) fecha
+
+  sys_arquivo_grava_texto(windows + ".sha256", sha256_arquivo(windows) + "  seven.exe\n")
+  sys_arquivo_grava_texto(linux + ".sha256", sha256_arquivo(linux) + "  seven\n")
+
+  devolve Valor(CompiladoresNativos {
+    windows: windows,
+    linux: linux,
+    windows_hash: windows + ".sha256",
+    linux_hash: linux + ".sha256"
+  })
+fecha

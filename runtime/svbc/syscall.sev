@@ -1,6 +1,7 @@
 modulo seven.runtime.svbc.syscall
 
 usa seven.runtime.platform.intrinsic
+usa seven.runtime.platform.intrinsic_installer
 usa seven.runtime.svbc.value
 
 molde TabelaSyscall ::
@@ -8,8 +9,11 @@ molde TabelaSyscall ::
 fecha
 
 campo syscall_tabela_padrao() -> TabelaSyscall ::
+  solta itens := intrinsecos_padrao()
+  lista_junta(itens, intrinsecos_instalador())
+
   devolve TabelaSyscall {
-    intrinsecos: intrinsecos_padrao()
+    intrinsecos: itens
   }
 fecha
 

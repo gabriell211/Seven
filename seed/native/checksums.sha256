@@ -1,0 +1,10 @@
+# Audited archive and members before platform preparation
+fa83be6c949b4e303a74dfe441883316e285baa1388f5b4370312f3c3c506464  native-seeds.zip
+6c65dee95cbb3fe2b99a05bbe65a18dd11b3621b59f5f6bb431a5584a062ef86  seven-windows.exe
+ae5feb58a3ccaca19bc56f9aaf27d21a96153ada89a97c7074e66dbe71be36a0  seven-installer-windows.exe
+f91edfecd7620922109609d89be16426f6f1535e02b03631b4bcd5c174e5405f  seven-linux
+8d5b9c534018d8b8ccca7fcdfaa6f7d40587c8a039d63ae214c62f93d35d533e  seven-installer-linux
+
+# Windows installer after the audited PE SizeOfStackCommit preparation
+# performed by CI before packaging (128 KiB committed stack).
+e4847375d1e800425e23253d36394bc8d2a2d9a97598f8905a30986310f176ed  seven-installer-windows.prepared.exe

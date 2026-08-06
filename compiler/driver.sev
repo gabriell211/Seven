@@ -11,6 +11,7 @@ usa seven.compiler.ir
 usa seven.compiler.bytecode
 usa seven.compiler.diagnostic
 usa seven.compiler.package
+usa std.fs.file
 usa std.io.console
 
 molde PedidoCompilacao ::
@@ -18,6 +19,7 @@ molde PedidoCompilacao ::
   entrada: Texto
   alvo: Texto
   modo: Texto
+  saida: Texto
 fecha
 
 selo SaidaCompilacao ::
@@ -26,40 +28,78 @@ selo SaidaCompilacao ::
 fecha
 
 campo pedido_de_compilacao(argumentos: Lista<Texto>) -> PedidoCompilacao toca ambiente, disco ::
-  guarda pacote := pacote_carrega("seven.pkg")
-  guarda entrada := pacote.entrada
+  guarda manifesto := argumento_compilacao(argumentos, 0, "seven.pkg")
+  guarda saida := argumento_compilacao(argumentos, 1, "")
+  guarda pacote := pacote_carrega(manifesto)
 
   devolve PedidoCompilacao {
     pacote: pacote,
-    entrada: entrada,
+    entrada: pacote.entrada,
     alvo: pacote.alvo,
-    modo: "seguro"
+    modo: "seguro",
+    saida: saida
   }
+fecha
+
+campo argumento_compilacao(argumentos: Lista<Texto>, indice: U64, padrao: Texto) -> Texto ::
+  veja lista_tamanho(argumentos) <= indice ::
+    devolve padrao
+  fecha
+
+  devolve lista_pega(argumentos, indice)
 fecha
 
 campo compila(pedido: PedidoCompilacao) -> SaidaCompilacao toca disco ::
   guarda fontes := fonte_carrega_pacote(pedido.pacote)
   guarda tokens := varre_unidade(fontes)
-  guarda arvore := monta_unidade(tokens)
-  guarda semantica := mede(arvore, pedido.pacote)
-  guarda diagnosticos := junta_diagnosticos(semantica)
+  guarda sintaxe := monta_unidade(tokens)
 
-  veja lista_tamanho(diagnosticos) > 0 ::
+  veja diagnosticos_tem_erros(sintaxe.diagnosticos) ::
+    devolve Falhou(sintaxe.diagnosticos)
+  fecha
+
+  guarda semantica := mede(sintaxe.programas, pedido.pacote)
+  guarda diagnosticos := junta_diagnosticos(sintaxe.diagnosticos, semantica)
+
+  veja diagnosticos_tem_erros(diagnosticos) ::
     devolve Falhou(diagnosticos)
   fecha
 
-  guarda meio := baixa_ir(arvore, semantica.tipos, semantica.efeitos)
+  guarda meio := baixa_ir(sintaxe.programas, semantica.tipos, semantica.efeitos)
   guarda otimizado := otimiza_ir(meio, pedido.modo)
   guarda imagem := emite_svbc(otimizado)
   guarda caminho := caminho_saida(pedido)
+  guarda gravacao := arquivo_salva_bytes(caminho, imagem)
 
-  arquivo_grava(caminho, imagem)
+  veja gravacao e Falha ::
+    lista_coloca(diagnosticos, erro(
+      gravacao.valor.codigo,
+      gravacao.valor.mensagem,
+      caminho,
+      1,
+      1
+    ))
+    devolve Falhou(diagnosticos)
+  fecha
+
   devolve Sucesso(caminho)
 fecha
 
-campo junta_diagnosticos(semantica: UnidadeSemantica) -> Lista<Diagnostico> ::
+campo caminho_saida(pedido: PedidoCompilacao) -> Texto ::
+  veja pedido.saida != "" ::
+    devolve pedido.saida
+  fecha
+
+  devolve "build/" + pedido.pacote.nome + ".svbc"
+fecha
+
+campo junta_diagnosticos(
+  frontend: Lista<Diagnostico>,
+  semantica: UnidadeSemantica
+) -> Lista<Diagnostico> ::
   solta saida := lista<Diagnostico>()
 
+  lista_junta(saida, frontend)
   lista_junta(saida, semantica.simbolos.diagnosticos)
   lista_junta(saida, semantica.tipos.diagnosticos)
   lista_junta(saida, semantica.efeitos.diagnosticos)

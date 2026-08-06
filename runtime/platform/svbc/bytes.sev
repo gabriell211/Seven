@@ -30,8 +30,30 @@ campo intr_bytes_pega(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
   guarda dados := lista_pega(args, 0)
   guarda indice := valor_vm_u64(lista_pega(args, 1))
   veja dados e VmBytes ::
+    veja indice >= dados.valor.tamanho ::
+      devolve Falha(nova_falha("SV-MEM-LIMITE", "leitura fora do limite de Bytes"))
+    fecha
     devolve Valor(VmU64(sys_bytes_pega(dados.valor, indice)))
   fecha
+  devolve Falha(nova_falha("SVBC-TIPO", "esperado Bytes"))
+fecha
+
+campo intr_bytes_define(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::
+  guarda dados := lista_pega(args, 0)
+  guarda indice := valor_vm_u64(lista_pega(args, 1))
+  guarda valor := valor_vm_u64(lista_pega(args, 2))
+
+  veja dados e VmBytes ::
+    veja indice >= dados.valor.tamanho ::
+      devolve Falha(nova_falha("SV-MEM-LIMITE", "escrita fora do limite de Bytes"))
+    fecha
+    veja valor > 255 ::
+      devolve Falha(nova_falha("SVBC-TIPO", "valor nao cabe em Byte"))
+    fecha
+    sys_bytes_define(dados.valor, indice, Byte(valor))
+    devolve Valor(VmNada)
+  fecha
+
   devolve Falha(nova_falha("SVBC-TIPO", "esperado Bytes"))
 fecha
 
@@ -40,7 +62,7 @@ campo valor_vm_u64(valor: ValorVm) -> U64 ::
     devolve valor.valor
   fecha
   veja valor e VmNum ::
-    devolve valor.valor
+    devolve U64(valor.valor)
   fecha
   devolve 0
 fecha
