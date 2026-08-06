@@ -14,12 +14,14 @@ static Image load_image(const char*path){
  else die("invalid bytecode magic");
  if(c.pos!=c.n)die("trailing bytes in bytecode image");
  for(uint32_t i=0;i<im.field_count;i++)if(im.fields[i].entry>=im.code_count)die("field entry out of bounds");
+ free(b);
  return im;
 }
 
 static void vm_fail(VM*vm,const char*msg){vm->failed=1;snprintf(vm->error,sizeof(vm->error),"%s",msg);}
 static void push(VM*vm,Value v){if(vm->sp==vm->stack_cap){vm->stack_cap=vm->stack_cap?vm->stack_cap*2:1024;vm->stack=(Value*)xrealloc(vm->stack,vm->stack_cap*sizeof(Value));}vm->stack[vm->sp++]=v;}
 static Value pop(VM*vm){if(!vm->sp){vm_fail(vm,"stack underflow");return v_null();}return vm->stack[--vm->sp];}
+static int field_index(Image*im,const char*name){for(uint32_t i=0;i<im->field_count;i++)if(str_eq_c(im->fields[i].name,name))return (int)i;return -1;}
 static void frame_push(VM*vm,Frame fr){if(vm->fp==vm->frame_cap){vm->frame_cap=vm->frame_cap?vm->frame_cap*2:256;vm->frames=(Frame*)xrealloc(vm->frames,vm->frame_cap*sizeof(Frame));}vm->frames[vm->fp++]=fr;}
 static String value_key(Value v){return text(v);}
 
@@ -37,4 +39,14 @@ static Value syscall(VM*vm,String name,Value*args,uint32_t argc){
  if(IS("sys_lista_pega")||IS("lista_pega")){if(args[0].tag!=V_LIST){vm_fail(vm,"lista_pega expects list");return v_null();}size_t i=(size_t)number(args[1]);if(i>=args[0].as.list->len){vm_fail(vm,"list index out of bounds");return v_null();}return args[0].as.list->items[i];}
  if(IS("sys_lista_define")||IS("lista_define")){if(args[0].tag!=V_LIST){vm_fail(vm,"lista_define expects list");return v_null();}size_t i=(size_t)number(args[1]);if(i>=args[0].as.list->len){vm_fail(vm,"list define out of bounds");return v_null();}args[0].as.list->items[i]=args[2];return args[0];}
  if(IS("sys_lista_insere")){if(args[0].tag!=V_LIST){vm_fail(vm,"lista_insere expects list");return v_null();}list_insert(args[0].as.list,(size_t)number(args[1]),args[2]);return args[0];}
- if(IS("sys_obj_novo")){Object*o=obj_new();for(uint32_t i=0;i+1<argc;i+=2)obj_set(o,value_key(args[i]),args[i+1]);Value t=obj_get(o,str_c("__tipo"));if(t.tag==V_STRING&&str_eq_c(t.as.s,"lista"))return v_list(list_new());return v_obj(o);}
+ if(IS("sys_mapa_copia")){
+  if(args[0].tag!=V_OBJECT){vm_fail(vm,"mapa_copia expects object");return v_null();}
+  Object*orig=args[0].as.obj;Object*copy=obj_new();
+  for(size_t i=0;i<orig->len;i++){
+   Value value=orig->pairs[i].value;
+   if(value.tag==V_LIST){List*list=list_new();list_reserve(list,value.as.list->len);for(size_t j=0;j<value.as.list->len;j++)list_push(list,value.as.list->items[j]);value=v_list(list);}
+   obj_set(copy,orig->pairs[i].key,value);
+  }
+  return v_obj(copy);
+ }
+ if(IS("sys_obj_novo")){Object*o=obj_new();for(uint32_t i=0;i+1<argc;i+=2)obj_set(o,value_key(args[i]),args[i+1]);Value t=obj_get_c(o,"__tipo");if(t.tag==V_STRING&&(str_eq_c(t.as.s,"lista")||str_eq_c(t.as.s,"Lista")))return v_list(list_new());return v_obj(o);}
