@@ -3,7 +3,7 @@ from pathlib import Path
 path = Path('.github/scripts/rebuild-semantic-seeds.sh')
 text = path.read_text()
 marker = '\ngcc -std=c11 -O2 -s -Wall -Wextra -Wno-unused-parameter "$work/seven-bootstrap.c" -o "$work/seven-linux"\n'
-patch = r'''
+patch = r"""
 CHECKER_SOURCE="$work/seven-bootstrap.c" python - <<'PY'
 import os
 from pathlib import Path
@@ -28,7 +28,7 @@ if old not in source:
     raise SystemExit('generic field declaration target not found')
 path.write_text(source.replace(old, new, 1))
 PY
-'''
+"""
 if marker not in text:
     raise SystemExit('compiler build marker not found')
 path.write_text(text.replace(marker, '\n' + patch + marker, 1))
