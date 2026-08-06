@@ -14,18 +14,19 @@ campo imagem_prova_nativa() -> ImagemSvbc ::
   lista_coloca(constantes, VmNum(2))
   lista_coloca(constantes, VmNum(42))
   lista_coloca(constantes, VmNum(1))
+  lista_coloca(constantes, VmNum(0))
 
   solta campos := lista<CampoImagem>()
   lista_coloca(campos, CampoImagem {
     nome: "inicio",
     entrada: 0,
-    locais: 0,
+    locais: 2,
     parametros: 0,
     efeitos: lista<Texto>()
   })
   lista_coloca(campos, CampoImagem {
     nome: "soma",
-    entrada: 10,
+    entrada: 21,
     locais: 2,
     parametros: 2,
     efeitos: lista<Texto>()
@@ -35,17 +36,28 @@ campo imagem_prova_nativa() -> ImagemSvbc ::
   lista_coloca(codigo, Instrucao { opcode: Const, a: 0, b: 0, c: 0, ip: 0 })
   lista_coloca(codigo, Instrucao { opcode: Const, a: 1, b: 0, c: 0, ip: 1 })
   lista_coloca(codigo, Instrucao { opcode: Chama, a: 1, b: 2, c: 0, ip: 2 })
-  lista_coloca(codigo, Instrucao { opcode: Const, a: 2, b: 0, c: 0, ip: 3 })
-  lista_coloca(codigo, Instrucao { opcode: Igual, a: 0, b: 0, c: 0, ip: 4 })
-  lista_coloca(codigo, Instrucao { opcode: SaltaSeNao, a: 8, b: 0, c: 0, ip: 5 })
-  lista_coloca(codigo, Instrucao { opcode: Const, a: 2, b: 0, c: 0, ip: 6 })
-  lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: 7 })
-  lista_coloca(codigo, Instrucao { opcode: Const, a: 3, b: 0, c: 0, ip: 8 })
-  lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: 9 })
-  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 0, b: 0, c: 0, ip: 10 })
+  lista_coloca(codigo, Instrucao { opcode: Guarda, a: 0, b: 0, c: 0, ip: 3 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 3, b: 0, c: 0, ip: 4 })
+  lista_coloca(codigo, Instrucao { opcode: Caixa, a: 0, b: 0, c: 0, ip: 5 })
+  lista_coloca(codigo, Instrucao { opcode: Guarda, a: 1, b: 0, c: 0, ip: 6 })
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 1, b: 0, c: 0, ip: 7 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 4, b: 0, c: 0, ip: 8 })
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 0, b: 0, c: 0, ip: 9 })
+  lista_coloca(codigo, Instrucao { opcode: MarcaByte, a: 0, b: 0, c: 0, ip: 10 })
   lista_coloca(codigo, Instrucao { opcode: Carrega, a: 1, b: 0, c: 0, ip: 11 })
-  lista_coloca(codigo, Instrucao { opcode: Soma, a: 0, b: 0, c: 0, ip: 12 })
-  lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: 13 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 4, b: 0, c: 0, ip: 12 })
+  lista_coloca(codigo, Instrucao { opcode: PegaByte, a: 0, b: 0, c: 0, ip: 13 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 2, b: 0, c: 0, ip: 14 })
+  lista_coloca(codigo, Instrucao { opcode: Igual, a: 0, b: 0, c: 0, ip: 15 })
+  lista_coloca(codigo, Instrucao { opcode: SaltaSeNao, a: 19, b: 0, c: 0, ip: 16 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 2, b: 0, c: 0, ip: 17 })
+  lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: 18 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 3, b: 0, c: 0, ip: 19 })
+  lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: 20 })
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 0, b: 0, c: 0, ip: 21 })
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 1, b: 0, c: 0, ip: 22 })
+  lista_coloca(codigo, Instrucao { opcode: Soma, a: 0, b: 0, c: 0, ip: 23 })
+  lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: 24 })
 
   devolve ImagemSvbc {
     versao: 1,
