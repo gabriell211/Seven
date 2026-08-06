@@ -1,0 +1,22 @@
+name: Rebuild Semantic Seeds v5
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gabriell211/production-readiness
+          fetch-depth: 0
+
+      - name: Build, validate and version semantic seeds
+        shell: bash
+        run: bash .github/scripts/rebuild-semantic-seeds.sh
