@@ -73,12 +73,11 @@ fecha
 fecha
 '''
 
-          replacements = [
+          for old, new in [
               (old_chama, new_chama),
               (old_syscall, new_syscall),
               (old_fallback, new_fallback),
-          ]
-          for old, new in replacements:
+          ]:
               if old not in text:
                   raise SystemExit("expected bytecode readiness block not found")
               text = text.replace(old, new, 1)
@@ -96,3 +95,5 @@ fecha
           git diff --cached --check
           git commit -m 'fix final bytecode readiness blockers'
           git push origin HEAD:gabriell211/production-readiness
+
+# trigger: 2
