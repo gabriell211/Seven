@@ -62,7 +62,7 @@ end = text.index(end_line, start) + len(end_line)
 mingw = (
     'x86_64-w64-mingw32-gcc -std=c11 -O2 -s -Wall -Wextra '
     '-Wno-unused-parameter "$work/seven-bootstrap.c" '
-    '-Wl,--stack,16777216,1048576 -o "$work/seven-windows.exe"\n'
+    '-Wl,--stack,16777216 -o "$work/seven-windows.exe"\n'
 )
 text = text[:start] + mingw + text[end:]
 
