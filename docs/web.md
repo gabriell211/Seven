@@ -1,6 +1,6 @@
 # Seven WebAssembly
 
-O alvo web compila código-fonte Seven (`.sev`) diretamente para WebAssembly binário (`.wasm`). Web não é uma variante da linguagem e não usa a extensão `.sevw`.
+O alvo web compila código-fonte Seven (`.sev`) diretamente para WebAssembly binário (`.wasm`). Web é um alvo oficial da linguagem, não uma variante separada, portanto não existe `.sevw`.
 
 ## Comando
 
@@ -9,54 +9,91 @@ seven web build app.sev
 seven web build app.sev dist
 ```
 
-O diretório de saída contém:
+O pacote contém:
 
-- `app.wasm`: aplicação compilada;
+- `app.wasm`: aplicação executável;
 - `app.wasm.sha256`: checksum do módulo;
 - `index.html`: documento de inicialização;
-- `seven-loader.mjs`: ponte mínima para a WebAssembly JavaScript API do navegador;
-- `seven.web.json`: manifesto determinístico do pacote.
+- `seven-loader.mjs`: ponte gerada para as APIs obrigatórias do navegador;
+- `seven.web.json`: manifesto determinístico.
 
-## Política de zero dependência de outras linguagens
+## Política de zero dependência
 
-A implementação da Seven Web deve obedecer às seguintes regras:
+1. compilador, analisadores, IR, emissor Wasm, ABI e biblioteca são implementados em `.sev`;
+2. a aplicação não é transpilada para JavaScript;
+3. C, C++, Rust, Go, Python, TypeScript, C#, Java ou LLVM não são dependências do backend;
+4. `app.wasm` é sempre o executável principal;
+5. o loader gerado apenas instancia o módulo, conecta a ABI e encaminha eventos do navegador;
+6. toda função de negócio e todo handler permanecem em Seven/WebAssembly.
 
-1. compilador, analisadores, IR, emissor WebAssembly, ABI, runtime e biblioteca padrão são escritos em `.sev`;
-2. nenhuma aplicação Seven é transpilada para JavaScript;
-3. C, C++, Rust, Go, Python, JavaScript, TypeScript, C#, Java ou LLVM não podem ser dependências do backend;
-4. o módulo executável principal é sempre `app.wasm`;
-5. o carregador do navegador é um artefato mínimo gerado pelo compilador, não uma implementação do runtime ou da lógica da aplicação;
-6. integrações com o navegador passam pela ABI explícita `seven-web-1` e pelo sistema de capacidades da Seven.
+## Modelo de texto
 
-Navegadores não instanciam atualmente um módulo WebAssembly autônomo por uma tag HTML sem usar a WebAssembly JavaScript API. Por isso, o pacote inclui uma ponte de inicialização gerada. Ela apenas carrega `app.wasm`, conecta imports da ABI e chama `seven_start`; toda lógica de aplicação permanece no módulo Wasm produzido a partir de Seven.
-
-## ABI inicial
-
-Imports:
+Valores `Texto` atravessam a ABI como um descritor de oito bytes na memória linear:
 
 ```text
-seven.terminal_diga(ponteiro: U32, tamanho: U32) -> Nada
++0  U32 little-endian: ponteiro UTF-8
++4  U32 little-endian: tamanho em bytes
 ```
+
+A região a partir de `32768` é reservada como inbox para respostas HTTP, valores de eventos e armazenamento. O código estático fica abaixo dela.
+
+## ABI `seven-web-2`
+
+A ABI fornece:
+
+- console: `terminal_diga`;
+- DOM: `frontend_monta`, `frontend_texto`, `frontend_atributo`;
+- classes: `frontend_classe_adiciona`, `frontend_classe_remove`;
+- eventos: `frontend_escuta`, `frontend_evento_valor`;
+- navegação: `frontend_navega`;
+- estilos: `frontend_injeta_css`;
+- HTTP: `frontend_fetch_texto`, `frontend_resposta_texto`, `frontend_resposta_status`;
+- armazenamento: `frontend_armazena`, `frontend_carrega`, `frontend_remove`.
 
 Exports:
 
 ```text
 memory
 seven_start() -> I32
+seven_<nome-do-handler>() -> I32
 ```
 
-## Subconjunto inicial
+## Exemplo interativo
 
-A primeira etapa suporta:
+```sev
+modulo app
 
-- `campo inicio()`;
-- retorno constante;
-- `diga` com texto constante;
-- memória estática de uma página;
+usa std.frontend.intrinsics
+
+campo inicio() -> Num toca frontend ::
+  frontend_monta("#seven-app", "<input id=\"nome\"><p id=\"saida\"></p>")
+  frontend_escuta("#nome", "input", "nome_mudou")
+  devolve 0
+fecha
+
+campo nome_mudou() -> Num toca frontend ::
+  guarda valor := frontend_evento_valor()
+  frontend_texto("#saida", valor)
+  devolve 0
+fecha
+```
+
+## Recursos do backend Wasm
+
+O emissor atual suporta:
+
+- múltiplos campos e exports;
+- até quatro parâmetros `I32` por campo;
+- locais e movimentação de valores;
+- constantes numéricas, booleanas, nulas e textos UTF-8;
+- chamadas internas;
+- chamadas à ABI do navegador;
+- aritmética e comparações inteiras;
+- handlers assíncronos de `fetch` por callback exportado;
 - manifesto e checksum determinísticos.
 
-Instruções ainda não baixadas para Wasm são rejeitadas com diagnóstico `SV-WASM-*`. O compilador não deve aceitar silenciosamente um recurso que ainda não implementa.
+Saltos estruturados, laços, alocação dinâmica e o runtime completo de coleções ainda devem ser rejeitados com diagnóstico `SV-WASM-*`; não existe fallback silencioso.
 
-## Critério para distribuição
+## Servidor web
 
-O PR do alvo web permanece em draft até que a cadeia self-hosted da Seven consiga reconstruir os compiladores nativos com `seven web build` sem introduzir implementação em outra linguagem. A existência do backend em `.sev` não é suficiente para afirmar que o binário v0.1.0 já oferece o comando.
+Os módulos `std.web.*` descrevem HTTP, roteamento, middleware, segurança, sessões e arquivos estáticos. A promoção desses módulos para execução nativa depende do fechamento do backend nativo self-hosted e dos intrínsecos TCP. Até esse gate passar, Seven Web 0.2 deve ser apresentada como runtime de aplicações de navegador, não como plataforma full-stack concluída.
