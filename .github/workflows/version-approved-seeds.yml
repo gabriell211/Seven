@@ -1,0 +1,62 @@
+name: Version Approved Semantic Seeds
+
+on:
+  push:
+    branches:
+      - gabriell211/production-readiness
+    paths:
+      - .github/workflows/version-approved-seeds.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gabriell211/production-readiness
+          fetch-depth: 0
+
+      - name: Download previously validated artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api /repos/gabriell211/Seven/actions/artifacts/8954930023/zip > "$RUNNER_TEMP/artifact.zip"
+          unzip -q "$RUNNER_TEMP/artifact.zip" -d "$RUNNER_TEMP/artifact"
+          echo '37535ecb89c2add4891f8a38356a5fbce41b0d856e8c8f9ad7d4cb5796d17b88  '"$RUNNER_TEMP/artifact/native-seeds.zip" | sha256sum --check
+
+      - name: Version archive fragments and checksums
+        run: |
+          set -euo pipefail
+          base64 -w0 "$RUNNER_TEMP/artifact/native-seeds.zip" > "$RUNNER_TEMP/native-seeds.b64"
+          python - <<'PY'
+          from pathlib import Path
+          encoded = Path("${{ runner.temp }}/native-seeds.b64").read_text()
+          count = 5
+          size = ((len(encoded) + count - 1) // count + 3) // 4 * 4
+          root = Path("seed/native/final/v1")
+          for index in range(count):
+              (root / f"part{index + 1:02}.b64").write_text(encoded[index * size:(index + 1) * size])
+          (root / "SHA256SUMS").write_text(
+              "37535ecb89c2add4891f8a38356a5fbce41b0d856e8c8f9ad7d4cb5796d17b88  native-seeds.zip\n"
+              "e8b73e6515e6e6d65e27f80f6714152493f922713dfda97767e36c6c7908e3ba  seven-linux\n"
+              "4eb24727ceef5a83695a1e1cd092f9b23bf5ecb53ca16508df2a6543d74a2254  seven-windows.exe\n"
+              "8d5b9c534018d8b8ccca7fcdfaa6f7d40587c8a039d63ae214c62f93d35d533e  seven-installer-linux\n"
+              "e4847375d1e800425e23253d36394bc8d2a2d9a97598f8905a30986310f176ed  seven-installer-windows.exe\n"
+          )
+          PY
+
+      - name: Commit only audited seed data
+        run: |
+          set -euo pipefail
+          git config user.name gabriell211
+          git config user.email 102088315+gabriell211@users.noreply.github.com
+          git add seed/native/final/v1/part*.b64 seed/native/final/v1/SHA256SUMS
+          git commit -m 'version validated semantic native seeds'
+          git push origin HEAD:gabriell211/production-readiness
