@@ -1,8 +1,8 @@
 formato seven-bootstrap-stage1-v1
-estado igualdade-estrutural
+estado variantes-nominais
 entrada seven0-fixed-point
 alvo compiler-core-svbc0
-adaptacao fontes-canônicas
+adaptacao comparacoes-token-por-tag
 biblioteca std-core-real
 host variantes-e-objetos-por-valor
 prova parser-produz-ir-e-stage2-deterministico
