@@ -1,4 +1,5 @@
 bootstrap/native-release.sev
+bootstrap/provenance.sev
 bootstrap/stage0.sev
 bootstrap/stage1.sev
 bootstrap/stage2.sev
