@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: seven-stage1-finalizer
+  cancel-in-progress: true
+
 jobs:
   finalize:
     runs-on: ubuntu-latest
