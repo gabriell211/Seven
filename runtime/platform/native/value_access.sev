@@ -101,7 +101,12 @@ campo x64_runtime_valor_pega(codigo: Bytes) -> Nada ::
   guarda fim_obj := x64_valor_jmp(codigo)
 
   guarda tamanho := codigo.tamanho
-  guarda chave_ok := x64_runtime_chave_tamanho(codigo)
+  x64_runtime_chave_tamanho(codigo)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda chave_invalida := x64_valor_jcc(codigo, 132)
   bytes_coloca_byte(codigo, 73)
   bytes_coloca_byte(codigo, 139)
   bytes_coloca_byte(codigo, 68)
@@ -127,11 +132,11 @@ campo x64_runtime_valor_pega(codigo: Bytes) -> Nada ::
   x64_valor_patch(codigo, ausente_obj, nulo)
   x64_valor_patch(codigo, achou_obj, achado)
   x64_valor_patch(codigo, fim_obj, fim)
-  x64_valor_patch(codigo, chave_ok, nulo)
+  x64_valor_patch(codigo, chave_invalida, nulo)
   x64_valor_patch(codigo, fim_tamanho, fim)
 fecha
 
-campo x64_runtime_chave_tamanho(codigo: Bytes) -> U64 ::
+campo x64_runtime_chave_tamanho(codigo: Bytes) -> Nada ::
   bytes_coloca_byte(codigo, 76)
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 240)
@@ -172,14 +177,22 @@ campo x64_runtime_chave_tamanho(codigo: Bytes) -> U64 ::
   bytes_coloca_byte(codigo, 111)
   guarda falha_3 := x64_valor_jcc(codigo, 133)
 
-  guarda sucesso := x64_valor_jmp(codigo)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 2)
+  guarda fim_sucesso := x64_valor_jmp(codigo)
+
   guarda falha := codigo.tamanho
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+
+  guarda fim := codigo.tamanho
+  bytes_coloca_byte(codigo, 80)
   x64_valor_patch(codigo, falha_tipo, falha)
   x64_valor_patch(codigo, falha_tamanho, falha)
   x64_valor_patch(codigo, falha_1, falha)
   x64_valor_patch(codigo, falha_2, falha)
   x64_valor_patch(codigo, falha_3, falha)
-  devolve sucesso
+  x64_valor_patch(codigo, fim_sucesso, fim)
 fecha
 
 campo x64_valor_jcc(codigo: Bytes, condicao: Byte) -> U64 ::
