@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   generate:
-    name: Stage1 emits object/list ELF64 and PE32+
+    name: Stage1 emits object/list/iterator ELF64 and PE32+
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -120,7 +120,7 @@ jobs:
           build/genesis-host build/seven0.svbc build/seven.stage1.monolith.sev build/seven.stage1.svbc
           test "$(od -An -tx1 -N4 build/seven.stage1.svbc | tr -d ' \n')" = '53564230'
 
-      - name: Compile object/list native generator with Stage1
+      - name: Compile object/list and iterator generators with Stage1
         shell: bash
         run: |
           set -euo pipefail
@@ -135,27 +135,48 @@ jobs:
           indice build/native-objects.sources
           EOF
           build/genesis-host build/seven.stage1.svbc build/native-objects.pkg build/native-objects-test.svbc
-          test -s build/native-objects-test.svbc
-          test "$(od -An -tx1 -N4 build/native-objects-test.svbc | tr -d ' \n')" = '53564243'
 
-      - name: Execute object/list native generator
+          cp runtime/platform/native/runtime.sources build/native-iterator.sources
+          echo 'tests/native/iterator_backend.sev' >> build/native-iterator.sources
+          cat > build/native-iterator.pkg <<'EOF'
+          pacote native-iterator-proof
+          versao 0.0.1
+          criador Gabriel Barcelos
+          entrada tests.native.iterator_backend.inicio
+          alvo svbc
+          indice build/native-iterator.sources
+          EOF
+          build/genesis-host build/seven.stage1.svbc build/native-iterator.pkg build/native-iterator-test.svbc
+
+          test -s build/native-objects-test.svbc
+          test -s build/native-iterator-test.svbc
+          test "$(od -An -tx1 -N4 build/native-objects-test.svbc | tr -d ' \n')" = '53564243'
+          test "$(od -An -tx1 -N4 build/native-iterator-test.svbc | tr -d ' \n')" = '53564243'
+
+      - name: Execute native generators
         shell: bash
         run: |
           set -euo pipefail
           build/genesis-host build/native-objects-test.svbc
+          build/genesis-host build/native-iterator-test.svbc
           test "$(od -An -tx1 -N4 build/native-object-proof | tr -d ' \n')" = '7f454c46'
           test "$(od -An -tx1 -N2 build/native-object-proof.exe | tr -d ' \n')" = '4d5a'
+          test "$(od -An -tx1 -N4 build/native-iterator-proof | tr -d ' \n')" = '7f454c46'
+          test "$(od -An -tx1 -N2 build/native-iterator-proof.exe | tr -d ' \n')" = '4d5a'
 
-      - name: Execute Seven-generated object/list ELF
+      - name: Execute Seven-generated object/list/iterator ELF
         shell: bash
         run: |
           set -euo pipefail
-          chmod +x build/native-object-proof
+          chmod +x build/native-object-proof build/native-iterator-proof
           set +e
           ./build/native-object-proof
-          code=$?
+          object_code=$?
+          ./build/native-iterator-proof
+          iterator_code=$?
           set -e
-          test "$code" -eq 42
+          test "$object_code" -eq 42
+          test "$iterator_code" -eq 42
 
       - uses: actions/upload-artifact@v4
         with:
@@ -163,11 +184,14 @@ jobs:
           path: |
             build/native-object-proof.exe
             build/native-object-proof
+            build/native-iterator-proof.exe
+            build/native-iterator-proof
             build/native-objects-test.svbc
+            build/native-iterator-test.svbc
           if-no-files-found: error
 
   windows:
-    name: Execute Seven-generated object/list PE32+
+    name: Execute Seven-generated object/list/iterator PE32+
     needs: generate
     runs-on: windows-latest
     timeout-minutes: 10
@@ -177,11 +201,14 @@ jobs:
           name: seven-native-objects-proof
           path: build
 
-      - name: Execute native object/list proof
+      - name: Execute native object/list/iterator proofs
         shell: bash
         run: |
           set +e
           ./build/native-object-proof.exe
-          code=$?
+          object_code=$?
+          ./build/native-iterator-proof.exe
+          iterator_code=$?
           set -e
-          test "$code" -eq 42
+          test "$object_code" -eq 42
+          test "$iterator_code" -eq 42
