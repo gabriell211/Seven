@@ -1,6 +1,7 @@
 modulo seven.runtime.platform.native.x64
 
 usa seven.runtime.platform.native.bytes
+usa seven.runtime.platform.native.imports
 usa seven.runtime.platform.native.syscall_dispatch
 usa seven.runtime.platform.native.target
 usa seven.runtime.svbc.image
@@ -33,6 +34,7 @@ molde CodigoX64 ::
   entrada: U64
   exit_process_patches: Lista<U64>
   virtual_alloc_patches: Lista<U64>
+  imports_windows: Lista<PatchImportWindowsX64>
 fecha
 
 campo x64_compila(imagem: ImagemSvbc, alvo: AlvoNativo) -> Resultado<CodigoX64, Falha> ::
@@ -50,7 +52,8 @@ campo x64_compila(imagem: ImagemSvbc, alvo: AlvoNativo) -> Resultado<CodigoX64, 
     bytes: bytes_novo(),
     entrada: 0,
     exit_process_patches: lista<U64>(),
-    virtual_alloc_patches: lista<U64>()
+    virtual_alloc_patches: lista<U64>(),
+    imports_windows: lista<PatchImportWindowsX64>()
   }
   solta offsets_ip := lista<OffsetIpX64>()
   solta offsets_campo := lista<U64>()
@@ -339,6 +342,7 @@ campo x64_emite_instrucao(
     guarda runtime_tratou := x64_runtime_dispatch(
       saida.bytes,
       saida.virtual_alloc_patches,
+      saida.imports_windows,
       alvo,
       nome_syscall,
       instr.b
