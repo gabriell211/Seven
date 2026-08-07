@@ -1,0 +1,142 @@
+modulo seven.runtime.platform.native.syscall_fs_bytes
+
+usa seven.runtime.platform.native.bytes
+usa seven.runtime.platform.native.imports
+usa seven.runtime.platform.native.syscall_fs
+usa seven.runtime.platform.native.target
+usa std.base.lista
+usa std.mem.bytes
+
+campo x64_syscall_fs_bytes_emite(
+  codigo: Bytes,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  alvo: AlvoNativo,
+  nome: Texto,
+  aridade: U32
+) -> Bit ::
+  veja nome == "sys_arquivo_grava_bytes" e aridade == 2 ::
+    veja alvo.formato == "elf" ::
+      x64_fs_linux_grava_bytes(codigo)
+    outro ::
+      x64_fs_windows_grava_bytes(codigo, imports_windows)
+    fecha
+    devolve sim
+  fecha
+  devolve nao
+fecha
+
+campo x64_fs_linux_grava_bytes(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 95)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 224)
+  bytes_coloca_byte(codigo, 254)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 112)
+  bytes_coloca_byte(codigo, 16)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 199)
+  nativo_u32_le(codigo, 4294967196)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, 577)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, 420)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 257)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 196)
+
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 231)
+  bytes_coloca_byte(codigo, 254)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 87)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 119)
+  bytes_coloca_byte(codigo, 24)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 231)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 231)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 3)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 80)
+fecha
+
+campo x64_fs_windows_grava_bytes(
+  codigo: Bytes,
+  imports_windows: Lista<PatchImportWindowsX64>
+) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 95)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 224)
+  bytes_coloca_byte(codigo, 254)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, 1073741824)
+  bytes_coloca_byte(codigo, 69)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 69)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 201)
+  x64_fs_windows_create_file_args(codigo, 2)
+  x64_windows_import_call(codigo, imports_windows, "CreateFileA")
+  x64_fs_windows_restore_rsp(codigo)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 197)
+
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 231)
+  bytes_coloca_byte(codigo, 254)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 233)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 87)
+  bytes_coloca_byte(codigo, 24)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 71)
+  bytes_coloca_byte(codigo, 8)
+  x64_fs_windows_write_file(codigo, imports_windows)
+  x64_fs_windows_close_handle(codigo, imports_windows)
+
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 80)
+fecha
