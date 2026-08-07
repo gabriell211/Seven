@@ -1,0 +1,204 @@
+name: Seven Native Filesystem
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seven-native-fs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    name: Stage1 emits filesystem ELF64 and PE32+
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct audited Seven bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          cat bootstrap/seed/v2/part*.b64 | tr -d '\r\n\t ' | base64 --decode | gzip --decompress > build/seven0.seed.svbc
+          echo '123f5b513bcae7774671898f471441b3c71efd570acad91fa634cbc5f33bb223  build/seven0.seed.svbc' | sha256sum --check
+          (cd bootstrap/host/v2 && sha256sum --check SHA256SUMS)
+          gcc -O2 -std=c11 -Wall -Wextra -Werror bootstrap/host/v2/genesis-host.c -o build/genesis-host
+
+      - name: Rebuild Seven-0 fixed point
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf 'modulo seven0_bootstrap_monolith\n\n'
+            for arquivo in $(find compiler0 -maxdepth 1 -type f -name '*.sev' | LC_ALL=C sort); do
+              printf '// BEGIN %s\n' "$(basename "$arquivo")"
+              sed '/^modulo /d; /^usa /d' "$arquivo"
+              printf '// END %s\n\n' "$(basename "$arquivo")"
+            done
+          } > build/seven0.monolith.sev
+          build/genesis-host build/seven0.seed.svbc build/seven0.monolith.sev build/seven0.svbc
+          build/genesis-host build/seven0.svbc build/seven0.monolith.sev build/seven0.self.svbc
+          cmp build/seven0.svbc build/seven0.self.svbc
+
+      - name: Build Stage1 compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > build/stage1.sources <<'EOF'
+          std/base/lista.sev
+          std/base/resultado.sev
+          std/base/talvez.sev
+          std/base/mapa.sev
+          std/base/texto.sev
+          std/mem/bytes.sev
+          std/fs/file.sev
+          compiler/ast.sev
+          compiler/bytecode.sev
+          compiler/diagnostic.sev
+          compiler/driver.sev
+          compiler/effects.sev
+          compiler/emitter.sev
+          compiler/ffi.sev
+          compiler/ir.sev
+          compiler/lexer.sev
+          compiler/memory.sev
+          compiler/package.sev
+          compiler/parser_part00.sev
+          compiler/parser_part01.sev
+          compiler/parser_part02.sev
+          compiler/parser_part03.sev
+          compiler/parser_part04.sev
+          compiler/parser_part05.sev
+          compiler/parser_cursor.sev
+          compiler/semantic.sev
+          compiler/source.sev
+          compiler/symbols.sev
+          compiler/token.sev
+          compiler/types_part00.sev
+          compiler/types_part01.sev
+          compiler/types_part02.sev
+          compiler/types_part03.sev
+          EOF
+
+          {
+            printf 'modulo seven_stage1_monolith\n\n'
+            while IFS= read -r arquivo; do
+              printf '// BEGIN %s\n' "$arquivo"
+              case "$arquivo" in
+                compiler/bytecode.sev)
+                  sed '/^modulo /d; /^usa /d; s/emite_constante(/bytecode_emite_constante(/g' "$arquivo"
+                  ;;
+                compiler/emitter.sev)
+                  sed '/^modulo /d; /^usa /d; s/^campo emite(/campo emite_formato(/' "$arquivo"
+                  ;;
+                *)
+                  sed '/^modulo /d; /^usa /d' "$arquivo"
+                  ;;
+              esac
+              printf '// END %s\n\n' "$arquivo"
+            done < build/stage1.sources
+            cat <<'EOF'
+          campo inicio(argumentos: Lista<Texto>) -> Num toca terminal, disco, ambiente ::
+            guarda pedido := pedido_de_compilacao(argumentos)
+            guarda saida := compila(pedido)
+            veja saida e Sucesso ::
+              devolve 0
+            outro ::
+              mostra_diagnosticos(saida.diagnosticos)
+              devolve 1
+            fecha
+          fecha
+          EOF
+          } > build/seven.stage1.monolith.sev
+
+          build/genesis-host build/seven0.svbc build/seven.stage1.monolith.sev build/seven.stage1.svbc
+          test "$(od -An -tx1 -N4 build/seven.stage1.svbc | tr -d ' \n')" = '53564230'
+
+      - name: Compile native filesystem generator with Stage1
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp runtime/platform/native/runtime.sources build/native-fs.sources
+          echo 'tests/native/fs_backend.sev' >> build/native-fs.sources
+          cat > build/native-fs.pkg <<'EOF'
+          pacote native-fs-proof
+          versao 0.0.1
+          criador Gabriel Barcelos
+          entrada tests.native.fs_backend.inicio
+          alvo svbc
+          indice build/native-fs.sources
+          EOF
+          build/genesis-host build/seven.stage1.svbc build/native-fs.pkg build/native-fs-test.svbc
+          test -s build/native-fs-test.svbc
+          test "$(od -An -tx1 -N4 build/native-fs-test.svbc | tr -d ' \n')" = '53564243'
+
+      - name: Execute native filesystem generator
+        shell: bash
+        run: |
+          set -euo pipefail
+          build/genesis-host build/native-fs-test.svbc
+          test "$(od -An -tx1 -N4 build/native-fs-proof | tr -d ' \n')" = '7f454c46'
+          test "$(od -An -tx1 -N2 build/native-fs-proof.exe | tr -d ' \n')" = '4d5a'
+
+      - name: Inspect Windows filesystem imports
+        shell: bash
+        run: |
+          set -euo pipefail
+          objdump -p build/native-fs-proof.exe | tee build/native-fs-proof.pe.txt
+          grep -q 'CreateFileA' build/native-fs-proof.pe.txt
+          grep -q 'GetFileAttributesA' build/native-fs-proof.pe.txt
+          grep -q 'GetFileSizeEx' build/native-fs-proof.pe.txt
+          grep -q 'ReadFile' build/native-fs-proof.pe.txt
+          grep -q 'WriteFile' build/native-fs-proof.pe.txt
+          grep -q 'CloseHandle' build/native-fs-proof.pe.txt
+
+      - name: Execute Seven-generated filesystem ELF
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f build/seven-native-fs.txt
+          chmod +x build/native-fs-proof
+          set +e
+          ./build/native-fs-proof
+          code=$?
+          set -e
+          test "$code" -eq 42
+          test "$(cat build/seven-native-fs.txt)" = 'SevenFS'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-native-fs-proof
+          path: |
+            build/native-fs-proof.exe
+            build/native-fs-proof
+            build/native-fs-test.svbc
+            build/native-fs-proof.pe.txt
+          if-no-files-found: error
+
+  windows:
+    name: Execute Seven-generated filesystem PE32+
+    needs: generate
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: seven-native-fs-proof
+          path: build
+
+      - name: Execute native filesystem proof
+        shell: bash
+        run: |
+          rm -f build/seven-native-fs.txt
+          set +e
+          ./build/native-fs-proof.exe
+          code=$?
+          set -e
+          test "$code" -eq 42
+          test "$(cat build/seven-native-fs.txt)" = 'SevenFS'
