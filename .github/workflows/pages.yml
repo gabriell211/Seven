@@ -130,12 +130,15 @@ jobs:
             ['#source', new FakeElement()]
           ]);
           const injected = [];
+          const selectors = [];
 
           globalThis.document = {
             querySelector(selector) {
+              selectors.push(['one', selector]);
               return elements.get(selector) ?? null;
             },
             querySelectorAll(selector) {
+              selectors.push(['all', selector]);
               const element = elements.get(selector);
               return element ? [element] : [];
             },
@@ -177,6 +180,12 @@ jobs:
           const title = elements.get('title').textContent;
           const html = elements.get('#seven-app').innerHTML;
           const css = injected.map(element => element.textContent).join('\n');
+
+          console.log('SevenWeb:', globalThis.SevenWeb?.codigo);
+          console.log('selectors:', JSON.stringify(selectors));
+          console.log('title:', JSON.stringify(title));
+          console.log('html length:', html.length);
+          console.log('css length:', css.length);
 
           if (!globalThis.SevenWeb || globalThis.SevenWeb.codigo !== 0) {
             throw new Error('Seven loader did not start the website successfully');
