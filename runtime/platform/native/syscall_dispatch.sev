@@ -30,7 +30,7 @@ campo x64_runtime_dispatch(
     devolve sim
   fecha
 
-  veja x64_syscall_fs_bytes_emite(codigo, imports_windows, alvo, nome, aridade) ::
+  veja x64_syscall_fs_bytes_emite(codigo, virtual_alloc_patches, imports_windows, alvo, nome, aridade) ::
     devolve sim
   fecha
 
