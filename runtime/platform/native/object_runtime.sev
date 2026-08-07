@@ -425,7 +425,7 @@ campo x64_runtime_lista_define(codigo: Bytes) -> Nada ::
 fecha
 
 campo x64_runtime_lista_atualiza_tamanho(codigo: Bytes) -> Nada ::
-  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 77)
   bytes_coloca_byte(codigo, 139)
   bytes_coloca_byte(codigo, 108)
   bytes_coloca_byte(codigo, 36)
