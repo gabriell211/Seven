@@ -359,7 +359,7 @@ campo indice_campo(campos: Lista<CampoIr>, nome: Texto) -> U32 ::
     fecha
     vira indice := indice + 1
   fecha
-  devolve 0
+  devolve U32(lista_tamanho(campos))
 fecha
 
 campo indice_constante(constantes: Lista<ConstanteIr>, valor: ValorIr) -> U32 ::
