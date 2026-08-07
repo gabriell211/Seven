@@ -1,7 +1,6 @@
 modulo seven.runtime.platform.native.x64
 
 usa seven.runtime.platform.native.bytes
-usa seven.runtime.platform.native.syscall_dispatch
 usa seven.runtime.platform.native.target
 usa seven.runtime.svbc.image
 usa seven.runtime.svbc.opcode
@@ -335,17 +334,7 @@ campo x64_emite_instrucao(
     veja instr.a >= lista_tamanho(imagem.nomes) ::
       devolve Falha(nova_falha("SV-NATIVE-SYSCALL", "nome de syscall fora do limite"))
     fecha
-    guarda nome_syscall := lista_pega(imagem.nomes, instr.a)
-    veja x64_runtime_dispatch(
-      saida.bytes,
-      saida.virtual_alloc_patches,
-      alvo,
-      nome_syscall,
-      instr.b
-    ) ::
-      devolve Valor(nulo)
-    fecha
-    devolve x64_syscall_pura(saida.bytes, nome_syscall, instr.b)
+    devolve x64_syscall_pura(saida.bytes, lista_pega(imagem.nomes, instr.a), instr.b)
   fecha
 
   devolve Falha(nova_falha("SV-NATIVE-OP", "opcode SVBC nao suportado pelo AOT x64"))
@@ -754,11 +743,9 @@ campo x64_windows_virtual_alloc(saida: CodigoX64) -> Nada ::
   bytes_coloca_byte(saida.bytes, 185)
   nativo_u32_le(saida.bytes, 4)
 
-  bytes_coloca_byte(saida.bytes, 65)
-  bytes_coloca_byte(saida.bytes, 84)
   bytes_coloca_byte(saida.bytes, 76)
-  bytes_coloca_byte(saida.bytes, 137)
-  bytes_coloca_byte(saida.bytes, 228)
+  bytes_coloca_byte(saida.bytes, 139)
+  bytes_coloca_byte(saida.bytes, 220)
   bytes_coloca_byte(saida.bytes, 72)
   bytes_coloca_byte(saida.bytes, 131)
   bytes_coloca_byte(saida.bytes, 228)
@@ -766,6 +753,11 @@ campo x64_windows_virtual_alloc(saida: CodigoX64) -> Nada ::
   bytes_coloca_byte(saida.bytes, 72)
   bytes_coloca_byte(saida.bytes, 131)
   bytes_coloca_byte(saida.bytes, 236)
+  bytes_coloca_byte(saida.bytes, 48)
+  bytes_coloca_byte(saida.bytes, 76)
+  bytes_coloca_byte(saida.bytes, 137)
+  bytes_coloca_byte(saida.bytes, 92)
+  bytes_coloca_byte(saida.bytes, 36)
   bytes_coloca_byte(saida.bytes, 32)
 
   bytes_coloca_byte(saida.bytes, 255)
@@ -775,10 +767,13 @@ campo x64_windows_virtual_alloc(saida: CodigoX64) -> Nada ::
   lista_coloca(saida.virtual_alloc_patches, pos)
 
   bytes_coloca_byte(saida.bytes, 76)
-  bytes_coloca_byte(saida.bytes, 137)
-  bytes_coloca_byte(saida.bytes, 228)
-  bytes_coloca_byte(saida.bytes, 65)
+  bytes_coloca_byte(saida.bytes, 139)
   bytes_coloca_byte(saida.bytes, 92)
+  bytes_coloca_byte(saida.bytes, 36)
+  bytes_coloca_byte(saida.bytes, 32)
+  bytes_coloca_byte(saida.bytes, 76)
+  bytes_coloca_byte(saida.bytes, 137)
+  bytes_coloca_byte(saida.bytes, 220)
 fecha
 
 campo x64_marca_byte(codigo: Bytes) -> Nada ::
