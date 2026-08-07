@@ -26,7 +26,8 @@ campo bytes_com_tamanho(tamanho: U64) -> Bytes ::
 fecha
 
 campo texto_bytes(valor: Texto) -> Bytes ::
-  devolve sys_texto_bytes(valor)
+  solta bytes := bytes_novo()
+  devolve bytes_coloca_texto(bytes, valor)
 fecha
 
 campo bytes_texto(valor: Bytes) -> Texto ::
