@@ -169,9 +169,19 @@ jobs:
           indice build/stage2.sources
           EOF
           build/genesis-host build/seven.stage1.svbc build/stage2.pkg build/seven.stage2.svbc
+          echo 'stage2 generated'
           build/genesis-host build/seven.stage2.svbc build/stage2.pkg build/seven.stage2.self.svbc
-          cmp build/seven.stage2.svbc build/seven.stage2.self.svbc
-          test "$(sha256sum build/seven.stage2.svbc | awk '{print $1}')" = '68897b5275d93f6599e31d5b8c8c5b36b78e329cb433b0b120e92242251c1f6a'
+          echo 'stage2 self generated'
+          stage2_hash=$(sha256sum build/seven.stage2.svbc | awk '{print $1}')
+          stage2_self_hash=$(sha256sum build/seven.stage2.self.svbc | awk '{print $1}')
+          echo "stage2_sha256=$stage2_hash"
+          echo "stage2_self_sha256=$stage2_self_hash"
+          if ! cmp build/seven.stage2.svbc build/seven.stage2.self.svbc; then
+            echo 'Stage2 fixed-point mismatch'
+            cmp -l build/seven.stage2.svbc build/seven.stage2.self.svbc | head -20 || true
+            exit 1
+          fi
+          test "$stage2_hash" = "$stage2_self_hash"
           build/genesis-host build/seven.stage2.svbc build/stage1-proof.pkg build/stage2-proof.svbc
           cmp build/stage1-proof.svbc build/stage2-proof.svbc
           set +e

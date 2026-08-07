@@ -1,0 +1,129 @@
+modulo tests.native.iterator_backend
+
+usa seven.runtime.platform.native.linker
+usa seven.runtime.platform.native.target
+usa seven.runtime.svbc.image
+usa seven.runtime.svbc.opcode
+usa seven.runtime.svbc.value
+usa std.base.lista
+usa std.base.resultado
+
+campo imagem_prova_iterador() -> ImagemSvbc ::
+  solta constantes := lista<ValorVm>()
+  lista_coloca(constantes, VmTexto("__tipo"))
+  lista_coloca(constantes, VmTexto("Lista"))
+  lista_coloca(constantes, VmTexto("tag"))
+  lista_coloca(constantes, VmTexto("Lista"))
+  lista_coloca(constantes, VmTexto("tamanho"))
+  lista_coloca(constantes, VmNum(0))
+  lista_coloca(constantes, VmNum(40))
+  lista_coloca(constantes, VmNum(2))
+  lista_coloca(constantes, VmNum(1))
+  lista_coloca(constantes, VmNum(42))
+
+  solta nomes := lista<Texto>()
+  lista_coloca(nomes, "sys_obj_novo")
+  lista_coloca(nomes, "sys_lista_coloca")
+  lista_coloca(nomes, "sys_iterador_novo")
+  lista_coloca(nomes, "sys_iterador_tem")
+  lista_coloca(nomes, "sys_iterador_atual")
+  lista_coloca(nomes, "sys_iterador_avanca")
+  lista_coloca(nomes, "sys_lista_tamanho")
+
+  solta campos := lista<CampoImagem>()
+  lista_coloca(campos, CampoImagem {
+    nome: "inicio",
+    entrada: 0,
+    locais: 3,
+    parametros: 0,
+    efeitos: lista<Texto>()
+  })
+
+  solta codigo := lista<Instrucao>()
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 0, b: 0, c: 0, ip: 0 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 1, b: 0, c: 0, ip: 1 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 2, b: 0, c: 0, ip: 2 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 3, b: 0, c: 0, ip: 3 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 4, b: 0, c: 0, ip: 4 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 5, b: 0, c: 0, ip: 5 })
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 0, b: 6, c: 0, ip: 6 })
+  lista_coloca(codigo, Instrucao { opcode: Guarda, a: 0, b: 0, c: 0, ip: 7 })
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 0, b: 0, c: 0, ip: 8 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 6, b: 0, c: 0, ip: 9 })
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 1, b: 2, c: 0, ip: 10 })
+  lista_coloca(codigo, Instrucao { opcode: Guarda, a: 0, b: 0, c: 0, ip: 11 })
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 0, b: 0, c: 0, ip: 12 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 7, b: 0, c: 0, ip: 13 })
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 1, b: 2, c: 0, ip: 14 })
+  lista_coloca(codigo, Instrucao { opcode: Guarda, a: 0, b: 0, c: 0, ip: 15 })
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 0, b: 0, c: 0, ip: 16 })
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 6, b: 1, c: 0, ip: 17 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 7, b: 0, c: 0, ip: 18 })
+  lista_coloca(codigo, Instrucao { opcode: Igual, a: 0, b: 0, c: 0, ip: 19 })
+  lista_coloca(codigo, Instrucao { opcode: SaltaSeNao, a: 49, b: 0, c: 0, ip: 20 })
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 0, b: 0, c: 0, ip: 21 })
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 2, b: 1, c: 0, ip: 22 })
+  lista_coloca(codigo, Instrucao { opcode: Guarda, a: 1, b: 0, c: 0, ip: 23 })
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 1, b: 0, c: 0, ip: 24 })
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 3, b: 1, c: 0, ip: 25 })
+  lista_coloca(codigo, Instrucao { opcode: SaltaSeNao, a: 49, b: 0, c: 0, ip: 26 })
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 1, b: 0, c: 0, ip: 27 })
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 4, b: 1, c: 0, ip: 28 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 6, b: 0, c: 0, ip: 29 })
+  lista_coloca(codigo, Instrucao { opcode: Igual, a: 0, b: 0, c: 0, ip: 30 })
+  lista_coloca(codigo, Instrucao { opcode: SaltaSeNao, a: 49, b: 0, c: 0, ip: 31 })
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 1, b: 0, c: 0, ip: 32 })
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 5, b: 1, c: 0, ip: 33 })
+  lista_coloca(codigo, Instrucao { opcode: Guarda, a: 2, b: 0, c: 0, ip: 34 })
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 1, b: 0, c: 0, ip: 35 })
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 3, b: 1, c: 0, ip: 36 })
+  lista_coloca(codigo, Instrucao { opcode: SaltaSeNao, a: 49, b: 0, c: 0, ip: 37 })
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 1, b: 0, c: 0, ip: 38 })
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 4, b: 1, c: 0, ip: 39 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 7, b: 0, c: 0, ip: 40 })
+  lista_coloca(codigo, Instrucao { opcode: Igual, a: 0, b: 0, c: 0, ip: 41 })
+  lista_coloca(codigo, Instrucao { opcode: SaltaSeNao, a: 49, b: 0, c: 0, ip: 42 })
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 1, b: 0, c: 0, ip: 43 })
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 5, b: 1, c: 0, ip: 44 })
+  lista_coloca(codigo, Instrucao { opcode: Guarda, a: 2, b: 0, c: 0, ip: 45 })
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 1, b: 0, c: 0, ip: 46 })
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 3, b: 1, c: 0, ip: 47 })
+  lista_coloca(codigo, Instrucao { opcode: SaltaSeNao, a: 51, b: 0, c: 0, ip: 48 })
+
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 8, b: 0, c: 0, ip: 49 })
+  lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: 50 })
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 9, b: 0, c: 0, ip: 51 })
+  lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: 52 })
+
+  devolve ImagemSvbc {
+    versao: 1,
+    nomes: nomes,
+    constantes: constantes,
+    campos: campos,
+    codigo: codigo
+  }
+fecha
+
+campo inicio() -> Num toca disco ::
+  guarda imagem := imagem_prova_iterador()
+  guarda linux := baixa_nativo(imagem, alvo_linux_x64())
+  veja linux e Falha :: devolve 50 fecha
+
+  guarda windows := baixa_nativo(imagem, alvo_win_x64())
+  veja windows e Falha :: devolve 51 fecha
+
+  sys_arquivo_grava_bytes("build/native-iterator-proof", linux.valor.bytes)
+  sys_arquivo_grava_bytes("build/native-iterator-proof.exe", windows.valor.bytes)
+  devolve 0
+fecha

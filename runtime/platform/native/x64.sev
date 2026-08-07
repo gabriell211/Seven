@@ -1,0 +1,947 @@
+modulo seven.runtime.platform.native.x64
+
+usa seven.runtime.platform.native.bytes
+usa seven.runtime.platform.native.imports
+usa seven.runtime.platform.native.syscall_dispatch
+usa seven.runtime.platform.native.target
+usa seven.runtime.svbc.image
+usa seven.runtime.svbc.opcode
+usa seven.runtime.svbc.value
+usa std.base.lista
+usa std.base.resultado
+usa std.mem.bytes
+
+const TipoNativoTexto: U64 := 1
+const TipoNativoBytes: U64 := 2
+
+molde OffsetIpX64 ::
+  ip: U64
+  offset: U64
+fecha
+
+molde PatchSaltoX64 ::
+  posicao: U64
+  destino: U32
+fecha
+
+molde PatchChamadaX64 ::
+  posicao: U64
+  campo: U32
+fecha
+
+molde CodigoX64 ::
+  bytes: Bytes
+  entrada: U64
+  exit_process_patches: Lista<U64>
+  virtual_alloc_patches: Lista<U64>
+  imports_windows: Lista<PatchImportWindowsX64>
+fecha
+
+campo x64_compila(imagem: ImagemSvbc, alvo: AlvoNativo) -> Resultado<CodigoX64, Falha> ::
+  guarda indice_inicio := x64_campo_inicio(imagem)
+  veja indice_inicio < 0 ::
+    devolve Falha(nova_falha("SV-NATIVE-ENTRADA", "campo inicio ausente"))
+  fecha
+
+  guarda entrada := lista_pega(imagem.campos, U64(indice_inicio))
+  veja entrada.parametros != 0 ::
+    devolve Falha(nova_falha("SV-NATIVE-ARGS", "o campo inicio nativo nao recebe parametros"))
+  fecha
+
+  solta saida := CodigoX64 {
+    bytes: bytes_novo(),
+    entrada: 0,
+    exit_process_patches: lista<U64>(),
+    virtual_alloc_patches: lista<U64>(),
+    imports_windows: lista<PatchImportWindowsX64>()
+  }
+  solta offsets_ip := lista<OffsetIpX64>()
+  solta offsets_campo := lista<U64>()
+  solta saltos := lista<PatchSaltoX64>()
+  solta chamadas := lista<PatchChamadaX64>()
+
+  solta indice_campo: U64 := 0
+  gira indice_campo < lista_tamanho(imagem.campos) ::
+    guarda campo := lista_pega(imagem.campos, indice_campo)
+    guarda fim := x64_campo_fim(imagem, campo.entrada)
+
+    veja campo.entrada >= fim ::
+      devolve Falha(nova_falha("SV-NATIVE-CODIGO", "campo sem codigo: " + campo.nome))
+    fecha
+    veja campo.locais < campo.parametros ::
+      devolve Falha(nova_falha("SV-NATIVE-LOCAIS", "campo possui menos locais que parametros: " + campo.nome))
+    fecha
+
+    lista_coloca(offsets_campo, saida.bytes.tamanho)
+    veja Num(indice_campo) == indice_inicio ::
+      vira saida.entrada := saida.bytes.tamanho
+    fecha
+
+    x64_prologo(saida.bytes, campo.locais, campo.parametros)
+
+    solta ip := campo.entrada
+    gira ip < fim ::
+      lista_coloca(offsets_ip, OffsetIpX64 {
+        ip: ip,
+        offset: saida.bytes.tamanho
+      })
+
+      guarda instr := lista_pega(imagem.codigo, ip)
+      guarda emitida := x64_emite_instrucao(
+        saida,
+        imagem,
+        alvo,
+        U32(indice_campo),
+        campo.entrada,
+        fim,
+        instr,
+        saltos,
+        chamadas
+      )
+      veja emitida e Falha ::
+        devolve Falha(emitida.valor)
+      fecha
+      vira ip := ip + 1
+    fecha
+
+    vira indice_campo := indice_campo + 1
+  fecha
+
+  para cada patch em saltos ::
+    guarda alvo_offset := x64_offset_ip(offsets_ip, U64(patch.destino))
+    veja alvo_offset < 0 ::
+      devolve Falha(nova_falha("SV-NATIVE-SALTO", "destino de salto nao materializado"))
+    fecha
+    x64_patch_rel32(saida.bytes, patch.posicao, U64(alvo_offset))
+  fecha
+
+  para cada patch em chamadas ::
+    veja patch.campo >= lista_tamanho(offsets_campo) ::
+      devolve Falha(nova_falha("SV-NATIVE-CALL", "campo de chamada fora do limite"))
+    fecha
+    x64_patch_rel32(saida.bytes, patch.posicao, lista_pega(offsets_campo, patch.campo))
+  fecha
+
+  devolve Valor(saida)
+fecha
+
+campo x64_campo_inicio(imagem: ImagemSvbc) -> Num ::
+  solta indice: U64 := 0
+  para cada campo em imagem.campos ::
+    veja campo.nome == "inicio" :: devolve Num(indice) fecha
+    vira indice := indice + 1
+  fecha
+  devolve -1
+fecha
+
+campo x64_campo_fim(imagem: ImagemSvbc, inicio: U64) -> U64 ::
+  solta fim := U64(lista_tamanho(imagem.codigo))
+  para cada campo em imagem.campos ::
+    veja campo.entrada > inicio e campo.entrada < fim ::
+      vira fim := campo.entrada
+    fecha
+  fecha
+  devolve fim
+fecha
+
+campo x64_offset_ip(offsets: Lista<OffsetIpX64>, ip: U64) -> Num ::
+  para cada item em offsets ::
+    veja item.ip == ip :: devolve Num(item.offset) fecha
+  fecha
+  devolve -1
+fecha
+
+campo x64_patch_rel32(codigo: Bytes, posicao: U64, destino: U64) -> Nada ::
+  guarda relativo := Num(destino) - Num(posicao + 4)
+  nativo_define_u32_le(codigo, posicao, relativo)
+fecha
+
+campo x64_jcc(codigo: Bytes, condicao: Byte) -> U64 ::
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, condicao)
+  guarda posicao := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  devolve posicao
+fecha
+
+campo x64_jmp(codigo: Bytes) -> U64 ::
+  bytes_coloca_byte(codigo, 233)
+  guarda posicao := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  devolve posicao
+fecha
+
+campo x64_prologo(codigo: Bytes, locais: U32, parametros: U32) -> Nada ::
+  bytes_coloca_byte(codigo, 85)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 229)
+
+  veja locais > 0 ::
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 129)
+    bytes_coloca_byte(codigo, 236)
+    nativo_u32_le(codigo, U64(locais) * 8)
+  fecha
+
+  solta indice: U32 := 0
+  gira indice < parametros ::
+    guarda origem := U64(parametros - indice + 1) * 8
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 139)
+    bytes_coloca_byte(codigo, 133)
+    nativo_u32_le(codigo, origem)
+
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 137)
+    bytes_coloca_byte(codigo, 133)
+    nativo_u32_le(codigo, nativo_i32_bits(x64_local_deslocamento(indice)))
+    vira indice := indice + 1
+  fecha
+fecha
+
+campo x64_emite_instrucao(
+  saida: CodigoX64,
+  imagem: ImagemSvbc,
+  alvo: AlvoNativo,
+  campo_atual: U32,
+  inicio: U64,
+  fim: U64,
+  instr: Instrucao,
+  saltos: Lista<PatchSaltoX64>,
+  chamadas: Lista<PatchChamadaX64>
+) -> Resultado<Nada, Falha> ::
+  veja instr.opcode e Pare ::
+    x64_mov_rax_u64(saida.bytes, 0)
+    x64_emite_saida(saida, alvo)
+    devolve Valor(nulo)
+  fecha
+
+  veja instr.opcode e Const ::
+    veja instr.a >= lista_tamanho(imagem.constantes) ::
+      devolve Falha(nova_falha("SV-NATIVE-CONSTANTE", "constante fora do limite"))
+    fecha
+    devolve x64_emite_constante(saida, alvo, lista_pega(imagem.constantes, instr.a))
+  fecha
+
+  veja instr.opcode e Carrega ::
+    guarda campo := lista_pega(imagem.campos, campo_atual)
+    veja instr.a >= campo.locais ::
+      devolve Falha(nova_falha("SV-NATIVE-LOCAL", "leitura de local fora do limite"))
+    fecha
+    x64_local_carrega(saida.bytes, instr.a)
+    devolve Valor(nulo)
+  fecha
+
+  veja instr.opcode e Guarda ::
+    guarda campo := lista_pega(imagem.campos, campo_atual)
+    veja instr.a >= campo.locais ::
+      devolve Falha(nova_falha("SV-NATIVE-LOCAL", "escrita de local fora do limite"))
+    fecha
+    x64_local_guarda(saida.bytes, instr.a)
+    devolve Valor(nulo)
+  fecha
+
+  veja instr.opcode e Soma :: x64_binaria_numero(saida.bytes, "add") devolve Valor(nulo) fecha
+  veja instr.opcode e Sub :: x64_binaria_numero(saida.bytes, "sub") devolve Valor(nulo) fecha
+  veja instr.opcode e Mul :: x64_binaria_numero(saida.bytes, "mul") devolve Valor(nulo) fecha
+  veja instr.opcode e Div :: x64_binaria_numero(saida.bytes, "div") devolve Valor(nulo) fecha
+  veja instr.opcode e Igual :: x64_igual(saida.bytes) devolve Valor(nulo) fecha
+  veja instr.opcode e Diferente :: x64_igual(saida.bytes) x64_bit_nao(saida.bytes) devolve Valor(nulo) fecha
+  veja instr.opcode e Menor :: x64_compara_numero(saida.bytes, 156) devolve Valor(nulo) fecha
+  veja instr.opcode e MenorIgual :: x64_compara_numero(saida.bytes, 158) devolve Valor(nulo) fecha
+  veja instr.opcode e Maior :: x64_compara_numero(saida.bytes, 159) devolve Valor(nulo) fecha
+  veja instr.opcode e MaiorIgual :: x64_compara_numero(saida.bytes, 157) devolve Valor(nulo) fecha
+
+  veja instr.opcode e Salta ::
+    veja U64(instr.a) < inicio ou U64(instr.a) >= fim ::
+      devolve Falha(nova_falha("SV-NATIVE-SALTO", "destino de salto fora do campo"))
+    fecha
+    bytes_coloca_byte(saida.bytes, 233)
+    guarda pos := saida.bytes.tamanho
+    nativo_u32_le(saida.bytes, 0)
+    lista_coloca(saltos, PatchSaltoX64 { posicao: pos, destino: instr.a })
+    devolve Valor(nulo)
+  fecha
+
+  veja instr.opcode e SaltaSeNao ::
+    veja U64(instr.a) < inicio ou U64(instr.a) >= fim ::
+      devolve Falha(nova_falha("SV-NATIVE-SALTO", "destino condicional fora do campo"))
+    fecha
+    bytes_coloca_byte(saida.bytes, 88)
+    bytes_coloca_byte(saida.bytes, 72)
+    bytes_coloca_byte(saida.bytes, 133)
+    bytes_coloca_byte(saida.bytes, 192)
+    bytes_coloca_byte(saida.bytes, 15)
+    bytes_coloca_byte(saida.bytes, 132)
+    guarda pos := saida.bytes.tamanho
+    nativo_u32_le(saida.bytes, 0)
+    lista_coloca(saltos, PatchSaltoX64 { posicao: pos, destino: instr.a })
+    devolve Valor(nulo)
+  fecha
+
+  veja instr.opcode e Chama ::
+    veja instr.a >= lista_tamanho(imagem.campos) ::
+      devolve Falha(nova_falha("SV-NATIVE-CALL", "campo chamado fora do limite"))
+    fecha
+    guarda chamado := lista_pega(imagem.campos, instr.a)
+    veja instr.b != chamado.parametros ::
+      devolve Falha(nova_falha("SV-NATIVE-ARIDADE", "quantidade de argumentos invalida para " + chamado.nome))
+    fecha
+
+    bytes_coloca_byte(saida.bytes, 232)
+    guarda pos := saida.bytes.tamanho
+    nativo_u32_le(saida.bytes, 0)
+    lista_coloca(chamadas, PatchChamadaX64 { posicao: pos, campo: instr.a })
+
+    veja instr.b > 0 ::
+      bytes_coloca_byte(saida.bytes, 72)
+      bytes_coloca_byte(saida.bytes, 129)
+      bytes_coloca_byte(saida.bytes, 196)
+      nativo_u32_le(saida.bytes, U64(instr.b) * 8)
+    fecha
+    bytes_coloca_byte(saida.bytes, 80)
+    devolve Valor(nulo)
+  fecha
+
+  veja instr.opcode e Volta ::
+    bytes_coloca_byte(saida.bytes, 88)
+    guarda indice_inicio := x64_campo_inicio(imagem)
+    veja Num(campo_atual) == indice_inicio ::
+      x64_emite_saida(saida, alvo)
+    outro ::
+      x64_retorna_campo(saida.bytes)
+    fecha
+    devolve Valor(nulo)
+  fecha
+
+  veja instr.opcode e Caixa ::
+    x64_caixa(saida, alvo)
+    devolve Valor(nulo)
+  fecha
+
+  veja instr.opcode e MarcaByte ::
+    x64_marca_byte(saida.bytes)
+    devolve Valor(nulo)
+  fecha
+
+  veja instr.opcode e PegaByte ::
+    x64_pega_byte(saida.bytes)
+    devolve Valor(nulo)
+  fecha
+
+  veja instr.opcode e Efeito ::
+    devolve Valor(nulo)
+  fecha
+
+  veja instr.opcode e Syscall ::
+    veja instr.a >= lista_tamanho(imagem.nomes) ::
+      devolve Falha(nova_falha("SV-NATIVE-SYSCALL", "nome de syscall fora do limite"))
+    fecha
+    guarda nome_syscall := lista_pega(imagem.nomes, instr.a)
+    guarda runtime_tratou := x64_runtime_dispatch(
+      saida.bytes,
+      saida.virtual_alloc_patches,
+      saida.imports_windows,
+      alvo,
+      nome_syscall,
+      instr.b
+    )
+    veja runtime_tratou ::
+      devolve Valor(nulo)
+    fecha
+    devolve x64_syscall_pura(saida.bytes, nome_syscall, instr.b)
+  fecha
+
+  devolve Falha(nova_falha("SV-NATIVE-OP", "opcode SVBC nao suportado pelo AOT x64"))
+fecha
+
+campo x64_emite_constante(saida: CodigoX64, alvo: AlvoNativo, valor: ValorVm) -> Resultado<Nada, Falha> ::
+  veja valor e VmNada ::
+    x64_mov_rax_u64(saida.bytes, 0)
+    bytes_coloca_byte(saida.bytes, 80)
+    devolve Valor(nulo)
+  fecha
+  veja valor e VmBit ::
+    veja valor.valor :: x64_mov_rax_u64(saida.bytes, 2) outro :: x64_mov_rax_u64(saida.bytes, 0) fecha
+    bytes_coloca_byte(saida.bytes, 80)
+    devolve Valor(nulo)
+  fecha
+  veja valor e VmU64 ::
+    x64_mov_rax_u64(saida.bytes, valor.valor * 2)
+    bytes_coloca_byte(saida.bytes, 80)
+    devolve Valor(nulo)
+  fecha
+  veja valor e VmNum ::
+    x64_mov_rax_u64(saida.bytes, U64(valor.valor) * 2)
+    bytes_coloca_byte(saida.bytes, 80)
+    devolve Valor(nulo)
+  fecha
+  veja valor e VmTexto ::
+    x64_constante_texto(saida, alvo, valor.valor)
+    devolve Valor(nulo)
+  fecha
+
+  devolve Falha(nova_falha("SV-NATIVE-TIPO", "constante ainda nao representada pela ABI nativa tagged"))
+fecha
+
+campo x64_constante_texto(saida: CodigoX64, alvo: AlvoNativo, valor: Texto) -> Nada ::
+  guarda dados := texto_bytes(valor)
+  x64_aloca_imediato(saida, alvo, dados.tamanho + 17)
+
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 137)
+  bytes_coloca_byte(saida.bytes, 195)
+
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 199)
+  bytes_coloca_byte(saida.bytes, 3)
+  nativo_u32_le(saida.bytes, TipoNativoTexto)
+
+  x64_mov_rax_u64(saida.bytes, dados.tamanho)
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 137)
+  bytes_coloca_byte(saida.bytes, 67)
+  bytes_coloca_byte(saida.bytes, 8)
+
+  solta indice: U64 := 0
+  gira indice < dados.tamanho ::
+    x64_byte_imediato(saida.bytes, 16 + indice, bytes_pega(dados, indice))
+    vira indice := indice + 1
+  fecha
+  x64_byte_imediato(saida.bytes, 16 + dados.tamanho, 0)
+
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 137)
+  bytes_coloca_byte(saida.bytes, 216)
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 131)
+  bytes_coloca_byte(saida.bytes, 192)
+  bytes_coloca_byte(saida.bytes, 1)
+  bytes_coloca_byte(saida.bytes, 80)
+fecha
+
+campo x64_byte_imediato(codigo: Bytes, deslocamento: U64, valor: Byte) -> Nada ::
+  veja deslocamento <= 127 ::
+    bytes_coloca_byte(codigo, 198)
+    bytes_coloca_byte(codigo, 67)
+    bytes_coloca_byte(codigo, Byte(deslocamento))
+    bytes_coloca_byte(codigo, valor)
+    devolve nulo
+  fecha
+
+  bytes_coloca_byte(codigo, 198)
+  bytes_coloca_byte(codigo, 131)
+  nativo_u32_le(codigo, deslocamento)
+  bytes_coloca_byte(codigo, valor)
+fecha
+
+campo x64_mov_rax_u64(codigo: Bytes, valor: U64) -> Nada ::
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u64_le(codigo, valor)
+fecha
+
+campo x64_local_deslocamento(indice: U32) -> Num ::
+  devolve -Num((U64(indice) + 1) * 8)
+fecha
+
+campo x64_local_carrega(codigo: Bytes, indice: U32) -> Nada ::
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 133)
+  nativo_u32_le(codigo, nativo_i32_bits(x64_local_deslocamento(indice)))
+  bytes_coloca_byte(codigo, 80)
+fecha
+
+campo x64_local_guarda(codigo: Bytes, indice: U32) -> Nada ::
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 133)
+  nativo_u32_le(codigo, nativo_i32_bits(x64_local_deslocamento(indice)))
+fecha
+
+campo x64_binaria_numero(codigo: Bytes, operacao: Texto) -> Nada ::
+  bytes_coloca_byte(codigo, 89)
+  bytes_coloca_byte(codigo, 88)
+
+  veja operacao == "add" ::
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 1)
+    bytes_coloca_byte(codigo, 200)
+  fecha
+  veja operacao == "sub" ::
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 41)
+    bytes_coloca_byte(codigo, 200)
+  fecha
+  veja operacao == "mul" ::
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 209)
+    bytes_coloca_byte(codigo, 248)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 15)
+    bytes_coloca_byte(codigo, 175)
+    bytes_coloca_byte(codigo, 193)
+  fecha
+  veja operacao == "div" ::
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 209)
+    bytes_coloca_byte(codigo, 249)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 153)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 247)
+    bytes_coloca_byte(codigo, 249)
+  fecha
+
+  bytes_coloca_byte(codigo, 80)
+fecha
+
+campo x64_compara_numero(codigo: Bytes, setcc: Byte) -> Nada ::
+  bytes_coloca_byte(codigo, 89)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 200)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, setcc)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 182)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 224)
+  bytes_coloca_byte(codigo, 80)
+fecha
+
+campo x64_igual(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 89)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 200)
+  guarda ja_igual := x64_jcc(codigo, 132)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 194)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 226)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 200)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 224)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 194)
+  guarda tipos_diferentes := x64_jcc(codigo, 133)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 210)
+  guarda ambos_imediatos := x64_jcc(codigo, 132)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 232)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 233)
+  bytes_coloca_byte(codigo, 1)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 56)
+  bytes_coloca_byte(codigo, 1)
+  guarda esquerdo_nao_texto := x64_jcc(codigo, 133)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 1)
+  guarda direito_nao_texto := x64_jcc(codigo, 133)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 80)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 59)
+  bytes_coloca_byte(codigo, 81)
+  bytes_coloca_byte(codigo, 8)
+  guarda tamanhos_diferentes := x64_jcc(codigo, 133)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 112)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 121)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 69)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+
+  guarda loop := codigo.tamanho
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 208)
+  guarda fim_texto := x64_jcc(codigo, 132)
+  bytes_coloca_byte(codigo, 70)
+  bytes_coloca_byte(codigo, 138)
+  bytes_coloca_byte(codigo, 12)
+  bytes_coloca_byte(codigo, 6)
+  bytes_coloca_byte(codigo, 70)
+  bytes_coloca_byte(codigo, 58)
+  bytes_coloca_byte(codigo, 12)
+  bytes_coloca_byte(codigo, 7)
+  guarda byte_diferente := x64_jcc(codigo, 133)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 192)
+  guarda volta_loop := x64_jmp(codigo)
+  x64_patch_rel32(codigo, volta_loop, loop)
+
+  guarda igual := codigo.tamanho
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 2)
+  guarda pula_falso := x64_jmp(codigo)
+
+  guarda falso := codigo.tamanho
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+
+  guarda fim := codigo.tamanho
+  bytes_coloca_byte(codigo, 80)
+
+  x64_patch_rel32(codigo, ja_igual, igual)
+  x64_patch_rel32(codigo, fim_texto, igual)
+  x64_patch_rel32(codigo, tipos_diferentes, falso)
+  x64_patch_rel32(codigo, ambos_imediatos, falso)
+  x64_patch_rel32(codigo, esquerdo_nao_texto, falso)
+  x64_patch_rel32(codigo, direito_nao_texto, falso)
+  x64_patch_rel32(codigo, tamanhos_diferentes, falso)
+  x64_patch_rel32(codigo, byte_diferente, falso)
+  x64_patch_rel32(codigo, pula_falso, fim)
+fecha
+
+campo x64_bit_nao(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 148)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 182)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 224)
+  bytes_coloca_byte(codigo, 80)
+fecha
+
+campo x64_aloca_imediato(saida: CodigoX64, alvo: AlvoNativo, tamanho: U64) -> Nada ::
+  veja alvo.formato == "elf" ::
+    bytes_coloca_byte(saida.bytes, 72)
+    bytes_coloca_byte(saida.bytes, 190)
+    nativo_u64_le(saida.bytes, tamanho)
+    x64_linux_mmap(saida.bytes)
+    devolve nulo
+  fecha
+
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 186)
+  nativo_u64_le(saida.bytes, tamanho)
+  x64_windows_virtual_alloc(saida)
+fecha
+
+campo x64_caixa(saida: CodigoX64, alvo: AlvoNativo) -> Nada ::
+  veja alvo.formato == "elf" ::
+    bytes_coloca_byte(saida.bytes, 94)
+    bytes_coloca_byte(saida.bytes, 72)
+    bytes_coloca_byte(saida.bytes, 209)
+    bytes_coloca_byte(saida.bytes, 238)
+    bytes_coloca_byte(saida.bytes, 72)
+    bytes_coloca_byte(saida.bytes, 137)
+    bytes_coloca_byte(saida.bytes, 243)
+    bytes_coloca_byte(saida.bytes, 72)
+    bytes_coloca_byte(saida.bytes, 131)
+    bytes_coloca_byte(saida.bytes, 198)
+    bytes_coloca_byte(saida.bytes, 16)
+    x64_linux_mmap(saida.bytes)
+
+    bytes_coloca_byte(saida.bytes, 72)
+    bytes_coloca_byte(saida.bytes, 199)
+    bytes_coloca_byte(saida.bytes, 0)
+    nativo_u32_le(saida.bytes, TipoNativoBytes)
+    bytes_coloca_byte(saida.bytes, 72)
+    bytes_coloca_byte(saida.bytes, 137)
+    bytes_coloca_byte(saida.bytes, 88)
+    bytes_coloca_byte(saida.bytes, 8)
+    bytes_coloca_byte(saida.bytes, 72)
+    bytes_coloca_byte(saida.bytes, 131)
+    bytes_coloca_byte(saida.bytes, 192)
+    bytes_coloca_byte(saida.bytes, 1)
+    bytes_coloca_byte(saida.bytes, 80)
+    devolve nulo
+  fecha
+
+  bytes_coloca_byte(saida.bytes, 90)
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 209)
+  bytes_coloca_byte(saida.bytes, 234)
+  bytes_coloca_byte(saida.bytes, 73)
+  bytes_coloca_byte(saida.bytes, 137)
+  bytes_coloca_byte(saida.bytes, 212)
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 131)
+  bytes_coloca_byte(saida.bytes, 194)
+  bytes_coloca_byte(saida.bytes, 16)
+  x64_windows_virtual_alloc(saida)
+
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 199)
+  bytes_coloca_byte(saida.bytes, 0)
+  nativo_u32_le(saida.bytes, TipoNativoBytes)
+  bytes_coloca_byte(saida.bytes, 76)
+  bytes_coloca_byte(saida.bytes, 137)
+  bytes_coloca_byte(saida.bytes, 96)
+  bytes_coloca_byte(saida.bytes, 8)
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 131)
+  bytes_coloca_byte(saida.bytes, 192)
+  bytes_coloca_byte(saida.bytes, 1)
+  bytes_coloca_byte(saida.bytes, 80)
+fecha
+
+campo x64_linux_mmap(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, 3)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, 34)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 69)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 201)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 9)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+fecha
+
+campo x64_windows_virtual_alloc(saida: CodigoX64) -> Nada ::
+  bytes_coloca_byte(saida.bytes, 49)
+  bytes_coloca_byte(saida.bytes, 201)
+  bytes_coloca_byte(saida.bytes, 65)
+  bytes_coloca_byte(saida.bytes, 184)
+  nativo_u32_le(saida.bytes, 12288)
+  bytes_coloca_byte(saida.bytes, 65)
+  bytes_coloca_byte(saida.bytes, 185)
+  nativo_u32_le(saida.bytes, 4)
+
+  bytes_coloca_byte(saida.bytes, 76)
+  bytes_coloca_byte(saida.bytes, 139)
+  bytes_coloca_byte(saida.bytes, 220)
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 131)
+  bytes_coloca_byte(saida.bytes, 228)
+  bytes_coloca_byte(saida.bytes, 240)
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 131)
+  bytes_coloca_byte(saida.bytes, 236)
+  bytes_coloca_byte(saida.bytes, 48)
+  bytes_coloca_byte(saida.bytes, 76)
+  bytes_coloca_byte(saida.bytes, 137)
+  bytes_coloca_byte(saida.bytes, 92)
+  bytes_coloca_byte(saida.bytes, 36)
+  bytes_coloca_byte(saida.bytes, 32)
+
+  bytes_coloca_byte(saida.bytes, 255)
+  bytes_coloca_byte(saida.bytes, 21)
+  guarda pos := saida.bytes.tamanho
+  nativo_u32_le(saida.bytes, 0)
+  lista_coloca(saida.virtual_alloc_patches, pos)
+
+  bytes_coloca_byte(saida.bytes, 76)
+  bytes_coloca_byte(saida.bytes, 139)
+  bytes_coloca_byte(saida.bytes, 92)
+  bytes_coloca_byte(saida.bytes, 36)
+  bytes_coloca_byte(saida.bytes, 32)
+  bytes_coloca_byte(saida.bytes, 76)
+  bytes_coloca_byte(saida.bytes, 137)
+  bytes_coloca_byte(saida.bytes, 220)
+fecha
+
+campo x64_marca_byte(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 90)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 234)
+  bytes_coloca_byte(codigo, 89)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 233)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 232)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 136)
+  bytes_coloca_byte(codigo, 84)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 16)
+fecha
+
+campo x64_pega_byte(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 89)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 233)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 232)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 182)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 224)
+  bytes_coloca_byte(codigo, 80)
+fecha
+
+campo x64_syscall_pura(codigo: Bytes, nome: Texto, aridade: U32) -> Resultado<Nada, Falha> ::
+  veja nome == "sys_num_mod" e aridade == 2 ::
+    bytes_coloca_byte(codigo, 89)
+    bytes_coloca_byte(codigo, 88)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 209)
+    bytes_coloca_byte(codigo, 249)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 209)
+    bytes_coloca_byte(codigo, 248)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 153)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 247)
+    bytes_coloca_byte(codigo, 249)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 209)
+    bytes_coloca_byte(codigo, 226)
+    bytes_coloca_byte(codigo, 82)
+    devolve Valor(nulo)
+  fecha
+
+  veja nome == "sys_bit_nao" e aridade == 1 ::
+    x64_bit_nao(codigo)
+    devolve Valor(nulo)
+  fecha
+
+  veja nome == "sys_bit_e" e aridade == 2 ::
+    bytes_coloca_byte(codigo, 89)
+    bytes_coloca_byte(codigo, 88)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 33)
+    bytes_coloca_byte(codigo, 200)
+    bytes_coloca_byte(codigo, 80)
+    devolve Valor(nulo)
+  fecha
+
+  veja nome == "sys_bit_ou" e aridade == 2 ::
+    bytes_coloca_byte(codigo, 89)
+    bytes_coloca_byte(codigo, 88)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 9)
+    bytes_coloca_byte(codigo, 200)
+    bytes_coloca_byte(codigo, 80)
+    devolve Valor(nulo)
+  fecha
+
+  veja nome == "sys_texto_tamanho" e aridade == 1 ::
+    bytes_coloca_byte(codigo, 88)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 131)
+    bytes_coloca_byte(codigo, 232)
+    bytes_coloca_byte(codigo, 1)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 139)
+    bytes_coloca_byte(codigo, 64)
+    bytes_coloca_byte(codigo, 8)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 209)
+    bytes_coloca_byte(codigo, 224)
+    bytes_coloca_byte(codigo, 80)
+    devolve Valor(nulo)
+  fecha
+
+  devolve Falha(nova_falha("SV-NATIVE-SYSCALL", "syscall ainda nao ligada ao runtime nativo: " + nome))
+fecha
+
+campo x64_retorna_campo(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 236)
+  bytes_coloca_byte(codigo, 93)
+  bytes_coloca_byte(codigo, 195)
+fecha
+
+campo x64_emite_saida(saida: CodigoX64, alvo: AlvoNativo) -> Nada ::
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 209)
+  bytes_coloca_byte(saida.bytes, 232)
+
+  veja alvo.formato == "elf" ::
+    bytes_coloca_byte(saida.bytes, 72)
+    bytes_coloca_byte(saida.bytes, 137)
+    bytes_coloca_byte(saida.bytes, 199)
+    bytes_coloca_byte(saida.bytes, 184)
+    bytes_coloca_byte(saida.bytes, 60)
+    bytes_coloca_byte(saida.bytes, 0)
+    bytes_coloca_byte(saida.bytes, 0)
+    bytes_coloca_byte(saida.bytes, 0)
+    bytes_coloca_byte(saida.bytes, 15)
+    bytes_coloca_byte(saida.bytes, 5)
+    devolve nulo
+  fecha
+
+  bytes_coloca_byte(saida.bytes, 137)
+  bytes_coloca_byte(saida.bytes, 193)
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 131)
+  bytes_coloca_byte(saida.bytes, 228)
+  bytes_coloca_byte(saida.bytes, 240)
+  bytes_coloca_byte(saida.bytes, 72)
+  bytes_coloca_byte(saida.bytes, 131)
+  bytes_coloca_byte(saida.bytes, 236)
+  bytes_coloca_byte(saida.bytes, 32)
+  bytes_coloca_byte(saida.bytes, 255)
+  bytes_coloca_byte(saida.bytes, 21)
+  guarda pos := saida.bytes.tamanho
+  nativo_u32_le(saida.bytes, 0)
+  lista_coloca(saida.exit_process_patches, pos)
+  bytes_coloca_byte(saida.bytes, 204)
+fecha

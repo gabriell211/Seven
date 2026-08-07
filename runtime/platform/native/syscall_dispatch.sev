@@ -1,0 +1,57 @@
+modulo seven.runtime.platform.native.syscall_dispatch
+
+usa seven.runtime.platform.native.imports
+usa seven.runtime.platform.native.syscall_bytes
+usa seven.runtime.platform.native.syscall_console
+usa seven.runtime.platform.native.syscall_fs
+usa seven.runtime.platform.native.syscall_fs_bytes
+usa seven.runtime.platform.native.syscall_iterators
+usa seven.runtime.platform.native.syscall_objects
+usa seven.runtime.platform.native.target
+usa std.base.lista
+usa std.mem.bytes
+
+campo x64_runtime_dispatch(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  alvo: AlvoNativo,
+  nome: Texto,
+  aridade: U32
+) -> Bit ::
+  veja x64_syscall_console_emite(codigo, imports_windows, alvo, nome, aridade) ::
+    devolve sim
+  fecha
+
+  veja x64_syscall_bytes_emite(codigo, virtual_alloc_patches, alvo, nome, aridade) ::
+    devolve sim
+  fecha
+
+  veja nome == "arquivo_ler" e aridade == 1 ::
+    devolve x64_syscall_fs_emite(codigo, imports_windows, alvo, "sys_arquivo_le_texto", aridade)
+  fecha
+  veja nome == "sys_arquivo_ler_texto" e aridade == 1 ::
+    devolve x64_syscall_fs_emite(codigo, imports_windows, alvo, "sys_arquivo_le_texto", aridade)
+  fecha
+  veja nome == "sys_arquivo_salva_texto" e aridade == 2 ::
+    devolve x64_syscall_fs_emite(codigo, imports_windows, alvo, "sys_arquivo_grava_texto", aridade)
+  fecha
+
+  veja x64_syscall_fs_emite(codigo, imports_windows, alvo, nome, aridade) ::
+    devolve sim
+  fecha
+
+  veja x64_syscall_fs_bytes_emite(codigo, imports_windows, alvo, nome, aridade) ::
+    devolve sim
+  fecha
+
+  veja x64_syscall_iterador_emite(codigo, virtual_alloc_patches, alvo, nome, aridade) ::
+    devolve sim
+  fecha
+
+  veja x64_syscall_objeto_emite(codigo, virtual_alloc_patches, alvo, nome, aridade) ::
+    devolve sim
+  fecha
+
+  devolve nao
+fecha

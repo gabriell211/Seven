@@ -1,0 +1,50 @@
+modulo seven.runtime.platform.native.elf
+
+usa seven.runtime.platform.native.bytes
+usa seven.runtime.platform.native.x64
+usa std.mem.bytes
+
+const ElfBaseX64: U64 := 4194304
+const ElfCodigoOffset: U64 := 4096
+
+campo elf_x64(codigo: CodigoX64) -> Bytes ::
+  solta arquivo := bytes_novo()
+  guarda tamanho_total := ElfCodigoOffset + codigo.bytes.tamanho
+
+  bytes_coloca_byte(arquivo, 127)
+  bytes_coloca_byte(arquivo, 69)
+  bytes_coloca_byte(arquivo, 76)
+  bytes_coloca_byte(arquivo, 70)
+  bytes_coloca_byte(arquivo, 2)
+  bytes_coloca_byte(arquivo, 1)
+  bytes_coloca_byte(arquivo, 1)
+  bytes_coloca_byte(arquivo, 0)
+  nativo_preenche_ate(arquivo, 16, 0)
+
+  nativo_u16_le(arquivo, 2)
+  nativo_u16_le(arquivo, 62)
+  nativo_u32_le(arquivo, 1)
+  nativo_u64_le(arquivo, ElfBaseX64 + ElfCodigoOffset + codigo.entrada)
+  nativo_u64_le(arquivo, 64)
+  nativo_u64_le(arquivo, 0)
+  nativo_u32_le(arquivo, 0)
+  nativo_u16_le(arquivo, 64)
+  nativo_u16_le(arquivo, 56)
+  nativo_u16_le(arquivo, 1)
+  nativo_u16_le(arquivo, 0)
+  nativo_u16_le(arquivo, 0)
+  nativo_u16_le(arquivo, 0)
+
+  nativo_u32_le(arquivo, 1)
+  nativo_u32_le(arquivo, 5)
+  nativo_u64_le(arquivo, 0)
+  nativo_u64_le(arquivo, ElfBaseX64)
+  nativo_u64_le(arquivo, ElfBaseX64)
+  nativo_u64_le(arquivo, tamanho_total)
+  nativo_u64_le(arquivo, tamanho_total)
+  nativo_u64_le(arquivo, 4096)
+
+  nativo_preenche_ate(arquivo, ElfCodigoOffset, 0)
+  nativo_anexa(arquivo, codigo.bytes)
+  devolve arquivo
+fecha

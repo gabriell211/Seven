@@ -52,6 +52,7 @@ fecha
 
 molde ContextoIr ::
   programa: Programa
+  programas: Lista<Programa>
   unidade: UnidadeIr
   campo: CampoIr
   bloco: BlocoIr
@@ -69,7 +70,7 @@ campo baixa_ir(programas: Lista<Programa>, tipos: TabelaTipos, efeitos: TabelaEf
   }
 
   para cada programa em programas ::
-    baixa_programa(programa, tipos, efeitos, unidade)
+    baixa_programa(programas, programa, tipos, efeitos, unidade)
   fecha
 
   garante_nomes_campos_primeiro(unidade)
@@ -77,6 +78,7 @@ campo baixa_ir(programas: Lista<Programa>, tipos: TabelaTipos, efeitos: TabelaEf
 fecha
 
 campo baixa_programa(
+  programas: Lista<Programa>,
   programa: Programa,
   tipos: TabelaTipos,
   efeitos: TabelaEfeitos,
@@ -89,12 +91,19 @@ campo baixa_programa(
     fecha
 
     veja item e ItemCampo ::
-      baixa_campo(item.valor, programa, tipos, efeitos, unidade)
+      baixa_campo(item.valor, programas, programa, tipos, efeitos, unidade)
     fecha
   fecha
 fecha
 
-campo baixa_campo(campo: Campo, programa: Programa, tipos: TabelaTipos, efeitos: TabelaEfeitos, unidade: UnidadeIr) -> Nada ::
+campo baixa_campo(
+  campo: Campo,
+  programas: Lista<Programa>,
+  programa: Programa,
+  tipos: TabelaTipos,
+  efeitos: TabelaEfeitos,
+  unidade: UnidadeIr
+) -> Nada ::
   solta campo_ir := CampoIr {
     nome: campo.nome,
     parametros: U32(lista_tamanho(campo.parametros)),
@@ -111,6 +120,7 @@ campo baixa_campo(campo: Campo, programa: Programa, tipos: TabelaTipos, efeitos:
 
   solta contexto := ContextoIr {
     programa: programa,
+    programas: programas,
     unidade: unidade,
     campo: campo_ir,
     bloco: entrada,
@@ -368,7 +378,7 @@ campo baixa_expressao(expressao: Expressao, contexto: ContextoIr) -> U32 ::
 
   veja expressao e ExprNome ::
     veja nao mapa_tem(contexto.locais, expressao.valor.nome) ::
-      guarda variante_nome := encontra_variante(contexto.programa, expressao.valor.nome)
+      guarda variante_nome := encontra_variante(contexto.programas, expressao.valor.nome)
       veja variante_nome e Algo e lista_tamanho(variante_nome.valor.carga) == 0 ::
         devolve emite_variante_ir(contexto, variante_nome.valor, lista<Expressao>())
       fecha
@@ -392,7 +402,7 @@ campo baixa_expressao(expressao: Expressao, contexto: ContextoIr) -> U32 ::
   veja expressao e ExprBinaria ::
     veja expressao.valor.operador == "e" ::
       veja expressao.valor.direita e ExprNome ::
-        guarda variante_padrao := encontra_variante(contexto.programa, expressao.valor.direita.valor.nome)
+        guarda variante_padrao := encontra_variante(contexto.programas, expressao.valor.direita.valor.nome)
         veja variante_padrao e Algo ::
           guarda base_padrao := baixa_expressao(expressao.valor.esquerda, contexto)
           guarda chave_tag := emite_constante(contexto, ValorTexto("tag"))
@@ -425,7 +435,7 @@ campo baixa_expressao(expressao: Expressao, contexto: ContextoIr) -> U32 ::
 
   veja expressao e ExprChamada ::
     guarda nome := nome_alvo(expressao.valor.alvo)
-    guarda variante_chamada := encontra_variante(contexto.programa, nome)
+    guarda variante_chamada := encontra_variante(contexto.programas, nome)
     veja variante_chamada e Algo ::
       devolve emite_variante_ir(contexto, variante_chamada.valor, expressao.valor.argumentos)
     fecha
@@ -435,7 +445,7 @@ campo baixa_expressao(expressao: Expressao, contexto: ContextoIr) -> U32 ::
       lista_coloca(argumentos, baixa_expressao(argumento, contexto))
     fecha
 
-    veja mapa_tem(contexto.tipos.campos, nome) ::
+    veja campo_executavel_existe(contexto.programas, nome) ::
       guarda destino := novo_local(contexto, TipoDesconhecido)
       emite(contexto, IrChama(destino, nome, argumentos))
       devolve destino
@@ -489,18 +499,32 @@ campo baixa_expressao(expressao: Expressao, contexto: ContextoIr) -> U32 ::
   devolve emite_constante(contexto, ValorNulo)
 fecha
 
-
-campo encontra_variante(programa: Programa, nome: Texto) -> Talvez<Variante> ::
-  para cada item em programa.itens ::
-    veja item e ItemSelo ::
-      para cada variante em item.valor.variantes ::
-        veja variante.nome == nome ::
-          devolve Algo(variante)
+campo encontra_variante(programas: Lista<Programa>, nome: Texto) -> Talvez<Variante> ::
+  para cada programa em programas ::
+    para cada item em programa.itens ::
+      veja item e ItemSelo ::
+        para cada variante em item.valor.variantes ::
+          veja variante.nome == nome ::
+            devolve Algo(variante)
+          fecha
         fecha
       fecha
     fecha
   fecha
   devolve Vazio
+fecha
+
+campo campo_executavel_existe(programas: Lista<Programa>, nome: Texto) -> Bit ::
+  para cada programa em programas ::
+    para cada item em programa.itens ::
+      veja item e ItemCampo ::
+        veja item.valor.nome == nome ::
+          devolve sim
+        fecha
+      fecha
+    fecha
+  fecha
+  devolve nao
 fecha
 
 campo emite_variante_ir(contexto: ContextoIr, variante: Variante, valores: Lista<Expressao>) -> U32 ::

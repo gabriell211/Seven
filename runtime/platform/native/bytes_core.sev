@@ -1,0 +1,425 @@
+modulo seven.runtime.platform.native.bytes_core
+
+usa seven.runtime.platform.native.bytes
+usa seven.runtime.platform.native.object_runtime
+usa seven.runtime.platform.native.target
+usa std.base.lista
+usa std.mem.bytes
+
+const TipoBytesCore: U64 := 4
+const CapacidadeBytesCore: U64 := 64
+
+campo x64_bytes_core_novo(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  x64_runtime_aloca(codigo, virtual_alloc_patches, alvo, 32)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 196)
+
+  x64_runtime_aloca(codigo, virtual_alloc_patches, alvo, CapacidadeBytesCore)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 197)
+
+  x64_bytes_core_mov_rax(codigo, TipoBytesCore)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 4)
+  bytes_coloca_byte(codigo, 36)
+
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+
+  x64_bytes_core_mov_rax(codigo, CapacidadeBytesCore)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 16)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 108)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 24)
+
+  x64_bytes_core_push_objeto(codigo)
+fecha
+
+campo x64_bytes_core_pega(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 89)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 233)
+
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 232)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 196)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 92)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 217)
+  guarda fora := x64_bytes_core_jcc(codigo, 131)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 108)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 24)
+  bytes_coloca_byte(codigo, 75)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 182)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 13)
+  bytes_coloca_byte(codigo, 0)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 224)
+  bytes_coloca_byte(codigo, 80)
+  guarda valor := x64_bytes_core_jmp(codigo)
+
+  guarda ausente := codigo.tamanho
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 80)
+
+  guarda fim := codigo.tamanho
+  x64_bytes_core_patch(codigo, fora, ausente)
+  x64_bytes_core_patch(codigo, valor, fim)
+fecha
+
+campo x64_bytes_core_define(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 238)
+
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 89)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 233)
+
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 232)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 196)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 92)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 217)
+  guarda fora := x64_bytes_core_jcc(codigo, 131)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 108)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 24)
+  bytes_coloca_byte(codigo, 71)
+  bytes_coloca_byte(codigo, 136)
+  bytes_coloca_byte(codigo, 116)
+  bytes_coloca_byte(codigo, 13)
+  bytes_coloca_byte(codigo, 0)
+
+  guarda retorno := codigo.tamanho
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 80)
+  x64_bytes_core_patch(codigo, fora, retorno)
+fecha
+
+campo x64_bytes_core_coloca_byte(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 238)
+
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 232)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 196)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 92)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 123)
+  bytes_coloca_byte(codigo, 1)
+
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 86)
+  x64_bytes_core_garante(codigo, virtual_alloc_patches, alvo)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 92)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 108)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 24)
+  bytes_coloca_byte(codigo, 71)
+  bytes_coloca_byte(codigo, 136)
+  bytes_coloca_byte(codigo, 116)
+  bytes_coloca_byte(codigo, 29)
+  bytes_coloca_byte(codigo, 0)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 195)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 92)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 80)
+fecha
+
+campo x64_bytes_core_garante(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 84)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 215)
+  guarda suficiente := x64_bytes_core_jcc(codigo, 131)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 213)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 237)
+  guarda cap_pronta := x64_bytes_core_jcc(codigo, 133)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 197)
+  nativo_u32_le(codigo, CapacidadeBytesCore)
+  guarda testa := codigo.tamanho
+  x64_bytes_core_patch(codigo, cap_pronta, testa)
+
+  guarda dobra := codigo.tamanho
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 253)
+  guarda aloca := x64_bytes_core_jcc(codigo, 131)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 229)
+  guarda volta_dobra := x64_bytes_core_jmp(codigo)
+  x64_bytes_core_patch(codigo, volta_dobra, dobra)
+
+  guarda realoca := codigo.tamanho
+  x64_bytes_core_patch(codigo, aloca, realoca)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 116)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 24)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 92)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+
+  x64_bytes_core_aloca_r13(codigo, virtual_alloc_patches, alvo)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 193)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 201)
+  guarda copia := codigo.tamanho
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 217)
+  guarda copia_fim := x64_bytes_core_jcc(codigo, 131)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 138)
+  bytes_coloca_byte(codigo, 20)
+  bytes_coloca_byte(codigo, 14)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 136)
+  bytes_coloca_byte(codigo, 20)
+  bytes_coloca_byte(codigo, 9)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 193)
+  guarda volta_copia := x64_bytes_core_jmp(codigo)
+  x64_bytes_core_patch(codigo, volta_copia, copia)
+  guarda fim_copia := codigo.tamanho
+  x64_bytes_core_patch(codigo, copia_fim, fim_copia)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 108)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 24)
+
+  guarda fim := codigo.tamanho
+  x64_bytes_core_patch(codigo, suficiente, fim)
+fecha
+
+campo x64_bytes_core_aloca_r13(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  veja alvo.formato == "elf" ::
+    bytes_coloca_byte(codigo, 49)
+    bytes_coloca_byte(codigo, 255)
+    bytes_coloca_byte(codigo, 76)
+    bytes_coloca_byte(codigo, 137)
+    bytes_coloca_byte(codigo, 238)
+    bytes_coloca_byte(codigo, 186)
+    nativo_u32_le(codigo, 3)
+    bytes_coloca_byte(codigo, 65)
+    bytes_coloca_byte(codigo, 186)
+    nativo_u32_le(codigo, 34)
+    bytes_coloca_byte(codigo, 73)
+    bytes_coloca_byte(codigo, 199)
+    bytes_coloca_byte(codigo, 192)
+    bytes_coloca_byte(codigo, 255)
+    bytes_coloca_byte(codigo, 255)
+    bytes_coloca_byte(codigo, 255)
+    bytes_coloca_byte(codigo, 69)
+    bytes_coloca_byte(codigo, 49)
+    bytes_coloca_byte(codigo, 201)
+    bytes_coloca_byte(codigo, 184)
+    nativo_u32_le(codigo, 9)
+    bytes_coloca_byte(codigo, 15)
+    bytes_coloca_byte(codigo, 5)
+    devolve nulo
+  fecha
+
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 201)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 234)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 12288)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 185)
+  nativo_u32_le(codigo, 4)
+
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 84)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 228)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 228)
+  bytes_coloca_byte(codigo, 240)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 236)
+  bytes_coloca_byte(codigo, 32)
+
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 21)
+  guarda pos := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  lista_coloca(virtual_alloc_patches, pos)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 228)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 92)
+fecha
+
+campo x64_bytes_core_push_objeto(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 80)
+fecha
+
+campo x64_bytes_core_mov_rax(codigo: Bytes, valor: U64) -> Nada ::
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u64_le(codigo, valor)
+fecha
+
+campo x64_bytes_core_jcc(codigo: Bytes, condicao: Byte) -> U64 ::
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, condicao)
+  guarda pos := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  devolve pos
+fecha
+
+campo x64_bytes_core_jmp(codigo: Bytes) -> U64 ::
+  bytes_coloca_byte(codigo, 233)
+  guarda pos := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  devolve pos
+fecha
+
+campo x64_bytes_core_patch(codigo: Bytes, posicao: U64, destino: U64) -> Nada ::
+  nativo_define_u32_le(codigo, posicao, Num(destino) - Num(posicao + 4))
+fecha

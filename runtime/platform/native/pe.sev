@@ -1,0 +1,273 @@
+modulo seven.runtime.platform.native.pe
+
+usa seven.runtime.platform.native.bytes
+usa seven.runtime.platform.native.imports
+usa seven.runtime.platform.native.x64
+usa std.base.lista
+usa std.mem.bytes
+
+const PeHeadersX64: U64 := 512
+const PeTextRvaX64: U64 := 4096
+const PeFileAlignX64: U64 := 512
+const PeSectionAlignX64: U64 := 4096
+
+molde PeImportLayoutX64 ::
+  bytes: Bytes
+  nomes: Lista<Texto>
+  iat_offset: U64
+  iat_tamanho: U64
+fecha
+
+campo pe_x64(codigo: CodigoX64) -> Bytes ::
+  guarda texto_virtual := nativo_alinha(codigo.bytes.tamanho, PeSectionAlignX64)
+  guarda idata_rva := PeTextRvaX64 + texto_virtual
+  guarda nomes_importados := pe_import_nomes(codigo)
+  guarda imports := pe_idata_x64(idata_rva, nomes_importados)
+  guarda exit_rva := pe_import_iat_rva(imports, idata_rva, "ExitProcess")
+  guarda virtual_alloc_rva := pe_import_iat_rva(imports, idata_rva, "VirtualAlloc")
+
+  para cada posicao em codigo.exit_process_patches ::
+    guarda relativo := Num(exit_rva) - Num(PeTextRvaX64 + posicao + 4)
+    nativo_define_u32_le(codigo.bytes, posicao, relativo)
+  fecha
+
+  para cada posicao em codigo.virtual_alloc_patches ::
+    guarda relativo := Num(virtual_alloc_rva) - Num(PeTextRvaX64 + posicao + 4)
+    nativo_define_u32_le(codigo.bytes, posicao, relativo)
+  fecha
+
+  para cada patch em codigo.imports_windows ::
+    guarda import_rva := pe_import_iat_rva(imports, idata_rva, patch.nome)
+    guarda relativo := Num(import_rva) - Num(PeTextRvaX64 + patch.posicao + 4)
+    nativo_define_u32_le(codigo.bytes, patch.posicao, relativo)
+  fecha
+
+  guarda texto_raw := nativo_alinha(codigo.bytes.tamanho, PeFileAlignX64)
+  guarda idata_raw := nativo_alinha(imports.bytes.tamanho, PeFileAlignX64)
+  guarda idata_offset := PeHeadersX64 + texto_raw
+  guarda imagem_tamanho := nativo_alinha(idata_rva + imports.bytes.tamanho, PeSectionAlignX64)
+  solta arquivo := bytes_novo()
+
+  pe_dos_header(arquivo)
+  pe_coff_header(arquivo)
+  pe_optional_header(
+    arquivo,
+    codigo,
+    texto_raw,
+    idata_raw,
+    idata_rva,
+    imagem_tamanho,
+    imports.iat_offset,
+    imports.iat_tamanho
+  )
+  pe_section_header(arquivo, ".text", codigo.bytes.tamanho, PeTextRvaX64, texto_raw, PeHeadersX64, 1610612768)
+  pe_section_header(arquivo, ".idata", imports.bytes.tamanho, idata_rva, idata_raw, idata_offset, 3221225536)
+
+  nativo_preenche_ate(arquivo, PeHeadersX64, 0)
+  nativo_anexa(arquivo, codigo.bytes)
+  nativo_preenche_ate(arquivo, PeHeadersX64 + texto_raw, 0)
+  nativo_anexa(arquivo, imports.bytes)
+  nativo_preenche_ate(arquivo, PeHeadersX64 + texto_raw + idata_raw, 0)
+  devolve arquivo
+fecha
+
+campo pe_import_nomes(codigo: CodigoX64) -> Lista<Texto> ::
+  solta nomes := lista<Texto>()
+  lista_coloca(nomes, "ExitProcess")
+  lista_coloca(nomes, "VirtualAlloc")
+
+  para cada patch em codigo.imports_windows ::
+    veja nao pe_lista_contem_texto(nomes, patch.nome) ::
+      lista_coloca(nomes, patch.nome)
+    fecha
+  fecha
+
+  devolve nomes
+fecha
+
+campo pe_lista_contem_texto(nomes: Lista<Texto>, procurado: Texto) -> Bit ::
+  para cada nome em nomes ::
+    veja nome == procurado :: devolve sim fecha
+  fecha
+  devolve nao
+fecha
+
+campo pe_import_indice(nomes: Lista<Texto>, procurado: Texto) -> Num ::
+  solta indice: U64 := 0
+  para cada nome em nomes ::
+    veja nome == procurado :: devolve Num(indice) fecha
+    vira indice := indice + 1
+  fecha
+  devolve -1
+fecha
+
+campo pe_import_iat_rva(layout: PeImportLayoutX64, idata_rva: U64, nome: Texto) -> U64 ::
+  guarda indice := pe_import_indice(layout.nomes, nome)
+  veja indice < 0 :: devolve 0 fecha
+  devolve idata_rva + layout.iat_offset + U64(indice) * 8
+fecha
+
+campo pe_dos_header(arquivo: Bytes) -> Nada ::
+  bytes_coloca_byte(arquivo, 77)
+  bytes_coloca_byte(arquivo, 90)
+  nativo_preenche_ate(arquivo, 60, 0)
+  nativo_u32_le(arquivo, 128)
+  nativo_preenche_ate(arquivo, 128, 0)
+fecha
+
+campo pe_coff_header(arquivo: Bytes) -> Nada ::
+  bytes_coloca_byte(arquivo, 80)
+  bytes_coloca_byte(arquivo, 69)
+  bytes_coloca_byte(arquivo, 0)
+  bytes_coloca_byte(arquivo, 0)
+
+  nativo_u16_le(arquivo, 34404)
+  nativo_u16_le(arquivo, 2)
+  nativo_u32_le(arquivo, 0)
+  nativo_u32_le(arquivo, 0)
+  nativo_u32_le(arquivo, 0)
+  nativo_u16_le(arquivo, 240)
+  nativo_u16_le(arquivo, 34)
+fecha
+
+campo pe_optional_header(
+  arquivo: Bytes,
+  codigo: CodigoX64,
+  texto_raw: U64,
+  idata_raw: U64,
+  idata_rva: U64,
+  imagem_tamanho: U64,
+  iat_offset: U64,
+  iat_tamanho: U64
+) -> Nada ::
+  nativo_u16_le(arquivo, 523)
+  bytes_coloca_byte(arquivo, 0)
+  bytes_coloca_byte(arquivo, 0)
+  nativo_u32_le(arquivo, texto_raw)
+  nativo_u32_le(arquivo, idata_raw)
+  nativo_u32_le(arquivo, 0)
+  nativo_u32_le(arquivo, PeTextRvaX64 + codigo.entrada)
+  nativo_u32_le(arquivo, PeTextRvaX64)
+  nativo_u64_le(arquivo, 5368709120)
+  nativo_u32_le(arquivo, PeSectionAlignX64)
+  nativo_u32_le(arquivo, PeFileAlignX64)
+  nativo_u16_le(arquivo, 6)
+  nativo_u16_le(arquivo, 0)
+  nativo_u16_le(arquivo, 0)
+  nativo_u16_le(arquivo, 0)
+  nativo_u16_le(arquivo, 6)
+  nativo_u16_le(arquivo, 0)
+  nativo_u32_le(arquivo, 0)
+  nativo_u32_le(arquivo, imagem_tamanho)
+  nativo_u32_le(arquivo, PeHeadersX64)
+  nativo_u32_le(arquivo, 0)
+  nativo_u16_le(arquivo, 3)
+  nativo_u16_le(arquivo, 256)
+  nativo_u64_le(arquivo, 1048576)
+  nativo_u64_le(arquivo, 4096)
+  nativo_u64_le(arquivo, 1048576)
+  nativo_u64_le(arquivo, 4096)
+  nativo_u32_le(arquivo, 0)
+  nativo_u32_le(arquivo, 16)
+
+  solta indice: U64 := 0
+  gira indice < 16 ::
+    veja indice == 1 ::
+      nativo_u32_le(arquivo, idata_rva)
+      nativo_u32_le(arquivo, 40)
+    outro ::
+      veja indice == 12 ::
+        nativo_u32_le(arquivo, idata_rva + iat_offset)
+        nativo_u32_le(arquivo, iat_tamanho)
+      outro ::
+        nativo_u32_le(arquivo, 0)
+        nativo_u32_le(arquivo, 0)
+      fecha
+    fecha
+    vira indice := indice + 1
+  fecha
+fecha
+
+campo pe_section_header(
+  arquivo: Bytes,
+  nome: Texto,
+  virtual_tamanho: U64,
+  virtual_rva: U64,
+  raw_tamanho: U64,
+  raw_offset: U64,
+  caracteristicas: U64
+) -> Nada ::
+  nativo_nome_secao(arquivo, nome)
+  nativo_u32_le(arquivo, virtual_tamanho)
+  nativo_u32_le(arquivo, virtual_rva)
+  nativo_u32_le(arquivo, raw_tamanho)
+  nativo_u32_le(arquivo, raw_offset)
+  nativo_u32_le(arquivo, 0)
+  nativo_u32_le(arquivo, 0)
+  nativo_u16_le(arquivo, 0)
+  nativo_u16_le(arquivo, 0)
+  nativo_u32_le(arquivo, caracteristicas)
+fecha
+
+campo pe_idata_x64(idata_rva: U64, nomes: Lista<Texto>) -> PeImportLayoutX64 ::
+  guarda quantidade := U64(lista_tamanho(nomes))
+  guarda oft_offset: U64 := 40
+  guarda tabela_tamanho := (quantidade + 1) * 8
+  guarda iat_offset := oft_offset + tabela_tamanho
+  guarda dll_offset := iat_offset + tabela_tamanho
+  guarda dll := texto_bytes("KERNEL32.dll")
+  solta cursor := nativo_alinha(dll_offset + dll.tamanho + 1, 2)
+  solta nomes_offsets: Lista<U64> := lista<U64>()
+
+  para cada nome em nomes ::
+    lista_coloca(nomes_offsets, cursor)
+    guarda dados := texto_bytes(nome)
+    vira cursor := nativo_alinha(cursor + 2 + dados.tamanho + 1, 2)
+  fecha
+
+  solta idata := bytes_novo()
+  nativo_u32_le(idata, idata_rva + oft_offset)
+  nativo_u32_le(idata, 0)
+  nativo_u32_le(idata, 0)
+  nativo_u32_le(idata, idata_rva + dll_offset)
+  nativo_u32_le(idata, idata_rva + iat_offset)
+  nativo_preenche_ate(idata, 40, 0)
+
+  solta indice_offset: U64 := 0
+  gira indice_offset < lista_tamanho(nomes_offsets) ::
+    solta hint_offset: U64 := lista_pega(nomes_offsets, indice_offset)
+    nativo_u64_le(idata, idata_rva + hint_offset)
+    vira indice_offset := indice_offset + 1
+  fecha
+  nativo_u64_le(idata, 0)
+
+  vira indice_offset := 0
+  gira indice_offset < lista_tamanho(nomes_offsets) ::
+    solta hint_offset: U64 := lista_pega(nomes_offsets, indice_offset)
+    nativo_u64_le(idata, idata_rva + hint_offset)
+    vira indice_offset := indice_offset + 1
+  fecha
+  nativo_u64_le(idata, 0)
+
+  nativo_preenche_ate(idata, dll_offset, 0)
+  bytes_coloca_texto(idata, "KERNEL32.dll")
+  bytes_coloca_byte(idata, 0)
+
+  solta indice: U64 := 0
+  gira indice < quantidade ::
+    solta offset: U64 := lista_pega(nomes_offsets, indice)
+    solta nome: Texto := lista_pega(nomes, indice)
+    nativo_preenche_ate(idata, offset, 0)
+    nativo_u16_le(idata, 0)
+    bytes_coloca_texto(idata, nome)
+    bytes_coloca_byte(idata, 0)
+    vira indice := indice + 1
+  fecha
+
+  devolve PeImportLayoutX64 {
+    bytes: idata,
+    nomes: nomes,
+    iat_offset: iat_offset,
+    iat_tamanho: tabela_tamanho
+  }
+fecha

@@ -1,0 +1,168 @@
+modulo seven.runtime.platform.native.syscall_console
+
+usa seven.runtime.platform.native.bytes
+usa seven.runtime.platform.native.imports
+usa seven.runtime.platform.native.target
+usa std.base.lista
+usa std.mem.bytes
+
+campo x64_syscall_console_emite(
+  codigo: Bytes,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  alvo: AlvoNativo,
+  nome: Texto,
+  aridade: U32
+) -> Bit ::
+  veja nome == "terminal_diga" e aridade == 1 ::
+    veja alvo.formato == "elf" ::
+      x64_console_linux_diga(codigo)
+    outro ::
+      x64_console_windows_diga(codigo, imports_windows)
+    fecha
+    devolve sim
+  fecha
+
+  devolve nao
+fecha
+
+campo x64_console_linux_diga(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 224)
+  bytes_coloca_byte(codigo, 254)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 80)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 112)
+  bytes_coloca_byte(codigo, 16)
+
+  bytes_coloca_byte(codigo, 191)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 80)
+fecha
+
+campo x64_console_windows_diga(
+  codigo: Bytes,
+  imports_windows: Lista<PatchImportWindowsX64>
+) -> Nada ::
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 224)
+  bytes_coloca_byte(codigo, 254)
+
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 198)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 120)
+  bytes_coloca_byte(codigo, 8)
+
+  bytes_coloca_byte(codigo, 185)
+  nativo_u32_le(codigo, 4294967285)
+  x64_console_windows_chama_import(codigo, imports_windows, "GetStdHandle", 32)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 197)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 233)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 86)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 248)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 228)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 228)
+  bytes_coloca_byte(codigo, 240)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 236)
+  bytes_coloca_byte(codigo, 48)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 32)
+  nativo_u32_le(codigo, 0)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 40)
+  nativo_u32_le(codigo, 0)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 40)
+
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 21)
+  guarda pos := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  lista_coloca(imports_windows, PatchImportWindowsX64 {
+    nome: "WriteFile",
+    posicao: pos
+  })
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 228)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 80)
+fecha
+
+campo x64_console_windows_chama_import(
+  codigo: Bytes,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  nome: Texto,
+  sombra: U64
+) -> Nada ::
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 228)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 228)
+  bytes_coloca_byte(codigo, 240)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 236)
+  bytes_coloca_byte(codigo, Byte(sombra))
+
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 21)
+  guarda pos := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  lista_coloca(imports_windows, PatchImportWindowsX64 {
+    nome: nome,
+    posicao: pos
+  })
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 228)
+fecha

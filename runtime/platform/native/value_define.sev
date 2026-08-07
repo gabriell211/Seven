@@ -1,0 +1,97 @@
+modulo seven.runtime.platform.native.value_define
+
+usa seven.runtime.platform.native.bytes
+usa seven.runtime.platform.native.object_runtime
+usa seven.runtime.platform.native.value_access
+usa std.mem.bytes
+
+const TipoDefineBytes: U64 := 4
+
+campo x64_runtime_valor_define(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 168)
+  bytes_coloca_byte(codigo, 1)
+  guarda objeto_padrao := x64_define_jcc(codigo, 132)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 232)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 56)
+  bytes_coloca_byte(codigo, Byte(TipoDefineBytes))
+  guarda objeto_padrao_tipo := x64_define_jcc(codigo, 133)
+
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 93)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 232)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 196)
+
+  x64_runtime_chave_tamanho(codigo)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda nao_muda := x64_define_jcc(codigo, 132)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 232)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 237)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 108)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+
+  guarda retorna_bytes := codigo.tamanho
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 80)
+  guarda fim_bytes := x64_define_jmp(codigo)
+  x64_define_patch(codigo, nao_muda, retorna_bytes)
+
+  guarda padrao := codigo.tamanho
+  x64_runtime_obj_define(codigo)
+
+  guarda fim := codigo.tamanho
+  x64_define_patch(codigo, objeto_padrao, padrao)
+  x64_define_patch(codigo, objeto_padrao_tipo, padrao)
+  x64_define_patch(codigo, fim_bytes, fim)
+fecha
+
+campo x64_define_jcc(codigo: Bytes, condicao: Byte) -> U64 ::
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, condicao)
+  guarda pos := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  devolve pos
+fecha
+
+campo x64_define_jmp(codigo: Bytes) -> U64 ::
+  bytes_coloca_byte(codigo, 233)
+  guarda pos := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  devolve pos
+fecha
+
+campo x64_define_patch(codigo: Bytes, posicao: U64, destino: U64) -> Nada ::
+  nativo_define_u32_le(codigo, posicao, Num(destino) - Num(posicao + 4))
+fecha
