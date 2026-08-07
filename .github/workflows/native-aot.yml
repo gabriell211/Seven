@@ -157,6 +157,12 @@ jobs:
           test -s build/native-aot-test.svbc
           test "$(od -An -tx1 -N4 build/native-aot-test.svbc | tr -d ' \n')" = '53564243'
 
+      - name: Validate stable SVBC call contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/validate_svbc_calls.py build/native-aot-test.svbc
+
       - name: Execute Seven AOT generator in Genesis SVBC1 host
         shell: bash
         run: |
