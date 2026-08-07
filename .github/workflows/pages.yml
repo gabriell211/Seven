@@ -1,0 +1,119 @@
+name: Seven Official Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'website/**'
+      - 'brand/**'
+      - 'compiler/**'
+      - 'std/frontend/**'
+      - 'runtime/platform/web/**'
+      - 'seed/native/final/v1/**'
+      - '.github/workflows/pages.yml'
+  pull_request:
+    paths:
+      - 'website/**'
+      - 'brand/**'
+      - 'compiler/**'
+      - 'std/frontend/**'
+      - 'runtime/platform/web/**'
+      - 'seed/native/final/v1/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: seven-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build official website with Seven
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Reconstruct audited Seven compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
+          chmod +x build/native-seeds/seven-linux
+
+      - name: Check website source
+        shell: bash
+        run: |
+          set -euo pipefail
+          build/native-seeds/seven-linux check website/site.sev
+
+      - name: Compile website with Seven WebAssembly
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven=build/native-seeds/seven-linux
+          "$seven" web build website/site.sev build/pages
+
+          mkdir -p build/pages/assets
+          cp brand/seven-logo.svg build/pages/assets/seven-logo.svg
+          touch build/pages/.nojekyll
+
+          test -s build/pages/index.html
+          test -s build/pages/app.wasm
+          test -s build/pages/seven-loader.mjs
+          test -s build/pages/seven.web.json
+          test -s build/pages/app.wasm.sha256
+          test -s build/pages/assets/seven-logo.svg
+          (cd build/pages && sha256sum --check app.wasm.sha256)
+          grep -q '"source": "website/site.sev"' build/pages/seven.web.json
+          grep -q '"target": "webassembly"' build/pages/seven.web.json
+
+      - name: Validate generated WebAssembly
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - build/pages/app.wasm <<'JS'
+          const fs = require('fs');
+          const bytes = fs.readFileSync(process.argv[2]);
+          if (!WebAssembly.validate(bytes)) {
+            throw new Error('Seven website app.wasm is invalid');
+          }
+          console.log('Seven website WebAssembly validated.');
+          JS
+
+      - name: Configure GitHub Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/pages
+
+  deploy:
+    name: Deploy official website
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
