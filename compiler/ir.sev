@@ -445,7 +445,7 @@ campo baixa_expressao(expressao: Expressao, contexto: ContextoIr) -> U32 ::
       lista_coloca(argumentos, baixa_expressao(argumento, contexto))
     fecha
 
-    veja mapa_tem(contexto.tipos.campos, nome) ::
+    veja campo_executavel_existe(contexto.programas, nome) ::
       guarda destino := novo_local(contexto, TipoDesconhecido)
       emite(contexto, IrChama(destino, nome, argumentos))
       devolve destino
@@ -512,6 +512,19 @@ campo encontra_variante(programas: Lista<Programa>, nome: Texto) -> Talvez<Varia
     fecha
   fecha
   devolve Vazio
+fecha
+
+campo campo_executavel_existe(programas: Lista<Programa>, nome: Texto) -> Bit ::
+  para cada programa em programas ::
+    para cada item em programa.itens ::
+      veja item e ItemCampo ::
+        veja item.valor.nome == nome ::
+          devolve sim
+        fecha
+      fecha
+    fecha
+  fecha
+  devolve nao
 fecha
 
 campo emite_variante_ir(contexto: ContextoIr, variante: Variante, valores: Lista<Expressao>) -> U32 ::
@@ -727,6 +740,6 @@ campo remove_codigo_morto(unidade: UnidadeIr) -> UnidadeIr ::
   devolve unidade
 fecha
 
-campo dobra_constantes(unidade: UnidadeIr) -> UnidadeIr ::
+campo dobra_constantes(unidade: UnidadeIr, modo: Texto) -> UnidadeIr ::
   devolve unidade
 fecha
