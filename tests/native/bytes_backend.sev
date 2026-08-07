@@ -1,0 +1,97 @@
+modulo tests.native.bytes_backend
+
+usa seven.runtime.platform.native.linker
+usa seven.runtime.platform.native.target
+usa seven.runtime.svbc.image
+usa seven.runtime.svbc.opcode
+usa seven.runtime.svbc.value
+usa std.base.lista
+usa std.base.resultado
+
+campo imagem_prova_bytes() -> ImagemSvbc ::
+  solta constantes := lista<ValorVm>()
+  lista_coloca(constantes, VmNum(1))
+  lista_coloca(constantes, VmNum(64))
+  lista_coloca(constantes, VmNum(2))
+  lista_coloca(constantes, VmNum(40))
+
+  solta nomes := lista<Texto>()
+  lista_coloca(nomes, "sys_bytes_novo")
+  lista_coloca(nomes, "sys_bytes_coloca_byte")
+  lista_coloca(nomes, "sys_bytes_define")
+  lista_coloca(nomes, "sys_bytes_pega")
+
+  solta campos := lista<CampoImagem>()
+  lista_coloca(campos, CampoImagem {
+    nome: "inicio",
+    entrada: 0,
+    locais: 2,
+    parametros: 0,
+    efeitos: lista<Texto>()
+  })
+
+  solta codigo := lista<Instrucao>()
+  solta ip: U64 := 0
+
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 0, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Guarda, a: 0, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+
+  solta indice: U64 := 0
+  gira indice < 65 ::
+    lista_coloca(codigo, Instrucao { opcode: Carrega, a: 0, b: 0, c: 0, ip: ip })
+    vira ip := ip + 1
+    lista_coloca(codigo, Instrucao { opcode: Const, a: 0, b: 0, c: 0, ip: ip })
+    vira ip := ip + 1
+    lista_coloca(codigo, Instrucao { opcode: Syscall, a: 1, b: 2, c: 0, ip: ip })
+    vira ip := ip + 1
+    lista_coloca(codigo, Instrucao { opcode: Guarda, a: 1, b: 0, c: 0, ip: ip })
+    vira ip := ip + 1
+    vira indice := indice + 1
+  fecha
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 0, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 1, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 2, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 2, b: 3, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Guarda, a: 1, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 0, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 1, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 3, b: 2, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 3, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Soma, a: 0, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: ip })
+
+  devolve ImagemSvbc {
+    versao: 1,
+    nomes: nomes,
+    constantes: constantes,
+    campos: campos,
+    codigo: codigo
+  }
+fecha
+
+campo inicio() -> Num toca disco ::
+  guarda imagem := imagem_prova_bytes()
+  guarda linux := baixa_nativo(imagem, alvo_linux_x64())
+  veja linux e Falha :: devolve 30 fecha
+
+  guarda windows := baixa_nativo(imagem, alvo_win_x64())
+  veja windows e Falha :: devolve 31 fecha
+
+  sys_arquivo_grava_bytes("build/native-bytes-proof", linux.valor.bytes)
+  sys_arquivo_grava_bytes("build/native-bytes-proof.exe", windows.valor.bytes)
+  devolve 0
+fecha
