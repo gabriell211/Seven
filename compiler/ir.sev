@@ -740,6 +740,6 @@ campo remove_codigo_morto(unidade: UnidadeIr) -> UnidadeIr ::
   devolve unidade
 fecha
 
-campo dobra_constantes(unidade: UnidadeIr, modo: Texto) -> UnidadeIr ::
+campo dobra_constantes(unidade: UnidadeIr) -> UnidadeIr ::
   devolve unidade
 fecha
