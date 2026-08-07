@@ -366,7 +366,7 @@ campo x64_bytes_core_aloca_r13(
   bytes_coloca_byte(codigo, 65)
   bytes_coloca_byte(codigo, 84)
   bytes_coloca_byte(codigo, 76)
-  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 139)
   bytes_coloca_byte(codigo, 228)
   bytes_coloca_byte(codigo, 72)
   bytes_coloca_byte(codigo, 131)
