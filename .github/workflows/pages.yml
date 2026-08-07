@@ -7,18 +7,12 @@ on:
     paths:
       - 'website/**'
       - 'brand/**'
-      - 'compiler/**'
-      - 'std/frontend/**'
-      - 'runtime/platform/web/**'
       - 'seed/native/final/v1/**'
       - '.github/workflows/pages.yml'
   pull_request:
     paths:
       - 'website/**'
       - 'brand/**'
-      - 'compiler/**'
-      - 'std/frontend/**'
-      - 'runtime/platform/web/**'
       - 'seed/native/final/v1/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
@@ -34,7 +28,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build official website with Seven
+    name: Generate official website with Seven
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -53,45 +47,37 @@ jobs:
           echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
           chmod +x build/native-seeds/seven-linux
 
-      - name: Check website source
+      - name: Check Seven website generator
         shell: bash
         run: |
           set -euo pipefail
-          build/native-seeds/seven-linux check website/site.sev
+          build/native-seeds/seven-linux check website/pages.sev
 
-      - name: Compile website with Seven WebAssembly
+      - name: Generate static Pages artifact with Seven
         shell: bash
         run: |
           set -euo pipefail
           seven=build/native-seeds/seven-linux
-          "$seven" web build website/site.sev build/pages
-
           mkdir -p build/pages/assets
+
+          "$seven" run website/pages.sev > build/pages/raw-output.txt
+          awk '/^<!doctype html>/{emit=1} emit{print} /^<\/html>/{exit}' \
+            build/pages/raw-output.txt > build/pages/index.html
+
           cp brand/seven-logo.svg build/pages/assets/seven-logo.svg
           touch build/pages/.nojekyll
+          rm build/pages/raw-output.txt
 
           test -s build/pages/index.html
-          test -s build/pages/app.wasm
-          test -s build/pages/seven-loader.mjs
-          test -s build/pages/seven.web.json
-          test -s build/pages/app.wasm.sha256
           test -s build/pages/assets/seven-logo.svg
-          (cd build/pages && sha256sum --check app.wasm.sha256)
-          grep -q '"target": "webassembly"' build/pages/seven.web.json
-          grep -q '"executable": "app.wasm"' build/pages/seven.web.json
+          test "$(head -n 1 build/pages/index.html)" = '<!doctype html>'
+          grep -q '<title>Seven — linguagem de sistemas e aplicacoes</title>' build/pages/index.html
+          grep -q 'Controle de baixo nivel' build/pages/index.html
+          grep -q 'website/pages.sev' build/pages/index.html
+          grep -q 'issue #30' build/pages/index.html
+          test "$(tail -n 1 build/pages/index.html)" = '</html>'
 
-      - name: Validate generated WebAssembly
-        shell: bash
-        run: |
-          set -euo pipefail
-          node - build/pages/app.wasm <<'JS'
-          const fs = require('fs');
-          const bytes = fs.readFileSync(process.argv[2]);
-          if (!WebAssembly.validate(bytes)) {
-            throw new Error('Seven website app.wasm is invalid');
-          }
-          console.log('Seven website WebAssembly validated.');
-          JS
+          echo "Seven Pages generated: $(wc -c < build/pages/index.html) bytes"
 
       - name: Configure GitHub Pages
         if: github.event_name != 'pull_request'
