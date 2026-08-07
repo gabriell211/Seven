@@ -5,6 +5,7 @@ usa seven.runtime.platform.native.syscall_bytes
 usa seven.runtime.platform.native.syscall_console
 usa seven.runtime.platform.native.syscall_fs
 usa seven.runtime.platform.native.syscall_fs_bytes
+usa seven.runtime.platform.native.syscall_iterators
 usa seven.runtime.platform.native.syscall_objects
 usa seven.runtime.platform.native.target
 usa std.base.lista
@@ -31,6 +32,10 @@ campo x64_runtime_dispatch(
   fecha
 
   veja x64_syscall_fs_bytes_emite(codigo, imports_windows, alvo, nome, aridade) ::
+    devolve sim
+  fecha
+
+  veja x64_syscall_iterador_emite(codigo, virtual_alloc_patches, alvo, nome, aridade) ::
     devolve sim
   fecha
 
