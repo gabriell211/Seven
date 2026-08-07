@@ -161,7 +161,74 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 .github/scripts/validate_svbc_calls.py build/native-aot-test.svbc
+          python3 - <<'PY'
+          import struct
+          import sys
+
+          data = open('build/native-aot-test.svbc', 'rb').read()
+          pos = 0
+
+          def take(n):
+              global pos
+              out = data[pos:pos+n]
+              if len(out) != n:
+                  raise SystemExit(f'truncated SVBC at byte {pos}')
+              pos += n
+              return out
+
+          def u8(): return take(1)[0]
+          def u32(): return struct.unpack('>I', take(4))[0]
+          def u64(): return struct.unpack('>Q', take(8))[0]
+          def text(): return take(u32()).decode('utf-8')
+
+          if take(4) != b'SVBC' or u32() != 1:
+              raise SystemExit('invalid stable SVBC header')
+
+          names = [text() for _ in range(u32())]
+          for _ in range(u32()):
+              tag = u8()
+              if tag == 0: pass
+              elif tag == 2: u8()
+              elif tag == 3: u64()
+              elif tag == 4: text()
+              else: raise SystemExit(f'unsupported constant tag {tag}')
+
+          fields = []
+          for _ in range(u32()):
+              name_index = u32()
+              entry = u64()
+              locals_count = u32()
+              params = u32()
+              for _ in range(u32()): u32()
+              fields.append((names[name_index], entry, locals_count, params))
+
+          code = []
+          for _ in range(u32()):
+              code.append((u8(), u32(), u32(), u32(), u64()))
+
+          failures = 0
+          for index, (op, a, b, c, source_ip) in enumerate(code):
+              if op != 16:
+                  continue
+              caller = '<sem-campo>'
+              caller_entry = -1
+              for name, entry, locals_count, params in fields:
+                  if entry <= index and entry >= caller_entry:
+                      caller = name
+                      caller_entry = entry
+              if a >= len(fields):
+                  print(f'SVBC-CALL target-out-of-bounds caller={caller} code_index={index} source_ip={source_ip} target_index={a} got={b}', file=sys.stderr)
+                  failures += 1
+                  continue
+              target, entry, locals_count, expected = fields[a]
+              if b != expected:
+                  print(f'SVBC-CALL arity-mismatch caller={caller} target={target} code_index={index} source_ip={source_ip} got={b} expected={expected}', file=sys.stderr)
+                  failures += 1
+
+          if failures:
+              raise SystemExit(f'SVBC call validation failed: {failures} invalid call site(s)')
+          print(f'SVBC call validation OK: {len(fields)} fields, {len(code)} instructions')
+          PY
 
       - name: Execute Seven AOT generator in Genesis SVBC1 host
         shell: bash
