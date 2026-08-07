@@ -77,8 +77,8 @@ jobs:
           test -s build/pages/app.wasm.sha256
           test -s build/pages/assets/seven-logo.svg
           (cd build/pages && sha256sum --check app.wasm.sha256)
-          grep -q '"source": "website/site.sev"' build/pages/seven.web.json
           grep -q '"target": "webassembly"' build/pages/seven.web.json
+          grep -q '"executable": "app.wasm"' build/pages/seven.web.json
 
       - name: Validate generated WebAssembly
         shell: bash
