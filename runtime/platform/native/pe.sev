@@ -6,7 +6,6 @@ usa std.mem.bytes
 
 const PeHeadersX64: U64 := 512
 const PeTextRvaX64: U64 := 4096
-const PeIdataRvaX64: U64 := 8192
 const PeFileAlignX64: U64 := 512
 const PeSectionAlignX64: U64 := 4096
 const PeIatOffsetX64: U64 := 64
@@ -15,7 +14,9 @@ const PeExitProcessHintX64: U64 := 102
 const PeVirtualAllocHintX64: U64 := 116
 
 campo pe_x64(codigo: CodigoX64) -> Bytes ::
-  guarda exit_rva := PeIdataRvaX64 + PeIatOffsetX64
+  guarda texto_virtual := nativo_alinha(codigo.bytes.tamanho, PeSectionAlignX64)
+  guarda idata_rva := PeTextRvaX64 + texto_virtual
+  guarda exit_rva := idata_rva + PeIatOffsetX64
   guarda virtual_alloc_rva := exit_rva + 8
 
   para cada posicao em codigo.exit_process_patches ::
@@ -28,17 +29,18 @@ campo pe_x64(codigo: CodigoX64) -> Bytes ::
     nativo_define_u32_le(codigo.bytes, posicao, relativo)
   fecha
 
-  guarda idata := pe_idata_x64()
+  guarda idata := pe_idata_x64(idata_rva)
   guarda texto_raw := nativo_alinha(codigo.bytes.tamanho, PeFileAlignX64)
   guarda idata_raw := nativo_alinha(idata.tamanho, PeFileAlignX64)
   guarda idata_offset := PeHeadersX64 + texto_raw
+  guarda imagem_tamanho := nativo_alinha(idata_rva + idata.tamanho, PeSectionAlignX64)
   solta arquivo := bytes_novo()
 
   pe_dos_header(arquivo)
   pe_coff_header(arquivo)
-  pe_optional_header(arquivo, codigo, texto_raw, idata_raw)
+  pe_optional_header(arquivo, codigo, texto_raw, idata_raw, idata_rva, imagem_tamanho)
   pe_section_header(arquivo, ".text", codigo.bytes.tamanho, PeTextRvaX64, texto_raw, PeHeadersX64, 1610612768)
-  pe_section_header(arquivo, ".idata", idata.tamanho, PeIdataRvaX64, idata_raw, idata_offset, 3221225536)
+  pe_section_header(arquivo, ".idata", idata.tamanho, idata_rva, idata_raw, idata_offset, 3221225536)
 
   nativo_preenche_ate(arquivo, PeHeadersX64, 0)
   nativo_anexa(arquivo, codigo.bytes)
@@ -75,7 +77,9 @@ campo pe_optional_header(
   arquivo: Bytes,
   codigo: CodigoX64,
   texto_raw: U64,
-  idata_raw: U64
+  idata_raw: U64,
+  idata_rva: U64,
+  imagem_tamanho: U64
 ) -> Nada ::
   nativo_u16_le(arquivo, 523)
   bytes_coloca_byte(arquivo, 0)
@@ -95,7 +99,7 @@ campo pe_optional_header(
   nativo_u16_le(arquivo, 6)
   nativo_u16_le(arquivo, 0)
   nativo_u32_le(arquivo, 0)
-  nativo_u32_le(arquivo, 12288)
+  nativo_u32_le(arquivo, imagem_tamanho)
   nativo_u32_le(arquivo, PeHeadersX64)
   nativo_u32_le(arquivo, 0)
   nativo_u16_le(arquivo, 3)
@@ -110,11 +114,11 @@ campo pe_optional_header(
   solta indice: U64 := 0
   gira indice < 16 ::
     veja indice == 1 ::
-      nativo_u32_le(arquivo, PeIdataRvaX64)
+      nativo_u32_le(arquivo, idata_rva)
       nativo_u32_le(arquivo, 40)
     outro ::
       veja indice == 12 ::
-        nativo_u32_le(arquivo, PeIdataRvaX64 + PeIatOffsetX64)
+        nativo_u32_le(arquivo, idata_rva + PeIatOffsetX64)
         nativo_u32_le(arquivo, 24)
       outro ::
         nativo_u32_le(arquivo, 0)
@@ -146,13 +150,13 @@ campo pe_section_header(
   nativo_u32_le(arquivo, caracteristicas)
 fecha
 
-campo pe_idata_x64() -> Bytes ::
+campo pe_idata_x64(idata_rva: U64) -> Bytes ::
   solta idata := bytes_novo()
-  guarda oft_rva := PeIdataRvaX64 + 40
-  guarda iat_rva := PeIdataRvaX64 + PeIatOffsetX64
-  guarda dll_rva := PeIdataRvaX64 + PeDllOffsetX64
-  guarda exit_hint_rva := PeIdataRvaX64 + PeExitProcessHintX64
-  guarda virtual_hint_rva := PeIdataRvaX64 + PeVirtualAllocHintX64
+  guarda oft_rva := idata_rva + 40
+  guarda iat_rva := idata_rva + PeIatOffsetX64
+  guarda dll_rva := idata_rva + PeDllOffsetX64
+  guarda exit_hint_rva := idata_rva + PeExitProcessHintX64
+  guarda virtual_hint_rva := idata_rva + PeVirtualAllocHintX64
 
   nativo_u32_le(idata, oft_rva)
   nativo_u32_le(idata, 0)
