@@ -118,21 +118,21 @@ campo x64_runtime_valor_pega(codigo: Bytes) -> Nada ::
   bytes_coloca_byte(codigo, 80)
   guarda fim_tamanho := x64_valor_jmp(codigo)
 
-  guarda nulo := codigo.tamanho
+  guarda destino_nulo := codigo.tamanho
   bytes_coloca_byte(codigo, 49)
   bytes_coloca_byte(codigo, 192)
   bytes_coloca_byte(codigo, 80)
 
   guarda fim := codigo.tamanho
-  x64_valor_patch(codigo, nulo_imediato, nulo)
+  x64_valor_patch(codigo, nulo_imediato, destino_nulo)
   x64_valor_patch(codigo, texto_tamanho, tamanho)
   x64_valor_patch(codigo, bloco_tamanho, tamanho)
   x64_valor_patch(codigo, bytes_tamanho, tamanho)
-  x64_valor_patch(codigo, nao_objeto, nulo)
-  x64_valor_patch(codigo, ausente_obj, nulo)
+  x64_valor_patch(codigo, nao_objeto, destino_nulo)
+  x64_valor_patch(codigo, ausente_obj, destino_nulo)
   x64_valor_patch(codigo, achou_obj, achado)
   x64_valor_patch(codigo, fim_obj, fim)
-  x64_valor_patch(codigo, chave_invalida, nulo)
+  x64_valor_patch(codigo, chave_invalida, destino_nulo)
   x64_valor_patch(codigo, fim_tamanho, fim)
 fecha
 
