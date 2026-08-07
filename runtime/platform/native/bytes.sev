@@ -2,30 +2,36 @@ modulo seven.runtime.platform.native.bytes
 
 usa std.mem.bytes
 
+campo nativo_resto(valor: U64, divisor: U64) -> U64 ::
+  veja divisor == 0 :: devolve 0 fecha
+  guarda quociente := valor / divisor
+  devolve valor - (quociente * divisor)
+fecha
+
 campo nativo_alinha(valor: U64, alinhamento: U64) -> U64 ::
   veja alinhamento == 0 :: devolve valor fecha
-  guarda resto := valor % alinhamento
+  guarda resto := nativo_resto(valor, alinhamento)
   veja resto == 0 :: devolve valor fecha
   devolve valor + (alinhamento - resto)
 fecha
 
 campo nativo_u16_le(destino: Bytes, valor: U64) -> Nada ::
-  bytes_coloca_byte(destino, Byte(valor % 256))
-  bytes_coloca_byte(destino, Byte((valor / 256) % 256))
+  bytes_coloca_byte(destino, Byte(nativo_resto(valor, 256)))
+  bytes_coloca_byte(destino, Byte(nativo_resto(valor / 256, 256)))
 fecha
 
 campo nativo_u32_le(destino: Bytes, valor: U64) -> Nada ::
-  bytes_coloca_byte(destino, Byte(valor % 256))
-  bytes_coloca_byte(destino, Byte((valor / 256) % 256))
-  bytes_coloca_byte(destino, Byte((valor / 65536) % 256))
-  bytes_coloca_byte(destino, Byte((valor / 16777216) % 256))
+  bytes_coloca_byte(destino, Byte(nativo_resto(valor, 256)))
+  bytes_coloca_byte(destino, Byte(nativo_resto(valor / 256, 256)))
+  bytes_coloca_byte(destino, Byte(nativo_resto(valor / 65536, 256)))
+  bytes_coloca_byte(destino, Byte(nativo_resto(valor / 16777216, 256)))
 fecha
 
 campo nativo_u64_le(destino: Bytes, valor: U64) -> Nada ::
   solta atual := valor
   solta indice: U64 := 0
   gira indice < 8 ::
-    bytes_coloca_byte(destino, Byte(atual % 256))
+    bytes_coloca_byte(destino, Byte(nativo_resto(atual, 256)))
     vira atual := atual / 256
     vira indice := indice + 1
   fecha
@@ -40,10 +46,10 @@ fecha
 
 campo nativo_define_u32_le(destino: Bytes, posicao: U64, valor: Num) -> Nada ::
   guarda bits := nativo_i32_bits(valor)
-  bytes_define(destino, posicao, Byte(bits % 256))
-  bytes_define(destino, posicao + 1, Byte((bits / 256) % 256))
-  bytes_define(destino, posicao + 2, Byte((bits / 65536) % 256))
-  bytes_define(destino, posicao + 3, Byte((bits / 16777216) % 256))
+  bytes_define(destino, posicao, Byte(nativo_resto(bits, 256)))
+  bytes_define(destino, posicao + 1, Byte(nativo_resto(bits / 256, 256)))
+  bytes_define(destino, posicao + 2, Byte(nativo_resto(bits / 65536, 256)))
+  bytes_define(destino, posicao + 3, Byte(nativo_resto(bits / 16777216, 256)))
 fecha
 
 campo nativo_anexa(destino: Bytes, origem: Bytes) -> Nada ::
