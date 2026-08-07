@@ -125,30 +125,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat > build/native-core.sources <<'EOF'
-          std/base/lista.sev
-          std/base/resultado.sev
-          std/base/talvez.sev
-          std/base/mapa.sev
-          std/base/texto.sev
-          std/mem/bytes.sev
-          std/fs/file.sev
-          runtime/platform/abi.sev
-          runtime/svbc/opcode.sev
-          runtime/svbc/value.sev
-          runtime/svbc/image.sev
-          runtime/platform/native/bytes.sev
-          runtime/platform/native/target.sev
-          runtime/platform/native/object_runtime.sev
-          runtime/platform/native/bytes_core.sev
-          runtime/platform/native/syscall_bytes.sev
-          runtime/platform/native/syscall_objects.sev
-          runtime/platform/native/syscall_dispatch.sev
-          runtime/platform/native/x64.sev
-          runtime/platform/native/elf.sev
-          runtime/platform/native/pe.sev
-          runtime/platform/native/linker.sev
-          EOF
+          cp runtime/platform/native/runtime.sources build/native-core.sources
 
       - name: Compile native AOT baseline with Stage1
         shell: bash
