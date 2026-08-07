@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased 0.2.0
+
+- Promotes the audited Windows 0.2.0 transition compiler to `bin/seven.exe`.
+- Records the compiler checksum and the current supported CLI surface in
+  `bin/README.md`.
+
 ## 0.1.0
 
 - Defines Seven language identity and official creator: Gabriel Barcelos.
