@@ -139,6 +139,8 @@ jobs:
           runtime/platform/native/bytes.sev
           runtime/platform/native/target.sev
           runtime/platform/native/object_runtime.sev
+          runtime/platform/native/bytes_core.sev
+          runtime/platform/native/syscall_bytes.sev
           runtime/platform/native/syscall_objects.sev
           runtime/platform/native/syscall_dispatch.sev
           runtime/platform/native/x64.sev
