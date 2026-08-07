@@ -217,7 +217,7 @@ campo pe_idata_x64(idata_rva: U64, nomes: Lista<Texto>) -> PeImportLayoutX64 ::
   guarda dll_offset := iat_offset + tabela_tamanho
   guarda dll := texto_bytes("KERNEL32.dll")
   solta cursor := nativo_alinha(dll_offset + dll.tamanho + 1, 2)
-  solta nomes_offsets := lista<U64>()
+  solta nomes_offsets: Lista<U64> := lista<U64>()
 
   para cada nome em nomes ::
     lista_coloca(nomes_offsets, cursor)
@@ -233,13 +233,19 @@ campo pe_idata_x64(idata_rva: U64, nomes: Lista<Texto>) -> PeImportLayoutX64 ::
   nativo_u32_le(idata, idata_rva + iat_offset)
   nativo_preenche_ate(idata, 40, 0)
 
-  para cada offset em nomes_offsets ::
-    nativo_u64_le(idata, idata_rva + offset)
+  solta indice_offset: U64 := 0
+  gira indice_offset < lista_tamanho(nomes_offsets) ::
+    solta hint_offset: U64 := lista_pega(nomes_offsets, indice_offset)
+    nativo_u64_le(idata, idata_rva + hint_offset)
+    vira indice_offset := indice_offset + 1
   fecha
   nativo_u64_le(idata, 0)
 
-  para cada offset em nomes_offsets ::
-    nativo_u64_le(idata, idata_rva + offset)
+  vira indice_offset := 0
+  gira indice_offset < lista_tamanho(nomes_offsets) ::
+    solta hint_offset: U64 := lista_pega(nomes_offsets, indice_offset)
+    nativo_u64_le(idata, idata_rva + hint_offset)
+    vira indice_offset := indice_offset + 1
   fecha
   nativo_u64_le(idata, 0)
 
@@ -249,8 +255,8 @@ campo pe_idata_x64(idata_rva: U64, nomes: Lista<Texto>) -> PeImportLayoutX64 ::
 
   solta indice: U64 := 0
   gira indice < quantidade ::
-    guarda offset := lista_pega(nomes_offsets, indice)
-    guarda nome := lista_pega(nomes, indice)
+    solta offset: U64 := lista_pega(nomes_offsets, indice)
+    solta nome: Texto := lista_pega(nomes, indice)
     nativo_preenche_ate(idata, offset, 0)
     nativo_u16_le(idata, 0)
     bytes_coloca_texto(idata, nome)
