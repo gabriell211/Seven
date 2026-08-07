@@ -196,7 +196,7 @@ jobs:
           set -euo pipefail
           host_source_hash=$(cat bootstrap/host/v2/genesis-host.c bootstrap/host/v2/genesis-host.part*.inc | sha256sum | awk '{print $1}')
           stage0_hash=$(sha256sum build/seven0.svbc | awk '{print $1}')
-          source_hash=$(sha256sum build/seven.stage1.monolith.sev | sha256sum | awk '{print $1}')
+          source_hash=$(sha256sum build/seven.stage1.monolith.sev | awk '{print $1}')
           stage1_hash=$(sha256sum build/seven.stage1.svbc | awk '{print $1}')
           stage2_hash=$(sha256sum build/seven.stage2.svbc | awk '{print $1}')
           proof_hash=$(sha256sum build/stage1-proof.svbc | awk '{print $1}')
