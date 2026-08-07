@@ -1,0 +1,6 @@
+modulo seven.runtime.platform.native.imports
+
+molde PatchImportWindowsX64 ::
+  nome: Texto
+  posicao: U64
+fecha
