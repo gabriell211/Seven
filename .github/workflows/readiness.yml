@@ -35,7 +35,7 @@ jobs:
           set -euo pipefail
           find compiler compiler0 runtime std bootstrap \
             -type f -name '*.sev' -print | LC_ALL=C sort > "$RUNNER_TEMP/seven.sources"
-          cmp seven.sources "$RUNNER_TEMP/seven.sources"
+          diff -u seven.sources "$RUNNER_TEMP/seven.sources"
           grep -q '^indice seven.sources$' seven.pkg
           grep -q 'fonte_carrega_indice' compiler/source.sev
 
