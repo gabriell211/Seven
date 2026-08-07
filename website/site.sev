@@ -1,0 +1,163 @@
+modulo website.site
+
+usa std.frontend.intrinsics
+
+campo inicio() -> Num toca frontend ::
+  frontend_texto("title", "Seven — linguagem de sistemas e aplicacoes")
+  frontend_monta("#seven-app", pagina())
+  frontend_injeta_css(estilos())
+
+  frontend_escuta("#github", "click", "abre_github")
+  frontend_escuta("#docs", "click", "abre_docs")
+  frontend_escuta("#releases", "click", "abre_releases")
+  frontend_escuta("#source", "click", "abre_fonte")
+
+  devolve 0
+fecha
+
+campo abre_github() -> Nada toca frontend ::
+  frontend_navega("https://github.com/gabriell211/Seven")
+fecha
+
+campo abre_docs() -> Nada toca frontend ::
+  frontend_navega("https://github.com/gabriell211/Seven/blob/main/docs/language.md")
+fecha
+
+campo abre_releases() -> Nada toca frontend ::
+  frontend_navega("https://github.com/gabriell211/Seven/releases")
+fecha
+
+campo abre_fonte() -> Nada toca frontend ::
+  frontend_navega("https://github.com/gabriell211/Seven/blob/main/website/site.sev")
+fecha
+
+campo pagina() -> Texto ::
+  devolve
+    "<div class='shell'>" +
+    "  <header class='topbar'>" +
+    "    <div class='brand'>" +
+    "      <img class='brand-mark' src='./assets/seven-logo.svg' alt='Seven'>" +
+    "      <span class='brand-name'>SEVEN</span>" +
+    "    </div>" +
+    "    <nav class='nav' aria-label='Principal'>" +
+    "      <a href='#linguagem'>Linguagem</a>" +
+    "      <a href='#toolchain'>Toolchain</a>" +
+    "      <a href='#codigo'>Codigo</a>" +
+    "      <button id='docs' class='nav-button'>Docs</button>" +
+    "    </nav>" +
+    "  </header>" +
+
+    "  <main>" +
+    "    <section class='hero'>" +
+    "      <div class='hero-copy'>" +
+    "        <div class='eyebrow'><span></span> Seven 0.2 em desenvolvimento</div>" +
+    "        <h1>Controle de baixo nivel.<br><strong>Sem abrir mao da clareza.</strong></h1>" +
+    "        <p class='hero-lead'>Seven e uma linguagem de sistemas e aplicacoes criada para unir tipos fortes, memoria explicita, efeitos, WebAssembly e codigo nativo em uma unica toolchain.</p>" +
+    "        <div class='actions'>" +
+    "          <button id='github' class='button primary'>Ver no GitHub <span>↗</span></button>" +
+    "          <button id='releases' class='button secondary'>Releases</button>" +
+    "        </div>" +
+    "        <div class='hero-meta'>" +
+    "          <span>.sev</span><i></i><span>SVBC</span><i></i><span>WebAssembly</span><i></i><span>x86-64</span>" +
+    "        </div>" +
+    "      </div>" +
+    "      <div class='hero-terminal' aria-label='Exemplo Seven'>" +
+    "        <div class='terminal-bar'><span></span><span></span><span></span><b>hello.sev</b></div>" +
+    "        <pre><code><em>modulo</em> app\n\n<em>campo</em> inicio() -&gt; Num <em>toca</em> terminal ::\n  <em>guarda</em> nome: Texto := &quot;Seven&quot;\n  diga &quot;linguagem: &quot; + nome\n  <em>devolve</em> 0\n<em>fecha</em></code></pre>" +
+    "        <div class='terminal-output'><span>$</span> seven run hello.sev<br><strong>linguagem: Seven</strong></div>" +
+    "      </div>" +
+    "    </section>" +
+
+    "    <section class='stats' aria-label='Capacidades'>" +
+    "      <article><strong>4</strong><span>alvos principais</span><small>SVBC · WASM · ELF64 · PE32+</small></article>" +
+    "      <article><strong>x64</strong><span>backend AOT proprio</span><small>codigo de maquina gerado pela Seven</small></article>" +
+    "      <article><strong>UTF-8</strong><span>texto nativo</span><small>tipos, bytes e memoria controlada</small></article>" +
+    "      <article><strong>0→1→2</strong><span>bootstrap verificavel</span><small>fixed point do compilador</small></article>" +
+    "    </section>" +
+
+    "    <section id='linguagem' class='section'>" +
+    "      <div class='section-heading'>" +
+    "        <p class='kicker'>01 / Linguagem</p>" +
+    "        <h2>Uma sintaxe legivel para trabalho de sistemas.</h2>" +
+    "        <p>Seven trata controle como parte da linguagem: mutabilidade e efeitos aparecem no codigo, enquanto o compilador preserva tipos, diagnosticos e limites de memoria.</p>" +
+    "      </div>" +
+    "      <div class='feature-grid'>" +
+    "        <article class='feature'><span class='feature-index'>A</span><h3>Tipos fortes</h3><p>Inteiros com largura definida, ponto flutuante, Texto UTF-8, Byte, ponteiros e tipos compostos.</p></article>" +
+    "        <article class='feature'><span class='feature-index'>B</span><h3>Efeitos explicitos</h3><p><code>toca terminal</code>, <code>disco</code>, <code>rede</code>, <code>cru</code> e outros efeitos tornam dependencias observaveis.</p></article>" +
+    "        <article class='feature'><span class='feature-index'>C</span><h3>Memoria controlada</h3><p><code>caixa</code>, <code>marca</code> e <code>pega</code> oferecem acesso a bytes com limites conhecidos; memoria crua exige zona explicita.</p></article>" +
+    "        <article class='feature'><span class='feature-index'>D</span><h3>Falhas como dados</h3><p>Resultados e selos representam falhas recuperaveis sem esconder o fluxo de erro da aplicacao.</p></article>" +
+    "      </div>" +
+    "    </section>" +
+
+    "    <section id='toolchain' class='section toolchain-section'>" +
+    "      <div class='section-heading compact'>" +
+    "        <p class='kicker'>02 / Toolchain</p>" +
+    "        <h2>Do arquivo .sev ao binario final.</h2>" +
+    "      </div>" +
+    "      <div class='pipeline'>" +
+    "        <div class='pipe-source'><b>.sev</b><span>fonte</span></div>" +
+    "        <div class='pipe-arrow'>→</div>" +
+    "        <div class='pipe-step'><b>lexer</b><span>tokens</span></div>" +
+    "        <div class='pipe-arrow'>→</div>" +
+    "        <div class='pipe-step'><b>parser</b><span>AST</span></div>" +
+    "        <div class='pipe-arrow'>→</div>" +
+    "        <div class='pipe-step'><b>mede</b><span>tipos · efeitos</span></div>" +
+    "        <div class='pipe-arrow'>→</div>" +
+    "        <div class='pipe-step'><b>IR</b><span>otimizacao</span></div>" +
+    "        <div class='pipe-arrow'>→</div>" +
+    "        <div class='pipe-targets'><b>emit</b><span>SVBC · WASM · native</span></div>" +
+    "      </div>" +
+    "      <div class='target-grid'>" +
+    "        <article><div class='target-icon'>W</div><div><h3>WebAssembly</h3><p><code>seven web build</code> gera <strong>app.wasm</strong> e o bundle para navegador.</p></div></article>" +
+    "        <article><div class='target-icon'>L</div><div><h3>Linux x64</h3><p>Backend AOT e escritor <strong>ELF64</strong> fazem parte do runtime nativo.</p></div></article>" +
+    "        <article><div class='target-icon'>⊞</div><div><h3>Windows x64</h3><p>Geracao <strong>PE32+</strong> com imports de sistema e ABI de plataforma.</p></div></article>" +
+    "      </div>" +
+    "    </section>" +
+
+    "    <section class='section bootstrap'>" +
+    "      <div class='bootstrap-copy'>" +
+    "        <p class='kicker'>03 / Bootstrap</p>" +
+    "        <h2>Self-hosting provado por execucao, nao por bandeira.</h2>" +
+    "        <p>A cadeia atual ja alcanca fixed point byte a byte. O cutover operacional continua sendo endurecido ate que CI, CLI, conformance, AOT, WebAssembly e readiness dispensem o compilador de transicao no caminho ativo.</p>" +
+    "      </div>" +
+    "      <div class='bootstrap-flow'>" +
+    "        <div><span>00</span><b>Bootstrap auditado</b></div>" +
+    "        <i>↓</i>" +
+    "        <div><span>01</span><b>Seven-0</b></div>" +
+    "        <i>↓</i>" +
+    "        <div><span>02</span><b>Stage 1</b></div>" +
+    "        <i>↓</i>" +
+    "        <div class='active'><span>03</span><b>Stage 2 fixed point</b></div>" +
+    "      </div>" +
+    "    </section>" +
+
+    "    <section id='codigo' class='section code-section'>" +
+    "      <div class='section-heading compact'>" +
+    "        <p class='kicker'>04 / Codigo</p>" +
+    "        <h2>O proprio site que voce esta vendo e uma aplicacao Seven.</h2>" +
+    "        <p>O fonte <code>website/site.sev</code> e compilado no GitHub Actions para WebAssembly e publicado no GitHub Pages. O loader de navegador e gerado pela propria toolchain.</p>" +
+    "      </div>" +
+    "      <div class='source-card'>" +
+    "        <div class='source-top'><span>website/site.sev</span><button id='source'>ver fonte ↗</button></div>" +
+    "        <pre><code><em>campo</em> inicio() -&gt; Num <em>toca</em> frontend ::\n  frontend_monta(&quot;#seven-app&quot;, pagina())\n  frontend_injeta_css(estilos())\n  frontend_escuta(&quot;#github&quot;, &quot;click&quot;, &quot;abre_github&quot;)\n  <em>devolve</em> 0\n<em>fecha</em></code></pre>" +
+    "      </div>" +
+    "    </section>" +
+
+    "    <section class='cta'>" +
+    "      <div><p class='kicker'>Seven / .sev</p><h2>Uma linguagem que pretende controlar a pilha inteira.</h2><p>Compilador, runtime, biblioteca padrao e toolchain evoluem juntos — com provas executaveis para cada camada critica.</p></div>" +
+    "      <button class='button primary' id='releases'>Explorar releases <span>↗</span></button>" +
+    "    </section>" +
+    "  </main>" +
+
+    "  <footer>" +
+    "    <div class='brand footer-brand'><img class='brand-mark' src='./assets/seven-logo.svg' alt=''><span class='brand-name'>SEVEN</span></div>" +
+    "    <p>Criada por Gabriel Barcelos · gabriell211</p>" +
+    "    <p>Este site e compilado de Seven para WebAssembly.</p>" +
+    "  </footer>" +
+    "</div>"
+fecha
+
+campo estilos() -> Texto ::
+  devolve
+    ":root{color-scheme:dark;--bg:#07090d;--panel:#0d1118;--panel2:#111722;--line:#202a38;--text:#f3f6fb;--muted:#9ba8b8;--accent:#7ee787;--accent2:#58a6ff;--mono:ui-monospace,SFMono-Regular,Consolas,Liberation Mono,monospace;--sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6}body:before{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 75% 5%,rgba(88,166,255,.11),transparent 30rem),radial-gradient(circle at 18% 30%,rgba(126,231,135,.07),transparent 28rem);z-index:-1}button,a{font:inherit}.shell{width:min(1180px,calc(100% - 40px));margin:auto}.topbar{height:84px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08);position:relative;z-index:4}.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:31px;height:31px;object-fit:contain}.brand-name{font-size:13px;font-weight:800;letter-spacing:.23em}.nav{display:flex;align-items:center;gap:28px}.nav a,.nav-button{color:var(--muted);text-decoration:none;background:none;border:0;padding:8px 0;cursor:pointer;font-size:14px}.nav a:hover,.nav-button:hover{color:var(--text)}.hero{min-height:660px;display:grid;grid-template-columns:1.04fr .96fr;gap:72px;align-items:center;padding:82px 0 72px}.eyebrow,.kicker{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}.eyebrow{display:flex;align-items:center;gap:9px}.eyebrow span{width:7px;height:7px;background:var(--accent);border-radius:50%;box-shadow:0 0 18px var(--accent)}h1{font-size:clamp(44px,6vw,74px);line-height:1.03;letter-spacing:-.055em;margin:22px 0 26px;font-weight:640}h1 strong{color:var(--accent);font-weight:640}.hero-lead{font-size:19px;color:#b6c1cf;max-width:650px;margin:0}.actions{display:flex;gap:12px;margin-top:34px}.button{border:1px solid var(--line);border-radius:8px;padding:12px 18px;cursor:pointer;font-weight:650;transition:.18s transform,.18s border-color,.18s background}.button:hover{transform:translateY(-2px)}.primary{background:var(--accent);color:#061008;border-color:var(--accent)}.secondary{background:#0d131c;color:var(--text)}.secondary:hover{border-color:#4b607a}.hero-meta{display:flex;align-items:center;gap:12px;margin-top:31px;color:#718096;font-family:var(--mono);font-size:11px}.hero-meta i{width:3px;height:3px;border-radius:50%;background:#485467}.hero-terminal{border:1px solid #263245;background:#090d13;border-radius:13px;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.38)}.terminal-bar{height:44px;background:#101620;border-bottom:1px solid #222c3b;display:flex;align-items:center;gap:7px;padding:0 14px}.terminal-bar span{width:9px;height:9px;border-radius:50%;background:#38465a}.terminal-bar b{font:500 11px var(--mono);color:#75869b;margin-left:7px}.hero-terminal pre,.source-card pre{margin:0;padding:28px;overflow:auto;color:#d5deea;font:13px/1.8 var(--mono)}pre em{font-style:normal;color:var(--accent2)}.terminal-output{border-top:1px solid #202a38;padding:17px 28px 20px;color:#8492a5;font:12px/1.8 var(--mono)}.terminal-output span{color:var(--accent);margin-right:8px}.terminal-output strong{color:#d7e1ec}.stats{border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr)}.stats article{padding:30px 28px;border-right:1px solid var(--line)}.stats article:last-child{border:0}.stats strong{display:block;font:700 24px var(--mono);color:var(--accent)}.stats span{display:block;font-weight:650;font-size:14px;margin:3px 0}.stats small{display:block;color:#758397;font-size:11px}.section{padding:105px 0;border-bottom:1px solid var(--line)}.section-heading{max-width:760px;margin-bottom:55px}.section-heading.compact{max-width:800px}.kicker{color:#6f8198;margin:0 0 13px}.section h2,.cta h2{font-size:clamp(32px,4vw,49px);line-height:1.08;letter-spacing:-.035em;margin:0 0 20px}.section-heading>p:last-child,.bootstrap-copy>p:last-child,.cta p{color:var(--muted);font-size:17px}.feature-grid{display:grid;grid-template-columns:repeat(2,1fr);border:1px solid var(--line);border-radius:12px;overflow:hidden}.feature{min-height:220px;padding:30px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:linear-gradient(145deg,rgba(255,255,255,.018),transparent)}.feature:nth-child(2n){border-right:0}.feature:nth-child(n+3){border-bottom:0}.feature-index{font:12px var(--mono);color:var(--accent)}.feature h3{font-size:20px;margin:35px 0 8px}.feature p{color:var(--muted);margin:0;max-width:450px}.feature code,.target-grid code,.code-section code{font-family:var(--mono);color:#d0dae7}.pipeline{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:10px;background:#0b1017;overflow:auto;padding:14px}.pipeline>div:not(.pipe-arrow){min-width:120px;padding:19px 18px;background:#101721;border:1px solid #253044;border-radius:7px}.pipeline b,.pipeline span{display:block}.pipeline b{font:700 13px var(--mono)}.pipeline span{font-size:11px;color:#758397;margin-top:5px}.pipe-arrow{display:grid;place-items:center;padding:0 10px;color:#50617a}.pipe-source b{color:var(--accent)}.pipe-targets b{color:var(--accent2)}.target-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}.target-grid article{display:flex;gap:17px;padding:25px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.target-icon{flex:none;width:38px;height:38px;border:1px solid #34445b;border-radius:8px;display:grid;place-items:center;font:700 14px var(--mono);color:var(--accent)}.target-grid h3{margin:0 0 7px;font-size:16px}.target-grid p{margin:0;color:var(--muted);font-size:13px}.bootstrap{display:grid;grid-template-columns:1fr 430px;gap:80px;align-items:center}.bootstrap-copy h2{max-width:650px}.bootstrap-flow{padding:26px;border:1px solid var(--line);background:var(--panel);border-radius:12px}.bootstrap-flow>div{display:flex;align-items:center;gap:14px;padding:16px;border:1px solid #273246;background:#0b1017;border-radius:7px}.bootstrap-flow>div span{font:11px var(--mono);color:#65748a}.bootstrap-flow>div b{font-size:13px}.bootstrap-flow>i{display:block;height:19px;text-align:center;color:#53647b;font-style:normal}.bootstrap-flow .active{border-color:#3f8150;box-shadow:inset 3px 0 var(--accent)}.bootstrap-flow .active b{color:var(--accent)}.code-section{display:grid;grid-template-columns:.8fr 1.2fr;gap:70px;align-items:center}.code-section .section-heading{margin:0}.source-card{min-width:0;border:1px solid var(--line);background:#090d13;border-radius:12px;overflow:hidden}.source-top{height:47px;padding:0 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);background:#101620;font:11px var(--mono);color:#7f8da0}.source-top button{border:0;background:none;color:var(--accent);cursor:pointer;font:11px var(--mono)}.cta{margin:104px 0 50px;padding:50px;border:1px solid #2f6940;border-radius:14px;background:linear-gradient(125deg,rgba(126,231,135,.08),rgba(88,166,255,.04));display:flex;align-items:flex-end;justify-content:space-between;gap:50px}.cta>div{max-width:720px}.cta p{margin-bottom:0}.cta .button{flex:none}footer{min-height:120px;display:grid;grid-template-columns:1fr auto auto;gap:35px;align-items:center;color:#68778b;font-size:12px}.footer-brand{color:var(--text)}@media(max-width:900px){.shell{width:min(100% - 28px,1180px)}.nav a{display:none}.hero{grid-template-columns:1fr;min-height:auto;gap:48px;padding:65px 0}.stats{grid-template-columns:repeat(2,1fr)}.stats article:nth-child(2){border-right:0}.stats article:nth-child(-n+2){border-bottom:1px solid var(--line)}.target-grid{grid-template-columns:1fr}.bootstrap,.code-section{grid-template-columns:1fr;gap:45px}.bootstrap-flow{max-width:520px}.cta{align-items:flex-start;flex-direction:column}footer{grid-template-columns:1fr;padding:35px 0;gap:8px}}@media(max-width:560px){.topbar{height:70px}.nav{gap:12px}.hero{padding-top:50px}.hero h1{font-size:42px}.hero-lead{font-size:16px}.actions{flex-direction:column}.actions .button{width:100%}.hero-meta{flex-wrap:wrap}.stats{grid-template-columns:1fr}.stats article{border-right:0!important;border-bottom:1px solid var(--line)!important}.stats article:last-child{border-bottom:0!important}.section{padding:75px 0}.feature-grid{grid-template-columns:1fr}.feature{border-right:0;border-bottom:1px solid var(--line)!important}.feature:last-child{border-bottom:0!important}.pipeline{padding:10px}.cta{margin-top:75px;padding:30px}.source-card pre,.hero-terminal pre{padding:21px;font-size:11px}.terminal-output{padding-left:21px}.brand-mark{width:27px;height:27px}}"
+fecha
