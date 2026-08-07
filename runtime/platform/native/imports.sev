@@ -1,6 +1,25 @@
 modulo seven.runtime.platform.native.imports
 
+usa seven.runtime.platform.native.bytes
+usa std.base.lista
+usa std.mem.bytes
+
 molde PatchImportWindowsX64 ::
   nome: Texto
   posicao: U64
+fecha
+
+campo x64_windows_import_call(
+  codigo: Bytes,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  nome: Texto
+) -> Nada ::
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 21)
+  guarda pos := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  lista_coloca(imports_windows, PatchImportWindowsX64 {
+    nome: nome,
+    posicao: pos
+  })
 fecha
