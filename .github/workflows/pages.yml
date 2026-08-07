@@ -7,18 +7,12 @@ on:
     paths:
       - 'website/**'
       - 'brand/**'
-      - 'compiler/**'
-      - 'std/frontend/**'
-      - 'runtime/platform/web/**'
       - 'seed/native/final/v1/**'
       - '.github/workflows/pages.yml'
   pull_request:
     paths:
       - 'website/**'
       - 'brand/**'
-      - 'compiler/**'
-      - 'std/frontend/**'
-      - 'runtime/platform/web/**'
       - 'seed/native/final/v1/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
@@ -34,7 +28,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build official website with Seven
+    name: Generate official website with Seven
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -53,155 +47,37 @@ jobs:
           echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
           chmod +x build/native-seeds/seven-linux
 
-      - name: Check website source
+      - name: Check Seven website generator
         shell: bash
         run: |
           set -euo pipefail
-          build/native-seeds/seven-linux check website/site.sev
+          build/native-seeds/seven-linux check website/pages.sev
 
-      - name: Compile website with Seven WebAssembly
+      - name: Generate static Pages artifact with Seven
         shell: bash
         run: |
           set -euo pipefail
           seven=build/native-seeds/seven-linux
-          "$seven" web build website/site.sev build/pages
-
           mkdir -p build/pages/assets
+
+          "$seven" run website/pages.sev > build/pages/raw-output.txt
+          awk '/^<!doctype html>/{emit=1} emit{print} /^<\/html>/{exit}' \
+            build/pages/raw-output.txt > build/pages/index.html
+
           cp brand/seven-logo.svg build/pages/assets/seven-logo.svg
           touch build/pages/.nojekyll
+          rm build/pages/raw-output.txt
 
           test -s build/pages/index.html
-          test -s build/pages/app.wasm
-          test -s build/pages/seven-loader.mjs
-          test -s build/pages/seven.web.json
-          test -s build/pages/app.wasm.sha256
           test -s build/pages/assets/seven-logo.svg
-          (cd build/pages && sha256sum --check app.wasm.sha256)
-          grep -q '"target": "webassembly"' build/pages/seven.web.json
-          grep -q '"executable": "app.wasm"' build/pages/seven.web.json
+          test "$(head -n 1 build/pages/index.html)" = '<!doctype html>'
+          grep -q '<title>Seven — linguagem de sistemas e aplicacoes</title>' build/pages/index.html
+          grep -q 'Controle de baixo nivel' build/pages/index.html
+          grep -q 'website/pages.sev' build/pages/index.html
+          grep -q 'issue #30' build/pages/index.html
+          test "$(tail -n 1 build/pages/index.html)" = '</html>'
 
-      - name: Validate generated WebAssembly
-        shell: bash
-        run: |
-          set -euo pipefail
-          node - build/pages/app.wasm <<'JS'
-          const fs = require('fs');
-          const bytes = fs.readFileSync(process.argv[2]);
-          if (!WebAssembly.validate(bytes)) {
-            throw new Error('Seven website app.wasm is invalid');
-          }
-          console.log('Seven website WebAssembly validated.');
-          JS
-
-      - name: Execute Seven website against generated browser loader
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --input-type=module <<'JS'
-          import fs from 'node:fs';
-          import { pathToFileURL } from 'node:url';
-
-          class FakeElement {
-            constructor() {
-              this.innerHTML = '';
-              this.textContent = '';
-              this.attributes = new Map();
-              this.listeners = new Map();
-              this.classList = {
-                add() {},
-                remove() {}
-              };
-            }
-            setAttribute(name, value) {
-              this.attributes.set(name, value);
-            }
-            addEventListener(name, handler) {
-              this.listeners.set(name, handler);
-            }
-          }
-
-          const elements = new Map([
-            ['title', new FakeElement()],
-            ['#seven-app', new FakeElement()],
-            ['#seven-output', new FakeElement()],
-            ['#github', new FakeElement()],
-            ['#docs', new FakeElement()],
-            ['#releases', new FakeElement()],
-            ['#source', new FakeElement()]
-          ]);
-          const injected = [];
-          const selectors = [];
-
-          globalThis.document = {
-            querySelector(selector) {
-              selectors.push(['one', selector]);
-              return elements.get(selector) ?? null;
-            },
-            querySelectorAll(selector) {
-              selectors.push(['all', selector]);
-              const element = elements.get(selector);
-              return element ? [element] : [];
-            },
-            getElementById(id) {
-              return elements.get('#' + id) ?? null;
-            },
-            createElement() {
-              return new FakeElement();
-            },
-            head: {
-              appendChild(element) {
-                injected.push(element);
-              }
-            }
-          };
-
-          globalThis.location = { assign() {} };
-          globalThis.localStorage = {
-            values: new Map(),
-            setItem(key, value) { this.values.set(key, value); },
-            getItem(key) { return this.values.get(key) ?? null; },
-            removeItem(key) { this.values.delete(key); }
-          };
-
-          const wasm = fs.readFileSync('build/pages/app.wasm');
-          globalThis.fetch = async () => ({
-            ok: true,
-            status: 200,
-            async arrayBuffer() {
-              return wasm.buffer.slice(wasm.byteOffset, wasm.byteOffset + wasm.byteLength);
-            },
-            async text() {
-              return '';
-            }
-          });
-
-          await import(pathToFileURL(process.cwd() + '/build/pages/seven-loader.mjs').href);
-
-          const title = elements.get('title').textContent;
-          const html = elements.get('#seven-app').innerHTML;
-          const css = injected.map(element => element.textContent).join('\n');
-
-          console.log('SevenWeb:', globalThis.SevenWeb?.codigo);
-          console.log('selectors:', JSON.stringify(selectors));
-          console.log('title:', JSON.stringify(title));
-          console.log('html length:', html.length);
-          console.log('css length:', css.length);
-
-          if (!globalThis.SevenWeb || globalThis.SevenWeb.codigo !== 0) {
-            throw new Error('Seven loader did not start the website successfully');
-          }
-          if (!title.includes('Seven')) {
-            throw new Error('Seven website did not update the document title');
-          }
-          if (!html.includes('Controle de baixo nivel')) {
-            throw new Error('Seven website did not mount the expected content');
-          }
-          if (!css.includes(':root')) {
-            throw new Error('Seven website did not inject its stylesheet');
-          }
-
-          console.log('Seven website loader/runtime smoke test passed.');
-          JS
+          echo "Seven Pages generated: $(wc -c < build/pages/index.html) bytes"
 
       - name: Configure GitHub Pages
         if: github.event_name != 'pull_request'
