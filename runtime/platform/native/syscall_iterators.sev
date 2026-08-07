@@ -1,0 +1,41 @@
+modulo seven.runtime.platform.native.syscall_iterators
+
+usa seven.runtime.platform.native.iterator_runtime
+usa seven.runtime.platform.native.target
+usa std.base.lista
+usa std.mem.bytes
+
+campo x64_syscall_iterador_emite(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo,
+  nome: Texto,
+  aridade: U32
+) -> Bit ::
+  veja nome == "sys_iterador_novo" e aridade == 1 ::
+    x64_runtime_iterador_novo(codigo, virtual_alloc_patches, alvo)
+    devolve sim
+  fecha
+  veja nome == "sys_iterador_tem" e aridade == 1 ::
+    x64_runtime_iterador_tem(codigo)
+    devolve sim
+  fecha
+  veja nome == "sys_iterador_atual" e aridade == 1 ::
+    x64_runtime_iterador_atual(codigo)
+    devolve sim
+  fecha
+  veja nome == "sys_iterador_avanca" e aridade == 1 ::
+    x64_runtime_iterador_avanca(codigo)
+    devolve sim
+  fecha
+  veja nome == "sys_lista_tamanho" e aridade == 1 ::
+    x64_runtime_lista_tamanho(codigo)
+    devolve sim
+  fecha
+  veja nome == "lista_tamanho" e aridade == 1 ::
+    x64_runtime_lista_tamanho(codigo)
+    devolve sim
+  fecha
+
+  devolve nao
+fecha
