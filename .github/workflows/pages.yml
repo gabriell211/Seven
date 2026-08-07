@@ -93,6 +93,107 @@ jobs:
           console.log('Seven website WebAssembly validated.');
           JS
 
+      - name: Execute Seven website against generated browser loader
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import { pathToFileURL } from 'node:url';
+
+          class FakeElement {
+            constructor() {
+              this.innerHTML = '';
+              this.textContent = '';
+              this.attributes = new Map();
+              this.listeners = new Map();
+              this.classList = {
+                add() {},
+                remove() {}
+              };
+            }
+            setAttribute(name, value) {
+              this.attributes.set(name, value);
+            }
+            addEventListener(name, handler) {
+              this.listeners.set(name, handler);
+            }
+          }
+
+          const elements = new Map([
+            ['title', new FakeElement()],
+            ['#seven-app', new FakeElement()],
+            ['#seven-output', new FakeElement()],
+            ['#github', new FakeElement()],
+            ['#docs', new FakeElement()],
+            ['#releases', new FakeElement()],
+            ['#source', new FakeElement()]
+          ]);
+          const injected = [];
+
+          globalThis.document = {
+            querySelector(selector) {
+              return elements.get(selector) ?? null;
+            },
+            querySelectorAll(selector) {
+              const element = elements.get(selector);
+              return element ? [element] : [];
+            },
+            getElementById(id) {
+              return elements.get('#' + id) ?? null;
+            },
+            createElement() {
+              return new FakeElement();
+            },
+            head: {
+              appendChild(element) {
+                injected.push(element);
+              }
+            }
+          };
+
+          globalThis.location = { assign() {} };
+          globalThis.localStorage = {
+            values: new Map(),
+            setItem(key, value) { this.values.set(key, value); },
+            getItem(key) { return this.values.get(key) ?? null; },
+            removeItem(key) { this.values.delete(key); }
+          };
+
+          const wasm = fs.readFileSync('build/pages/app.wasm');
+          globalThis.fetch = async () => ({
+            ok: true,
+            status: 200,
+            async arrayBuffer() {
+              return wasm.buffer.slice(wasm.byteOffset, wasm.byteOffset + wasm.byteLength);
+            },
+            async text() {
+              return '';
+            }
+          });
+
+          await import(pathToFileURL(process.cwd() + '/build/pages/seven-loader.mjs').href);
+
+          const title = elements.get('title').textContent;
+          const html = elements.get('#seven-app').innerHTML;
+          const css = injected.map(element => element.textContent).join('\n');
+
+          if (!globalThis.SevenWeb || globalThis.SevenWeb.codigo !== 0) {
+            throw new Error('Seven loader did not start the website successfully');
+          }
+          if (!title.includes('Seven')) {
+            throw new Error('Seven website did not update the document title');
+          }
+          if (!html.includes('Controle de baixo nivel')) {
+            throw new Error('Seven website did not mount the expected content');
+          }
+          if (!css.includes(':root')) {
+            throw new Error('Seven website did not inject its stylesheet');
+          }
+
+          console.log('Seven website loader/runtime smoke test passed.');
+          JS
+
       - name: Configure GitHub Pages
         if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
