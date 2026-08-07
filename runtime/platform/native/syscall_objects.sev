@@ -1,6 +1,8 @@
 modulo seven.runtime.platform.native.syscall_objects
 
 usa seven.runtime.platform.native.object_runtime
+usa seven.runtime.platform.native.value_access
+usa seven.runtime.platform.native.value_define
 usa seven.runtime.platform.native.target
 usa std.base.lista
 usa std.mem.bytes
@@ -19,11 +21,11 @@ campo x64_syscall_objeto_emite(
     devolve sim
   fecha
   veja nome == "sys_obj_pega" e aridade == 2 ::
-    x64_runtime_obj_pega(codigo)
+    x64_runtime_valor_pega(codigo)
     devolve sim
   fecha
   veja nome == "sys_obj_define" e aridade == 3 ::
-    x64_runtime_obj_define(codigo)
+    x64_runtime_valor_define(codigo)
     devolve sim
   fecha
   veja nome == "sys_lista_coloca" e aridade == 2 ::
