@@ -27,6 +27,16 @@ campo x64_runtime_dispatch(
     devolve sim
   fecha
 
+  veja nome == "arquivo_ler" e aridade == 1 ::
+    devolve x64_syscall_fs_emite(codigo, imports_windows, alvo, "sys_arquivo_le_texto", aridade)
+  fecha
+  veja nome == "sys_arquivo_ler_texto" e aridade == 1 ::
+    devolve x64_syscall_fs_emite(codigo, imports_windows, alvo, "sys_arquivo_le_texto", aridade)
+  fecha
+  veja nome == "sys_arquivo_salva_texto" e aridade == 2 ::
+    devolve x64_syscall_fs_emite(codigo, imports_windows, alvo, "sys_arquivo_grava_texto", aridade)
+  fecha
+
   veja x64_syscall_fs_emite(codigo, imports_windows, alvo, nome, aridade) ::
     devolve sim
   fecha
