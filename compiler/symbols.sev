@@ -200,7 +200,20 @@ campo uso_externo_pacote(caminho: Texto, pacote: Pacote) -> Bit ::
 fecha
 
 campo ultimo_segmento(caminho: Texto) -> Texto ::
-  devolve sys_caminho_ultimo_segmento(caminho)
+  solta segmento := ""
+  solta indice: U64 := 0
+
+  gira indice < sys_texto_tamanho(caminho) ::
+    guarda caractere := sys_texto_caractere(caminho, indice)
+    veja caractere == "." ::
+      vira segmento := ""
+    outro ::
+      vira segmento := segmento + caractere
+    fecha
+    vira indice := indice + 1
+  fecha
+
+  devolve segmento
 fecha
 
 campo simbolo_busca(tabela: TabelaSimbolos, modulo: Texto, nome: Texto) -> Talvez<Simbolo> ::
