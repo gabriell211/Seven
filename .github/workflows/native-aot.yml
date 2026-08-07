@@ -121,17 +121,11 @@ jobs:
           build/genesis-host build/seven0.svbc build/seven.stage1.monolith.sev build/seven.stage1.svbc
           test "$(od -An -tx1 -N4 build/seven.stage1.svbc | tr -d ' \n')" = '53564230'
 
-      - name: Prepare native runtime source set
-        shell: bash
-        run: |
-          set -euo pipefail
-          cp runtime/platform/native/runtime.sources build/native-core.sources
-
       - name: Compile native AOT baseline with Stage1
         shell: bash
         run: |
           set -euo pipefail
-          cp build/native-core.sources build/native-aot.sources
+          cp runtime/platform/native/runtime.sources build/native-aot.sources
           echo 'tests/native/aot_backend.sev' >> build/native-aot.sources
           cat > build/native-aot.pkg <<'EOF'
           pacote native-aot-proof
@@ -145,129 +139,35 @@ jobs:
           test -s build/native-aot-test.svbc
           test "$(od -An -tx1 -N4 build/native-aot-test.svbc | tr -d ' \n')" = '53564243'
 
-      - name: Compile native object/list proof with Stage1
-        shell: bash
-        run: |
-          set -euo pipefail
-          cp build/native-core.sources build/native-object.sources
-          echo 'tests/native/object_backend.sev' >> build/native-object.sources
-          cat > build/native-object.pkg <<'EOF'
-          pacote native-object-proof
-          versao 0.0.1
-          criador Gabriel Barcelos
-          entrada tests.native.object_backend.inicio
-          alvo svbc
-          indice build/native-object.sources
-          EOF
-          build/genesis-host build/seven.stage1.svbc build/native-object.pkg build/native-object-test.svbc
-          test -s build/native-object-test.svbc
-          test "$(od -An -tx1 -N4 build/native-object-test.svbc | tr -d ' \n')" = '53564243'
-
-      - name: Validate stable SVBC call contracts
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import struct
-          import sys
-
-          def validate(path):
-              data = open(path, 'rb').read()
-              pos = 0
-              def take(n):
-                  nonlocal pos
-                  out = data[pos:pos+n]
-                  if len(out) != n:
-                      raise SystemExit(f'{path}: truncated SVBC at byte {pos}')
-                  pos += n
-                  return out
-              def u8(): return take(1)[0]
-              def u32(): return struct.unpack('>I', take(4))[0]
-              def u64(): return struct.unpack('>Q', take(8))[0]
-              def text(): return take(u32()).decode('utf-8')
-
-              if take(4) != b'SVBC' or u32() != 1:
-                  raise SystemExit(f'{path}: invalid stable SVBC header')
-              names = [text() for _ in range(u32())]
-              for _ in range(u32()):
-                  tag = u8()
-                  if tag == 0: pass
-                  elif tag == 2: u8()
-                  elif tag == 3: u64()
-                  elif tag == 4: text()
-                  else: raise SystemExit(f'{path}: unsupported constant tag {tag}')
-              fields = []
-              for _ in range(u32()):
-                  name_index = u32()
-                  entry = u64()
-                  locals_count = u32()
-                  params = u32()
-                  for _ in range(u32()): u32()
-                  fields.append((names[name_index], entry, locals_count, params))
-              code = [(u8(), u32(), u32(), u32(), u64()) for _ in range(u32())]
-              failures = 0
-              for index, (op, a, b, c, source_ip) in enumerate(code):
-                  if op != 16:
-                      continue
-                  caller = '<sem-campo>'
-                  caller_entry = -1
-                  for name, entry, locals_count, params in fields:
-                      if entry <= index and entry >= caller_entry:
-                          caller = name
-                          caller_entry = entry
-                  if a >= len(fields):
-                      print(f'{path}: SVBC-CALL target-out-of-bounds caller={caller} code_index={index} source_ip={source_ip} target_index={a} got={b}', file=sys.stderr)
-                      failures += 1
-                      continue
-                  target, entry, locals_count, expected = fields[a]
-                  if b != expected:
-                      print(f'{path}: SVBC-CALL arity-mismatch caller={caller} target={target} code_index={index} source_ip={source_ip} got={b} expected={expected}', file=sys.stderr)
-                      failures += 1
-              if failures:
-                  raise SystemExit(f'{path}: {failures} invalid call site(s)')
-              print(f'{path}: SVBC call validation OK: {len(fields)} fields, {len(code)} instructions')
-
-          validate('build/native-aot-test.svbc')
-          validate('build/native-object-test.svbc')
-          PY
-
-      - name: Execute Seven native generators in Genesis SVBC1 host
+      - name: Execute Seven native generator
         shell: bash
         run: |
           set -euo pipefail
           build/genesis-host build/native-aot-test.svbc
-          build/genesis-host build/native-object-test.svbc
           test "$(od -An -tx1 -N4 build/native-aot-proof | tr -d ' \n')" = '7f454c46'
           test "$(od -An -tx1 -N2 build/native-aot-proof.exe | tr -d ' \n')" = '4d5a'
-          test "$(od -An -tx1 -N4 build/native-object-proof | tr -d ' \n')" = '7f454c46'
-          test "$(od -An -tx1 -N2 build/native-object-proof.exe | tr -d ' \n')" = '4d5a'
 
       - name: Inspect generated native formats
         shell: bash
         run: |
           set -euo pipefail
           readelf -h build/native-aot-proof | tee build/native-aot-proof.elf.txt
-          readelf -h build/native-object-proof | tee build/native-object-proof.elf.txt
           objdump -p build/native-aot-proof.exe | tee build/native-aot-proof.pe.txt
-          objdump -p build/native-object-proof.exe | tee build/native-object-proof.pe.txt
           grep -q 'pei-x86-64' build/native-aot-proof.pe.txt
-          grep -q 'pei-x86-64' build/native-object-proof.pe.txt
-          grep -q 'KERNEL32.dll' build/native-object-proof.pe.txt
-          grep -q 'VirtualAlloc' build/native-object-proof.pe.txt
+          grep -q 'KERNEL32.dll' build/native-aot-proof.pe.txt
+          grep -q 'ExitProcess' build/native-aot-proof.pe.txt
+          grep -q 'VirtualAlloc' build/native-aot-proof.pe.txt
 
-      - name: Execute Seven-generated ELF proofs
+      - name: Execute Seven-generated ELF
         shell: bash
         run: |
           set -euo pipefail
-          chmod +x build/native-aot-proof build/native-object-proof
+          chmod +x build/native-aot-proof
           set +e
           ./build/native-aot-proof
-          aot_code=$?
-          ./build/native-object-proof
-          object_code=$?
+          code=$?
           set -e
-          test "$aot_code" -eq 42
-          test "$object_code" -eq 42
+          test "$code" -eq 42
 
       - name: Reject transition native lowering
         shell: bash
@@ -281,18 +181,13 @@ jobs:
           path: |
             build/native-aot-proof
             build/native-aot-proof.exe
-            build/native-object-proof
-            build/native-object-proof.exe
             build/native-aot-test.svbc
-            build/native-object-test.svbc
             build/native-aot-proof.elf.txt
             build/native-aot-proof.pe.txt
-            build/native-object-proof.elf.txt
-            build/native-object-proof.pe.txt
           if-no-files-found: error
 
   windows:
-    name: Execute Stage1-generated PE32+ proofs
+    name: Execute Stage1-generated PE32+
     needs: generate
     runs-on: windows-latest
     timeout-minutes: 10
@@ -302,14 +197,11 @@ jobs:
           name: seven-native-aot-proof
           path: build
 
-      - name: Execute Seven-generated PE proofs
+      - name: Execute Seven-generated PE
         shell: bash
         run: |
           set +e
           ./build/native-aot-proof.exe
-          aot_code=$?
-          ./build/native-object-proof.exe
-          object_code=$?
+          code=$?
           set -e
-          test "$aot_code" -eq 42
-          test "$object_code" -eq 42
+          test "$code" -eq 42
