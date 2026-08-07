@@ -155,7 +155,7 @@ campo registra_simbolo(tabela: TabelaSimbolos, novo: Simbolo) -> Nada ::
 fecha
 
 campo resolve_usos(tabela: TabelaSimbolos, programa: Programa, pacote: Pacote) -> Nada ::
-  solta apelidos := mapa<Texto, Bit>()
+  solta apelidos_explicitos := mapa<Texto, Bit>()
 
   para cada uso em programa.usos ::
     veja nao mapa_tem(tabela.modulos, uso.caminho) e nao uso_externo_pacote(uso.caminho, pacote) ::
@@ -169,22 +169,19 @@ campo resolve_usos(tabela: TabelaSimbolos, programa: Programa, pacote: Pacote) -
       ))
     fecha
 
-    solta apelido := uso.apelido
-    veja apelido == "" ::
-      vira apelido := ultimo_segmento(uso.caminho)
-    fecha
-
-    veja mapa_tem(apelidos, apelido) ::
-      lista_coloca(tabela.diagnosticos, erro_com_ajuda(
-        "SV-USO-APELIDO-DUPLICADO",
-        "apelido de modulo '" + apelido + "' esta duplicado",
-        uso.span.arquivo,
-        uso.span.linha,
-        uso.span.coluna,
-        "use 'como outro_nome' em uma das importacoes"
-      ))
-    outro ::
-      mapa_coloca(apelidos, apelido, sim)
+    veja uso.apelido != "" ::
+      veja mapa_tem(apelidos_explicitos, uso.apelido) ::
+        lista_coloca(tabela.diagnosticos, erro_com_ajuda(
+          "SV-USO-APELIDO-DUPLICADO",
+          "apelido de modulo '" + uso.apelido + "' esta duplicado",
+          uso.span.arquivo,
+          uso.span.linha,
+          uso.span.coluna,
+          "cada alias declarado com 'como' deve ser unico no arquivo"
+        ))
+      outro ::
+        mapa_coloca(apelidos_explicitos, uso.apelido, sim)
+      fecha
     fecha
   fecha
 fecha
@@ -197,23 +194,6 @@ campo uso_externo_pacote(caminho: Texto, pacote: Pacote) -> Bit ::
   fecha
 
   devolve texto_comeca(caminho, "std.")
-fecha
-
-campo ultimo_segmento(caminho: Texto) -> Texto ::
-  solta segmento := ""
-  solta indice: U64 := 0
-
-  gira indice < sys_texto_tamanho(caminho) ::
-    guarda caractere := sys_texto_caractere(caminho, indice)
-    veja caractere == "." ::
-      vira segmento := ""
-    outro ::
-      vira segmento := segmento + caractere
-    fecha
-    vira indice := indice + 1
-  fecha
-
-  devolve segmento
 fecha
 
 campo simbolo_busca(tabela: TabelaSimbolos, modulo: Texto, nome: Texto) -> Talvez<Simbolo> ::
