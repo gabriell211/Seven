@@ -262,6 +262,24 @@ static const char *default_compiler_image(const char *executable_path) {
   return repo_compiler;
 }
 
+static const char *default_webbuild_image(const char *executable_path) {
+  static const char *repo_webbuild = "build/seven.webbuild.svbc";
+  static const char *local_webbuild = "seven.webbuild.svbc";
+  static const char *bin_webbuild = "bin/seven.webbuild.svbc";
+  static char *sibling_webbuild = NULL;
+
+  if (path_exists_c(repo_webbuild)) return repo_webbuild;
+  if (path_exists_c(local_webbuild)) return local_webbuild;
+  if (path_exists_c(bin_webbuild)) return bin_webbuild;
+
+  char *dir = dirname_dup_c(executable_path);
+  sibling_webbuild = path_join_c(dir, "seven.webbuild.svbc");
+  free(dir);
+  if (path_exists_c(sibling_webbuild)) return sibling_webbuild;
+
+  return repo_webbuild;
+}
+
 int main(int argc, char **argv) {
   const char *image_path = NULL;
   int program_argc = 0;
@@ -275,6 +293,10 @@ int main(int argc, char **argv) {
     image_path = default_compiler_image(argv[0]);
     program_argc = argc - 2;
     program_argv = argv + 2;
+  } else if (argc >= 3 && strcmp(argv[1], "web") == 0 && strcmp(argv[2], "build") == 0) {
+    image_path = default_webbuild_image(argv[0]);
+    program_argc = argc - 3;
+    program_argv = argv + 3;
   } else {
     image_path = default_launcher_image(argv[0]);
     program_argc = argc - 1;

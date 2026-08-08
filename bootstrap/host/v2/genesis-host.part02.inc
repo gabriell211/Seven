@@ -64,6 +64,7 @@ strftime(buf,sizeof(buf),"%Y-%m-%dT%H:%M:%SZ",&tmv);return v_str_c(buf);}
  if(IS("sys_svbc_relogio_virtual_avanca"))return v_null();
  if(IS("texto")||IS("texto_u64")||IS("sys_texto_num")||IS("sys_texto_u64"))return v_str(text(argc?args[0]:v_null()));
  if(IS("numero")||IS("sys_numero")||IS("sys_num_cast")||IS("U32")||IS("U64")||IS("Num")||IS("Byte")||IS("Real64"))return v_int(number(argc?args[0]:v_int(0)));
+ if(IS("sys_num_mod")){int64_t d=number(args[1]);if(!d){vm_fail(vm,"modulo by zero");return v_null();}return v_int(number(args[0])%d);}
  if(IS("tamanho")){Value x=args[0];if(x.tag==V_STRING)return v_int((int64_t)x.as.s.len);if(x.tag==V_LIST)return v_int((int64_t)x.as.list->len);if(x.tag==V_BYTES)return v_int((int64_t)x.as.bytes->len);if(x.tag==V_OBJECT)return v_int((int64_t)x.as.obj->len);return v_int(0);}
  if(IS("sys_lista_nova"))return v_list(list_new());
  if(IS("lista_tamanho")){if(args[0].tag!=V_LIST){vm_fail(vm,"lista_tamanho expects list");return v_null();}return v_int((int64_t)args[0].as.list->len);}

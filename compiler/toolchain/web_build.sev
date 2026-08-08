@@ -12,6 +12,7 @@ usa seven.compiler.package
 usa seven.compiler.wasm
 usa seven.compiler.toolchain.command
 usa std.base.resultado
+usa std.base.texto
 usa std.crypto.hash
 usa std.fs.file
 usa std.io.console
@@ -19,13 +20,7 @@ usa std.os.install
 
 campo executa_web_build(entrada: Texto, saida: Texto) -> SaidaToolchain toca terminal, disco, ambiente ::
   guarda pacote := pacote_parse(
-    "pacote seven-web-app\n" +
-    "versao 0.2.0\n" +
-    "criador Gabriel Barcelos\n" +
-    "entrada " + entrada + "\n" +
-    "alvo webassembly\n" +
-    "fonte std/frontend/intrinsics.sev\n" +
-    "fonte " + entrada + "\n"
+    web_manifesto_compilacao(entrada)
   )
   guarda fontes := fonte_carrega_pacote(pacote)
   guarda tokens := varre_unidade(fontes)
@@ -80,6 +75,82 @@ campo executa_web_build(entrada: Texto, saida: Texto) -> SaidaToolchain toca ter
   diga("web manifesto: " + saida + "/seven.web.json")
   diga("web sha256: " + checksum)
   devolve ToolchainOk(0)
+fecha
+
+campo web_manifesto_compilacao(entrada: Texto) -> Texto toca disco ::
+  guarda entrada_texto := arquivo_ler(entrada)
+  guarda estilos := web_arquivo_irmao(entrada, "styles.sev")
+  solta estilos_texto := ""
+
+  veja arquivo_existe(estilos) ::
+    vira estilos_texto := arquivo_ler(estilos)
+  fecha
+
+  guarda fontes_texto := entrada_texto + "\n" + estilos_texto
+  solta manifesto := "pacote seven-web-app\n" +
+    "versao 0.2.0\n" +
+    "criador Gabriel Barcelos\n" +
+    "entrada " + entrada + "\n" +
+    "alvo webassembly\n" +
+    "fonte std/frontend/intrinsics.sev\n"
+
+  veja texto_contem(fontes_texto, "usa std.frontend.dom") ::
+    vira manifesto := manifesto + "fonte std/base/lista.sev\n"
+    vira manifesto := manifesto + "fonte std/base/mapa.sev\n"
+    vira manifesto := manifesto + "fonte std/frontend/dom.sev\n"
+  fecha
+
+  veja texto_contem(fontes_texto, "usa std.frontend.css") ::
+    vira manifesto := manifesto + "fonte std/base/lista.sev\n"
+    vira manifesto := manifesto + "fonte std/frontend/css.sev\n"
+  fecha
+
+  veja texto_contem(fontes_texto, "usa std.frontend.state") ::
+    vira manifesto := manifesto + "fonte std/frontend/state.sev\n"
+  fecha
+
+  veja texto_contem(fontes_texto, "usa std.frontend.layout") ::
+    vira manifesto := manifesto + "fonte std/frontend/layout.sev\n"
+  fecha
+
+  veja texto_contem(fontes_texto, "usa std.frontend.media") ::
+    vira manifesto := manifesto + "fonte std/frontend/media.sev\n"
+  fecha
+
+  veja texto_contem(fontes_texto, "usa std.frontend.theme") ::
+    vira manifesto := manifesto + "fonte std/frontend/theme.sev\n"
+  fecha
+
+  veja texto_contem(fontes_texto, "usa std.web.html") ::
+    vira manifesto := manifesto + "fonte std/base/lista.sev\n"
+    vira manifesto := manifesto + "fonte std/base/texto.sev\n"
+    vira manifesto := manifesto + "fonte std/web/html.sev\n"
+  fecha
+
+  veja arquivo_existe(estilos) ::
+    vira manifesto := manifesto + "fonte " + estilos + "\n"
+  fecha
+
+  devolve manifesto + "fonte " + entrada + "\n"
+fecha
+
+campo web_arquivo_irmao(entrada: Texto, nome: Texto) -> Texto ::
+  solta ultimo: U64 := 0
+  solta indice: U64 := 0
+
+  gira indice < tamanho(entrada) ::
+    guarda ch := sys_texto_caractere(entrada, indice)
+    veja ch == "/" ou ch == "\\" ::
+      vira ultimo := indice + 1
+    fecha
+    vira indice := indice + 1
+  fecha
+
+  veja ultimo == 0 ::
+    devolve nome
+  fecha
+
+  devolve sys_texto_fatia(entrada, 0, ultimo) + nome
 fecha
 
 campo web_index_html() -> Texto ::

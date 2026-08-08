@@ -9,6 +9,7 @@ campo seven_launcher(argumentos: Lista<Texto>) -> Num toca disco, terminal, rede
     diga "  seven --version"
     diga "  seven doctor"
     diga "  seven build <pacote.pkg> <saida.svbc>"
+    diga "  seven web build <entrada.sev> <saida-dir>"
     devolve 0
   fecha
 
@@ -30,6 +31,13 @@ campo seven_launcher(argumentos: Lista<Texto>) -> Num toca disco, terminal, rede
     lista_coloca(args_compilador, arg_ou(argumentos, 1, "seven.pkg"))
     lista_coloca(args_compilador, arg_ou(argumentos, 2, "build/out.svbc"))
     devolve roda_svbc_com_args("build/seven.stage2.svbc", args_compilador)
+  fecha
+
+  veja comando == "web" e lista_tamanho(argumentos) > 1 e lista_pega(argumentos, 1) == "build" ::
+    solta args_web := lista<Texto>()
+    lista_coloca(args_web, arg_ou(argumentos, 2, "examples/web_dev.sev"))
+    lista_coloca(args_web, arg_ou(argumentos, 3, "build/web"))
+    devolve roda_svbc_com_args("build/seven.webbuild.svbc", args_web)
   fecha
 
   diga "comando ainda nao conectado no launcher nativo: " + comando

@@ -57,15 +57,6 @@ campo registra_modulo(tabela: TabelaSimbolos, programa: Programa) -> Nada ::
   fecha
 
   veja mapa_tem(tabela.modulos, programa.modulo) ::
-    guarda local := span_programa(programa)
-    lista_coloca(tabela.diagnosticos, erro_com_ajuda(
-      "SV-MODULO-DUPLICADO",
-      "modulo '" + programa.modulo + "' foi declarado mais de uma vez",
-      local.arquivo,
-      local.linha,
-      local.coluna,
-      "cada modulo deve possuir um nome unico no pacote"
-    ))
     devolve nulo
   fecha
 

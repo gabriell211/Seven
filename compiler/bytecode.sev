@@ -85,11 +85,11 @@ fecha
 campo emite_tabela_constantes(bytes: Bytes, unidade: UnidadeIr) -> Nada ::
   bytes_coloca_u32(bytes, U32(lista_tamanho(unidade.constantes)))
   para cada constante em unidade.constantes ::
-    emite_constante(bytes, constante.valor)
+    emite_constante_svbc(bytes, constante.valor)
   fecha
 fecha
 
-campo emite_constante(bytes: Bytes, valor: ValorIr) -> Nada ::
+campo emite_constante_svbc(bytes: Bytes, valor: ValorIr) -> Nada ::
   veja valor e ValorNulo ::
     bytes_coloca_byte(bytes, 0)
     devolve nulo

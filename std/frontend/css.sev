@@ -53,7 +53,7 @@ campo css_renderiza(folha: FolhaCss) -> Texto ::
 fecha
 
 campo css_injeta(folha: FolhaCss) -> Nada toca frontend ::
-  frontend_injeta_css(folha.nome, css_renderiza(folha))
+  frontend_injeta_css(css_renderiza(folha))
 fecha
 
 campo px(valor: Num) -> Texto ::

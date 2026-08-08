@@ -131,6 +131,7 @@ runtime/svbc0/opcode.sev
 runtime/svbc0/translator.sev
 runtime/svbc0/verifier.sev
 runtime/svbc0/vm.sev
+runtime/webbuild/seven.sev
 std/ai/agent.sev
 std/ai/embedding.sev
 std/ai/model.sev

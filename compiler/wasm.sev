@@ -347,6 +347,13 @@ campo wasm_emite_instrucao(
   fecha
 
   veja instrucao e IrSyscall ::
+    veja instrucao.nome == "sys_obj_novo" ou instrucao.nome == "sys_lista_nova" ::
+      bytes_coloca_byte(corpo, 65)
+      wasm_sleb_positivo(corpo, 0)
+      wasm_local_define(corpo, instrucao.destino)
+      devolve Valor(nulo)
+    fecha
+
     veja instrucao.nome == "sys_num_mod" ::
       veja lista_tamanho(instrucao.argumentos) != 2 ::
         devolve Falha(nova_falha("SV-WASM-ARIDADE", "mod exige dois argumentos"))

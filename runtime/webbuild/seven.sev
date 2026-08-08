@@ -1,0 +1,29 @@
+modulo seven.runtime.webbuild
+
+usa seven.compiler.toolchain.command
+usa seven.compiler.toolchain.web_build
+
+campo inicio(argumentos: Lista<Texto>) -> Num toca terminal, disco, ambiente ::
+  guarda entrada := arg_ou(argumentos, 0, "examples/web_dev.sev")
+  guarda saida := arg_ou(argumentos, 1, "build/web")
+  guarda resultado := executa_web_build(entrada, saida)
+
+  veja resultado e ToolchainOk ::
+    devolve resultado.codigo
+  fecha
+
+  veja resultado e ToolchainErro ::
+    diga resultado.mensagem
+    devolve resultado.codigo
+  fecha
+
+  devolve 1
+fecha
+
+campo arg_ou(argumentos: Lista<Texto>, indice: U64, padrao: Texto) -> Texto ::
+  veja lista_tamanho(argumentos) <= indice ::
+    devolve padrao
+  fecha
+
+  devolve lista_pega(argumentos, indice)
+fecha

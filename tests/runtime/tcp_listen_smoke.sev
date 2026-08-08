@@ -1,0 +1,14 @@
+modulo tests.runtime.tcp_listen_smoke
+
+usa std.net.tcp
+
+campo inicio() -> Num toca rede ::
+  guarda listener := tcp_escuta("127.0.0.1", 0)
+
+  veja listener e Falha ::
+    devolve 1
+  fecha
+
+  sys_tcp_fecha(listener.valor)
+  devolve 0
+fecha
