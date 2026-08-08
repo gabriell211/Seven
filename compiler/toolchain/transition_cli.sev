@@ -96,8 +96,8 @@ campo mostra_ajuda_transicao() -> Nada toca terminal ::
   diga "comandos: check, build, run, web build, doctor"
 fecha
 
-campo pacote_fonte_transicao(entrada: Texto, alvo: Texto) -> Pacote ::
-  devolve pacote_parse(
+campo pacote_fonte_transicao(entrada: Texto, alvo: Texto) -> Pacote toca disco ::
+  guarda pacote := pacote_parse(
     "pacote seven-transition-app\n" +
     "versao 0.2.0\n" +
     "criador Gabriel Barcelos\n" +
@@ -105,6 +105,7 @@ campo pacote_fonte_transicao(entrada: Texto, alvo: Texto) -> Pacote ::
     "alvo " + alvo + "\n" +
     "fonte " + entrada + "\n"
   )
+  devolve fonte_resolve_dependencias_pacote(pacote)
 fecha
 
 campo transicao_check(entrada: Texto) -> Num toca terminal, disco ::
@@ -158,7 +159,7 @@ campo transicao_build(entrada: Texto, saida: Texto) -> Num toca terminal, disco 
 fecha
 
 campo transicao_web_build(entrada: Texto, saida: Texto) -> Num toca terminal, disco ::
-  guarda pacote := pacote_parse(
+  guarda pacote_base := pacote_parse(
     "pacote seven-web-transition\n" +
     "versao 0.2.0\n" +
     "criador Gabriel Barcelos\n" +
@@ -167,6 +168,7 @@ campo transicao_web_build(entrada: Texto, saida: Texto) -> Num toca terminal, di
     "fonte std/frontend/intrinsics.sev\n" +
     "fonte " + entrada + "\n"
   )
+  guarda pacote := fonte_resolve_dependencias_pacote(pacote_base)
   guarda fontes := fonte_carrega_pacote(pacote)
   guarda tokens := varre_unidade(fontes)
   guarda sintaxe := monta_unidade(tokens)
