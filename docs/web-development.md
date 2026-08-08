@@ -22,10 +22,10 @@ Ele cobre o basico para uma tela de navegador:
 ```text
 seven check examples/web_dev.sev
 seven web build examples/web_dev.sev build/web-dev
+seven web serve build/web-dev 7070
 ```
 
-Depois sirva `build/web-dev` com qualquer servidor estatico local. O diretorio
-gerado contem:
+Depois abra `http://127.0.0.1:7070/`. O diretorio gerado contem:
 
 ```text
 app.wasm
@@ -42,14 +42,16 @@ artefato gerado para conectar WebAssembly ao navegador.
 
 Seven Web 0.2 deve ser usado como runtime de aplicacoes de navegador. O backend
 WebAssembly interativo e validado pelo gate `Seven WebAssembly` no GitHub. O
-servidor full-stack em `std.web.*` ainda depende do fechamento do backend
-nativo self-hosted e dos intrinsecos TCP.
+servidor estatico de desenvolvimento e validado no gate `Seven Stage 1
+Self-Hosting` usando `seven web serve` em cima do host nativo, TCP,
+`std.web.http` e leitura segura de arquivos.
 
 ## Regras praticas
 
 - Use `.sev` para codigo de aplicacao.
 - Use `std.frontend.intrinsics` enquanto o runtime Web esta sendo endurecido.
 - Evite depender de JavaScript escrito manualmente.
+- Use `seven web serve` para testar localmente o diretorio gerado sem Node.
 - Se dois fontes Web diferentes gerarem o mesmo hash pelo binario local de
   transicao, valide pelo gate E2E ou pelo caminho self-hosted antes de tratar
   isso como prova de producao.

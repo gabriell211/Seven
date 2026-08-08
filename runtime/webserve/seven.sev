@@ -1,0 +1,60 @@
+modulo seven.runtime.webserve
+
+usa std.base.convert
+usa std.base.lista
+usa std.base.resultado
+usa std.fs.file
+usa std.io.console
+usa std.net.tcp
+usa std.web.http
+
+campo inicio(argumentos: Lista<Texto>) -> Num toca terminal, disco, rede, ambiente ::
+  guarda raiz := arg_ou(argumentos, 0, "build/web")
+  guarda porta_texto := arg_ou(argumentos, 1, "7070")
+  guarda porta := U32(numero(porta_texto))
+
+  diga("seven web serve: http://127.0.0.1:" + texto_u64(U64(porta)) + " -> " + raiz)
+
+  guarda listener := tcp_escuta("127.0.0.1", porta)
+  veja listener e Falha ::
+    diga("seven web serve falhou: " + listener.valor.mensagem)
+    devolve 1
+  fecha
+
+  gira sim ::
+    guarda conexao := tcp_aceita(listener.valor)
+    veja conexao e Falha ::
+      diga("seven web serve conexao falhou: " + conexao.valor.mensagem)
+    outro ::
+      guarda req := http_ler_requisicao(conexao.valor)
+      guarda res := resposta_estatica(raiz, req.caminho)
+      http_escreve_resposta(conexao.valor, res)
+      tcp_fecha(conexao.valor)
+    fecha
+  fecha
+
+  devolve 0
+fecha
+
+campo resposta_estatica(raiz: Texto, caminho: Texto) -> Resposta toca disco ::
+  guarda arquivo := sys_caminho_seguro(raiz, caminho)
+  guarda conteudo := arquivo_bytes(arquivo)
+
+  veja conteudo e Falha ::
+    devolve nao_encontrado()
+  fecha
+
+  devolve Resposta {
+    status: 200,
+    cabecalhos: lista_de(cabecalho("content-type", sys_mime_por_caminho(arquivo))),
+    corpo: conteudo.valor
+  }
+fecha
+
+campo arg_ou(argumentos: Lista<Texto>, indice: U64, padrao: Texto) -> Texto ::
+  veja lista_tamanho(argumentos) <= indice ::
+    devolve padrao
+  fecha
+
+  devolve lista_pega(argumentos, indice)
+fecha

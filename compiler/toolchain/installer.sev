@@ -34,6 +34,8 @@ molde PlanoInstalacao ::
   launcher_bytecode: Texto
   webbuild_bytecode_origem: Texto
   webbuild_bytecode: Texto
+  webserve_bytecode_origem: Texto
+  webserve_bytecode: Texto
   icone_ico_origem: Texto
   icone_ico: Texto
   icone_svg_origem: Texto
@@ -55,6 +57,7 @@ molde InstalacaoSeven ::
   host_bytecode: Texto
   launcher_bytecode: Texto
   webbuild_bytecode: Texto
+  webserve_bytecode: Texto
   stdlib: Texto
   cache: Texto
   icone: Texto
@@ -108,6 +111,8 @@ campo plano_instalacao_windows(pacote_raiz: Texto, prefixo: Texto) -> PlanoInsta
     launcher_bytecode: destino + "/bin/seven.launcher.svbc",
     webbuild_bytecode_origem: payload + "/seven.webbuild.svbc",
     webbuild_bytecode: destino + "/bin/seven.webbuild.svbc",
+    webserve_bytecode_origem: payload + "/seven.webserve.svbc",
+    webserve_bytecode: destino + "/bin/seven.webserve.svbc",
     icone_ico_origem: payload + "/seven.ico",
     icone_ico: destino + "/share/seven.ico",
     icone_svg_origem: payload + "/seven-mark.svg",
@@ -146,6 +151,8 @@ campo plano_instalacao_linux(pacote_raiz: Texto, prefixo: Texto) -> PlanoInstala
     launcher_bytecode: destino + "/bin/seven.launcher.svbc",
     webbuild_bytecode_origem: payload + "/seven.webbuild.svbc",
     webbuild_bytecode: destino + "/bin/seven.webbuild.svbc",
+    webserve_bytecode_origem: payload + "/seven.webserve.svbc",
+    webserve_bytecode: destino + "/bin/seven.webserve.svbc",
     icone_ico_origem: payload + "/seven.ico",
     icone_ico: destino + "/share/seven.ico",
     icone_svg_origem: payload + "/seven-mark.svg",
@@ -204,6 +211,7 @@ campo valida_payload(plano: PlanoInstalacao) -> Resultado<Nada, Falha> toca disc
   lista_coloca(obrigatorios, plano.host_bytecode_origem)
   lista_coloca(obrigatorios, plano.launcher_bytecode_origem)
   lista_coloca(obrigatorios, plano.webbuild_bytecode_origem)
+  lista_coloca(obrigatorios, plano.webserve_bytecode_origem)
   lista_coloca(obrigatorios, plano.icone_ico_origem)
   lista_coloca(obrigatorios, plano.icone_svg_origem)
   lista_coloca(obrigatorios, plano.payload + "/std")
@@ -237,12 +245,14 @@ campo instala_layout(plano: PlanoInstalacao) -> Resultado<Nada, Falha> toca disc
   veja c4 e Falha :: devolve c4 fecha
   guarda c5 := instalador_arquivo_copia(plano.webbuild_bytecode_origem, plano.webbuild_bytecode)
   veja c5 e Falha :: devolve c5 fecha
-  guarda c6 := instalador_arquivo_copia(plano.icone_ico_origem, plano.icone_ico)
+  guarda c6 := instalador_arquivo_copia(plano.webserve_bytecode_origem, plano.webserve_bytecode)
   veja c6 e Falha :: devolve c6 fecha
-  guarda c7 := instalador_arquivo_copia(plano.icone_svg_origem, plano.share_dir + "/seven-mark.svg")
+  guarda c7 := instalador_arquivo_copia(plano.icone_ico_origem, plano.icone_ico)
   veja c7 e Falha :: devolve c7 fecha
-  guarda c8 := diretorio_copia(plano.payload + "/std", plano.stdlib)
+  guarda c8 := instalador_arquivo_copia(plano.icone_svg_origem, plano.share_dir + "/seven-mark.svg")
   veja c8 e Falha :: devolve c8 fecha
+  guarda c9 := diretorio_copia(plano.payload + "/std", plano.stdlib)
+  veja c9 e Falha :: devolve c9 fecha
 
   guarda exec := arquivo_permissao_executavel(plano.binario)
   veja exec e Falha :: devolve exec fecha
@@ -365,6 +375,7 @@ campo instalacao_de_plano(plano: PlanoInstalacao) -> InstalacaoSeven ::
     host_bytecode: plano.host_bytecode,
     launcher_bytecode: plano.launcher_bytecode,
     webbuild_bytecode: plano.webbuild_bytecode,
+    webserve_bytecode: plano.webserve_bytecode,
     stdlib: plano.stdlib,
     cache: plano.cache,
     icone: plano.icone_ico
@@ -403,6 +414,7 @@ campo manifesto_instalacao(plano: PlanoInstalacao) -> Texto ::
     "host_bytecode " + plano.host_bytecode + "\n" +
     "launcher_bytecode " + plano.launcher_bytecode + "\n" +
     "webbuild_bytecode " + plano.webbuild_bytecode + "\n" +
+    "webserve_bytecode " + plano.webserve_bytecode + "\n" +
     "stdlib " + plano.stdlib + "\n" +
     "cache " + plano.cache + "\n" +
     "icone " + plano.icone_ico + "\n"

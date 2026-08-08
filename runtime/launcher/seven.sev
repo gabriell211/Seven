@@ -10,6 +10,7 @@ campo seven_launcher(argumentos: Lista<Texto>) -> Num toca disco, terminal, rede
     diga "  seven doctor"
     diga "  seven build <pacote.pkg> <saida.svbc>"
     diga "  seven web build <entrada.sev> <saida-dir>"
+    diga "  seven web serve <diretorio> <porta>"
     devolve 0
   fecha
 
@@ -38,6 +39,20 @@ campo seven_launcher(argumentos: Lista<Texto>) -> Num toca disco, terminal, rede
     lista_coloca(args_web, arg_ou(argumentos, 2, "examples/web_dev.sev"))
     lista_coloca(args_web, arg_ou(argumentos, 3, "build/web"))
     devolve roda_svbc_com_args("build/seven.webbuild.svbc", args_web)
+  fecha
+
+  veja comando == "web" e lista_tamanho(argumentos) > 1 e lista_pega(argumentos, 1) == "serve" ::
+    solta args_serve := lista<Texto>()
+    lista_coloca(args_serve, arg_ou(argumentos, 2, "build/web"))
+    lista_coloca(args_serve, arg_ou(argumentos, 3, "7070"))
+    devolve roda_svbc_com_args("build/seven.webserve.svbc", args_serve)
+  fecha
+
+  veja comando == "serve" ::
+    solta args_serve := lista<Texto>()
+    lista_coloca(args_serve, arg_ou(argumentos, 1, "build/web"))
+    lista_coloca(args_serve, arg_ou(argumentos, 2, "7070"))
+    devolve roda_svbc_com_args("build/seven.webserve.svbc", args_serve)
   fecha
 
   diga "comando ainda nao conectado no launcher nativo: " + comando

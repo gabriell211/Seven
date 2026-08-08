@@ -280,6 +280,24 @@ static const char *default_webbuild_image(const char *executable_path) {
   return repo_webbuild;
 }
 
+static const char *default_webserve_image(const char *executable_path) {
+  static const char *repo_webserve = "build/seven.webserve.svbc";
+  static const char *local_webserve = "seven.webserve.svbc";
+  static const char *bin_webserve = "bin/seven.webserve.svbc";
+  static char *sibling_webserve = NULL;
+
+  if (path_exists_c(repo_webserve)) return repo_webserve;
+  if (path_exists_c(local_webserve)) return local_webserve;
+  if (path_exists_c(bin_webserve)) return bin_webserve;
+
+  char *dir = dirname_dup_c(executable_path);
+  sibling_webserve = path_join_c(dir, "seven.webserve.svbc");
+  free(dir);
+  if (path_exists_c(sibling_webserve)) return sibling_webserve;
+
+  return repo_webserve;
+}
+
 int main(int argc, char **argv) {
   const char *image_path = NULL;
   int program_argc = 0;
@@ -297,6 +315,14 @@ int main(int argc, char **argv) {
     image_path = default_webbuild_image(argv[0]);
     program_argc = argc - 3;
     program_argv = argv + 3;
+  } else if (argc >= 3 && strcmp(argv[1], "web") == 0 && strcmp(argv[2], "serve") == 0) {
+    image_path = default_webserve_image(argv[0]);
+    program_argc = argc - 3;
+    program_argv = argv + 3;
+  } else if (argc >= 2 && strcmp(argv[1], "serve") == 0) {
+    image_path = default_webserve_image(argv[0]);
+    program_argc = argc - 2;
+    program_argv = argv + 2;
   } else {
     image_path = default_launcher_image(argv[0]);
     program_argc = argc - 1;

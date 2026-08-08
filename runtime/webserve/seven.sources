@@ -1,0 +1,11 @@
+std/base/lista.sev
+std/base/resultado.sev
+std/base/talvez.sev
+std/base/convert.sev
+std/base/texto.sev
+std/mem/bytes.sev
+std/fs/file.sev
+std/net/tcp.sev
+std/web/http.sev
+std/io/console.sev
+runtime/webserve/seven.sev

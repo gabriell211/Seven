@@ -61,6 +61,7 @@ static String str_n(const char *p,size_t n){ String s; s.data=(char*)xmalloc(n+1
 static String str_c(const char *p){ return str_n(p,strlen(p)); }
 static int str_eq(String a,String b){ return a.len==b.len && memcmp(a.data,b.data,a.len)==0; }
 static int str_eq_c(String a,const char *b){ size_t n=strlen(b); return a.len==n && memcmp(a.data,b,n)==0; }
+static int str_has_suffix_c(String a,const char *b){ size_t n=strlen(b); return a.len>=n && memcmp(a.data+a.len-n,b,n)==0; }
 static String str_cat(String a,String b){ String s; s.len=a.len+b.len; s.data=(char*)xmalloc(s.len+1); memcpy(s.data,a.data,a.len); memcpy(s.data+a.len,b.data,b.len); s.data[s.len]=0; return s; }
 static Value v_null(void){ Value v={0}; v.tag=V_NULL; return v; }
 static Value v_int(int64_t x){ Value v={0}; v.tag=V_INT; v.as.i=x; return v; }

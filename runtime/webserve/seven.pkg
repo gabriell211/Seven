@@ -1,0 +1,6 @@
+pacote seven-webserve
+versao 0.2.0
+criador Gabriel Barcelos
+entrada seven.runtime.webserve.inicio
+alvo svbc
+indice runtime/webserve/seven.sources

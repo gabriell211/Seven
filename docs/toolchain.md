@@ -59,8 +59,9 @@ seven pkg remove
 seven pkg verify
 seven pkg install
 seven target list
-seven web build
-seven serve
+seven web build <entrada.sev> [diretorio]
+seven web serve <diretorio> [porta]
+seven serve <diretorio> [porta]
 seven release
 seven verify foundation
 seven verify bootstrap

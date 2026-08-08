@@ -266,14 +266,46 @@ jobs:
         run: |
           set -euo pipefail
           build/genesis-host build/seven.stage2.svbc runtime/webbuild/seven.pkg build/seven.webbuild.svbc
+          build/genesis-host build/seven.stage2.svbc runtime/webserve/seven.pkg build/seven.webserve.svbc
           test -s build/seven.webbuild.svbc
+          test -s build/seven.webserve.svbc
           test "$(od -An -tx1 -N4 build/seven.webbuild.svbc | tr -d ' \n')" = '53564243'
+          test "$(od -An -tx1 -N4 build/seven.webserve.svbc | tr -d ' \n')" = '53564243'
 
           build/genesis-host web build examples/web_dev.sev build/web-stage2-native
           test -s build/web-stage2-native/app.wasm
           test -s build/web-stage2-native/seven.web.json
           grep -q '"target": "webassembly"' build/web-stage2-native/seven.web.json
           test "$(od -An -tx1 -N4 build/web-stage2-native/app.wasm | tr -d ' \n')" = '0061736d'
+
+          build/genesis-host web serve build/web-stage2-native 18081 > build/web-stage2-serve.stdout 2> build/web-stage2-serve.stderr &
+          serve_pid=$!
+          cleanup_serve() {
+            if kill -0 "$serve_pid" 2>/dev/null; then
+              kill "$serve_pid" 2>/dev/null || true
+              wait "$serve_pid" 2>/dev/null || true
+            fi
+          }
+          trap cleanup_serve EXIT
+
+          for tentativa in $(seq 1 40); do
+            if curl --fail --silent --show-error --max-time 2 \
+              --dump-header build/web-stage2-serve.headers \
+              --output build/web-stage2-serve.index \
+              http://127.0.0.1:18081/; then
+              break
+            fi
+            if ! kill -0 "$serve_pid" 2>/dev/null; then
+              cat build/web-stage2-serve.stdout
+              cat build/web-stage2-serve.stderr >&2
+              exit 1
+            fi
+            sleep 0.25
+          done
+
+          grep -q 'HTTP/1.1 200 OK' build/web-stage2-serve.headers
+          grep -qi 'content-type: text/html; charset=utf-8' build/web-stage2-serve.headers
+          grep -q 'seven-loader.mjs' build/web-stage2-serve.index
 
       - name: Record Stage 1 provenance
         shell: bash
@@ -320,7 +352,10 @@ jobs:
             build/api-server.stage2.svbc
             build/api-server.stage2.response
             build/seven.webbuild.svbc
+            build/seven.webserve.svbc
             build/web-stage2-native/seven.web.json
             build/web-stage2-native/app.wasm
+            build/web-stage2-serve.headers
+            build/web-stage2-serve.index
             build/stage1.provenance
           if-no-files-found: error
