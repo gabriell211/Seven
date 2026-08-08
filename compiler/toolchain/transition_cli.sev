@@ -1,0 +1,236 @@
+modulo seven.compiler.toolchain.transition_cli
+
+usa seven.compiler.source
+usa seven.compiler.lexer
+usa seven.compiler.parser
+usa seven.compiler.semantic
+usa seven.compiler.ir
+usa seven.compiler.web_ir
+usa seven.compiler.bytecode
+usa seven.compiler.wasm
+usa seven.compiler.driver
+usa seven.compiler.diagnostic
+usa seven.compiler.package
+usa std.base.lista
+usa std.base.resultado
+usa std.fs.file
+usa std.io.console
+
+const SevenTransicaoVersao: Texto := "Seven 0.2.0"
+
+campo inicio(argumentos: Lista<Texto>) -> Num toca terminal, disco, ambiente ::
+  veja lista_tamanho(argumentos) == 0 ::
+    mostra_ajuda_transicao()
+    devolve 0
+  fecha
+
+  guarda primeiro := lista_pega(argumentos, 0)
+
+  veja primeiro == "--version" ou primeiro == "version" ::
+    diga SevenTransicaoVersao
+    devolve 0
+  fecha
+
+  veja primeiro == "doctor" ::
+    diga("Seven transition host: ok")
+    diga("compiler: source-backed")
+    diga("webassembly: enabled")
+    devolve 0
+  fecha
+
+  veja primeiro == "check" ::
+    veja lista_tamanho(argumentos) < 2 ::
+      diga("uso: seven check <arquivo.sev>")
+      devolve 2
+    fecha
+    devolve transicao_check(lista_pega(argumentos, 1))
+  fecha
+
+  veja primeiro == "build" ::
+    veja lista_tamanho(argumentos) < 2 ::
+      diga("uso: seven build <arquivo.sev> [saida.svbc]")
+      devolve 2
+    fecha
+    solta saida := "build/app.svbc"
+    veja lista_tamanho(argumentos) >= 3 ::
+      vira saida := lista_pega(argumentos, 2)
+    fecha
+    devolve transicao_build(lista_pega(argumentos, 1), saida)
+  fecha
+
+  veja primeiro == "run" ::
+    veja lista_tamanho(argumentos) < 2 ::
+      diga("uso: seven run <arquivo.sev>")
+      devolve 2
+    fecha
+    guarda saida_run := "build/seven-run.svbc"
+    guarda compilado := transicao_build(lista_pega(argumentos, 1), saida_run)
+    veja compilado != 0 :: devolve compilado fecha
+    devolve sys_svbc_run(saida_run)
+  fecha
+
+  veja primeiro == "web" ::
+    veja lista_tamanho(argumentos) < 3 ou lista_pega(argumentos, 1) != "build" ::
+      diga("uso: seven web build <arquivo.sev> [diretorio]")
+      devolve 2
+    fecha
+    solta saida_web := "build/web"
+    veja lista_tamanho(argumentos) >= 4 ::
+      vira saida_web := lista_pega(argumentos, 3)
+    fecha
+    devolve transicao_web_build(lista_pega(argumentos, 2), saida_web)
+  fecha
+
+  veja primeiro == "--help" ou primeiro == "help" ::
+    mostra_ajuda_transicao()
+    devolve 0
+  fecha
+
+  diga("comando Seven desconhecido: " + primeiro)
+  devolve 2
+fecha
+
+campo mostra_ajuda_transicao() -> Nada toca terminal ::
+  diga "Seven 0.2.0"
+  diga "uso: seven <comando>"
+  diga "comandos: check, build, run, web build, doctor"
+fecha
+
+campo pacote_fonte_transicao(entrada: Texto, alvo: Texto) -> Pacote ::
+  devolve pacote_parse(
+    "pacote seven-transition-app\n" +
+    "versao 0.2.0\n" +
+    "criador Gabriel Barcelos\n" +
+    "entrada app.inicio\n" +
+    "alvo " + alvo + "\n" +
+    "fonte " + entrada + "\n"
+  )
+fecha
+
+campo transicao_check(entrada: Texto) -> Num toca terminal, disco ::
+  guarda pacote := pacote_fonte_transicao(entrada, "svbc")
+  guarda fontes := fonte_carrega_pacote(pacote)
+  guarda tokens := varre_unidade(fontes)
+  guarda sintaxe := monta_unidade(tokens)
+
+  veja diagnosticos_tem_erros(sintaxe.diagnosticos) ::
+    mostra_diagnosticos(sintaxe.diagnosticos)
+    devolve 1
+  fecha
+
+  guarda semantica := mede(sintaxe.programas, pacote)
+  guarda diagnosticos := junta_diagnosticos(sintaxe.diagnosticos, semantica)
+  veja diagnosticos_tem_erros(diagnosticos) ::
+    mostra_diagnosticos(diagnosticos)
+    devolve 1
+  fecha
+
+  devolve 0
+fecha
+
+campo transicao_build(entrada: Texto, saida: Texto) -> Num toca terminal, disco ::
+  guarda pacote := pacote_fonte_transicao(entrada, "svbc")
+  guarda fontes := fonte_carrega_pacote(pacote)
+  guarda tokens := varre_unidade(fontes)
+  guarda sintaxe := monta_unidade(tokens)
+
+  veja diagnosticos_tem_erros(sintaxe.diagnosticos) ::
+    mostra_diagnosticos(sintaxe.diagnosticos)
+    devolve 1
+  fecha
+
+  guarda semantica := mede(sintaxe.programas, pacote)
+  guarda diagnosticos := junta_diagnosticos(sintaxe.diagnosticos, semantica)
+  veja diagnosticos_tem_erros(diagnosticos) ::
+    mostra_diagnosticos(diagnosticos)
+    devolve 1
+  fecha
+
+  guarda meio := baixa_ir(sintaxe.programas, semantica.tipos, semantica.efeitos)
+  guarda imagem := emite_svbc(otimiza_ir(meio, "seguro"))
+  guarda gravacao := arquivo_salva_bytes(saida, imagem)
+  veja gravacao e Falha ::
+    diga(gravacao.valor.codigo + ": " + gravacao.valor.mensagem)
+    devolve 1
+  fecha
+
+  devolve 0
+fecha
+
+campo transicao_web_build(entrada: Texto, saida: Texto) -> Num toca terminal, disco ::
+  guarda pacote := pacote_parse(
+    "pacote seven-web-transition\n" +
+    "versao 0.2.0\n" +
+    "criador Gabriel Barcelos\n" +
+    "entrada " + entrada + "\n" +
+    "alvo webassembly\n" +
+    "fonte std/frontend/intrinsics.sev\n" +
+    "fonte " + entrada + "\n"
+  )
+  guarda fontes := fonte_carrega_pacote(pacote)
+  guarda tokens := varre_unidade(fontes)
+  guarda sintaxe := monta_unidade(tokens)
+
+  veja diagnosticos_tem_erros(sintaxe.diagnosticos) ::
+    mostra_diagnosticos(sintaxe.diagnosticos)
+    devolve 1
+  fecha
+
+  guarda semantica := mede(sintaxe.programas, pacote)
+  guarda diagnosticos := junta_diagnosticos(sintaxe.diagnosticos, semantica)
+  veja diagnosticos_tem_erros(diagnosticos) ::
+    mostra_diagnosticos(diagnosticos)
+    devolve 1
+  fecha
+
+  guarda meio := baixa_ir(sintaxe.programas, semantica.tipos, semantica.efeitos)
+  guarda otimizado := prepara_ir_web(otimiza_ir(meio, "seguro"))
+  guarda wasm := emite_wasm(otimizado)
+  veja wasm e Falha ::
+    diga(wasm.valor.codigo + ": " + wasm.valor.mensagem)
+    devolve 1
+  fecha
+
+  guarda cria := sys_diretorio_cria(saida)
+  veja cria e Falha ::
+    diga(cria.valor.codigo + ": " + cria.valor.mensagem)
+    devolve 1
+  fecha
+
+  guarda gravacao := arquivo_salva_bytes(saida + "/app.wasm", wasm.valor)
+  veja gravacao e Falha ::
+    diga(gravacao.valor.codigo + ": " + gravacao.valor.mensagem)
+    devolve 1
+  fecha
+
+  guarda html := arquivo_salva_texto(saida + "/index.html", transicao_web_index())
+  veja html e Falha :: devolve 1 fecha
+  guarda loader := arquivo_salva_texto(saida + "/seven-loader.mjs", transicao_web_loader())
+  veja loader e Falha :: devolve 1 fecha
+  guarda manifesto := arquivo_salva_texto(saida + "/seven.web.json", transicao_web_manifesto(entrada))
+  veja manifesto e Falha :: devolve 1 fecha
+
+  diga("web wasm: " + saida + "/app.wasm")
+  devolve 0
+fecha
+
+campo transicao_web_index() -> Texto ::
+  devolve "<!doctype html>\n<html lang=\"pt-BR\">\n<head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Seven Web</title></head>\n<body><main id=\"seven-app\"></main><pre id=\"seven-output\" hidden></pre><script type=\"module\" src=\"./seven-loader.mjs\"></script></body>\n</html>\n"
+fecha
+
+campo transicao_web_manifesto(entrada: Texto) -> Texto ::
+  devolve "{\n" +
+    "  \"format\": \"seven-web-2\",\n" +
+    "  \"language\": \"Seven\",\n" +
+    "  \"source\": \"" + entrada + "\",\n" +
+    "  \"target\": \"webassembly\",\n" +
+    "  \"executable\": \"app.wasm\",\n" +
+    "  \"entryExport\": \"seven_start\",\n" +
+    "  \"handlerPrefix\": \"seven_\",\n" +
+    "  \"hostAbi\": \"seven-web-2\"\n" +
+    "}\n"
+fecha
+
+campo transicao_web_loader() -> Texto ::
+  devolve "const decoder=new TextDecoder();const encoder=new TextEncoder();const INBOX=32768;let instance,memory,lastResponse='',lastStatus=0,lastEventValue='';const view=()=>new DataView(memory.buffer);const decode=d=>{if(!d)return '';const v=view(),p=v.getUint32(d,true),n=v.getUint32(d+4,true);return decoder.decode(new Uint8Array(memory.buffer,p,n));};const write=value=>{const b=encoder.encode(String(value??'')),v=view();v.setUint32(INBOX,INBOX+8,true);v.setUint32(INBOX+4,b.length,true);new Uint8Array(memory.buffer,INBOX+8,b.length).set(b);return INBOX;};const invoke=name=>instance.exports['seven_'+name]();const seven={terminal_diga:t=>{console.log(decode(t));return 0;},frontend_monta:(s,h)=>{const e=document.querySelector(decode(s));if(e)e.innerHTML=decode(h);return 0;},frontend_texto:(s,t)=>{const e=document.querySelector(decode(s));if(e)e.textContent=decode(t);return 0;},frontend_atributo:(s,n,v)=>{const e=document.querySelector(decode(s));if(e)e.setAttribute(decode(n),decode(v));return 0;},frontend_classe_adiciona:(s,c)=>{document.querySelectorAll(decode(s)).forEach(e=>e.classList.add(decode(c)));return 0;},frontend_classe_remove:(s,c)=>{document.querySelectorAll(decode(s)).forEach(e=>e.classList.remove(decode(c)));return 0;},frontend_escuta:(s,e,c)=>{const ev=decode(e),campo=decode(c);document.querySelectorAll(decode(s)).forEach(x=>x.addEventListener(ev,o=>{lastEventValue=o?.target?.value??o?.target?.textContent??'';write(lastEventValue);invoke(campo);}));return 0;},frontend_navega:u=>{location.assign(decode(u));return 0;},frontend_injeta_css:c=>{const e=document.createElement('style');e.textContent=decode(c);document.head.appendChild(e);return 0;},frontend_fetch_texto:(u,c)=>{const campo=decode(c);fetch(decode(u)).then(async r=>{lastStatus=r.status;lastResponse=await r.text();write(lastResponse);invoke(campo);}).catch(e=>{lastStatus=0;lastResponse=String(e);write(lastResponse);invoke(campo);});return 0;},frontend_resposta_texto:()=>write(lastResponse),frontend_resposta_status:()=>lastStatus|0,frontend_evento_valor:()=>write(lastEventValue),frontend_armazena:(k,v)=>{localStorage.setItem(decode(k),decode(v));return 0;},frontend_carrega:k=>write(localStorage.getItem(decode(k))??''),frontend_remove:k=>{localStorage.removeItem(decode(k));return 0;}};const r=await fetch('./app.wasm',{cache:'no-store'});if(!r.ok)throw new Error('Falha ao carregar app.wasm: '+r.status);const m=await WebAssembly.instantiate(await r.arrayBuffer(),{seven});instance=m.instance;memory=instance.exports.memory;const codigo=instance.exports.seven_start();globalThis.SevenWeb=Object.freeze({instance,codigo,invoke});\n"
+fecha
