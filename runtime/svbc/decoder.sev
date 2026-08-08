@@ -109,13 +109,21 @@ campo decodifica_constantes(c: CursorBytes, img: ImagemSvbc) -> Nada ::
   gira indice < total ::
     guarda tag := le_byte(c)
 
-    veja tag == 3 ::
-      lista_coloca(img.constantes, VmNum(le_u64(c)))
+    veja tag == 0 ::
+      lista_coloca(img.constantes, VmNada)
     outro ::
-      veja tag == 4 ::
-        lista_coloca(img.constantes, VmTexto(le_texto(c)))
+      veja tag == 2 ::
+        lista_coloca(img.constantes, VmBit(le_byte(c) != 0))
       outro ::
-        lista_coloca(img.constantes, VmNada)
+        veja tag == 3 ::
+          lista_coloca(img.constantes, VmNum(le_u64(c)))
+        outro ::
+          veja tag == 4 ::
+            lista_coloca(img.constantes, VmTexto(le_texto(c)))
+          outro ::
+            lista_coloca(img.constantes, VmNada)
+          fecha
+        fecha
       fecha
     fecha
 

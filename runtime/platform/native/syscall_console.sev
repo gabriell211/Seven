@@ -13,7 +13,7 @@ campo x64_syscall_console_emite(
   nome: Texto,
   aridade: U32
 ) -> Bit ::
-  veja nome == "terminal_diga" e aridade == 1 ::
+  veja (nome == "terminal_diga" ou nome == "diga" ou nome == "terminal_escreve" ou nome == "sys_terminal_escreve") e aridade == 1 ::
     veja alvo.formato == "elf" ::
       x64_console_linux_diga(codigo)
     outro ::

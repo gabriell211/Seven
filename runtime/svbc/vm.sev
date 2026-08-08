@@ -91,7 +91,7 @@ campo vm_valida_imagem(imagem: ImagemSvbc) -> Resultado<Nada, Falha> ::
     devolve Falha(nova_falha("SVBC-CODIGO", "imagem nao possui instrucoes"))
   fecha
   guarda indice := campo_indice_opcional(imagem, "inicio")
-  veja indice e Nada ::
+  veja indice e Vazio ::
     devolve Falha(nova_falha("SVBC-ENTRADA", "campo inicio ausente"))
   fecha
   devolve Valor(nulo)
@@ -487,7 +487,7 @@ campo campo_indice_opcional(imagem: ImagemSvbc, nome: Texto) -> Talvez<U32> ::
     fecha
     vira indice := indice + 1
   fecha
-  devolve Nada
+  devolve Vazio
 fecha
 
 campo valor_para_num(valor: ValorVm) -> Num ::

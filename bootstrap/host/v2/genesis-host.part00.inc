@@ -13,14 +13,19 @@
 #define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <windows.h>
+#include <direct.h>
+#include <sys/stat.h>
 #pragma comment(lib, "Ws2_32.lib")
 #define PATH_SEP '\\'
 typedef SOCKET SvSocket;
 #define SV_INVALID_SOCKET INVALID_SOCKET
 #else
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <dirent.h>
 #include <unistd.h>
 #define PATH_SEP '/'
 typedef int SvSocket;

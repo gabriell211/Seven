@@ -46,6 +46,10 @@ campo instalador_inicio(argumentos: Lista<Texto>) -> Num toca disco, ambiente, t
   devolve 0
 fecha
 
+campo inicio() -> Num toca disco, ambiente, terminal ::
+  devolve instalador_inicio(sys_args())
+fecha
+
 campo argumento_existe(argumentos: Lista<Texto>, procurado: Texto) -> Bit ::
   para cada argumento em argumentos ::
     veja argumento == procurado ::

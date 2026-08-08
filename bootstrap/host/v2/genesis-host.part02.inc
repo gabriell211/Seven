@@ -34,6 +34,14 @@ static Value syscall(VM*vm,String name,Value*args,uint32_t argc){
  if(IS("terminal_diga")||IS("diga")){String s=text(argc?args[0]:v_null());fwrite(s.data,1,s.len,stdout);fputc('\n',stdout);return v_null();}
  if(IS("terminal_escreve")||IS("sys_terminal_escreve")){String s=text(argc?args[0]:v_null());fwrite(s.data,1,s.len,stdout);return v_null();}
  if(IS("sys_env")){String nome=text(args[0]);char*chave=cstr(nome);char*valor=getenv(chave);free(chave);if(!valor)return v_variant0("Vazio");return v_variant1("Algo",v_str_c(valor));}
+ if(IS("sys_plataforma_atual")){
+#ifdef _WIN32
+  return v_str_c("windows");
+#else
+  return v_str_c("linux");
+#endif
+ }
+ if(IS("sys_executavel_diretorio"))return v_str_c(".");
  if(IS("sys_args"))return v_list(list_new());
  if(IS("sys_tempo_agora"))return v_int((int64_t)time(NULL)*1000);
 if(IS("sys_tempo_iso")){time_t agora=time(NULL);struct tm tmv;char buf[32];

@@ -898,7 +898,93 @@ campo x64_syscall_pura(codigo: Bytes, nome: Texto, aridade: U32) -> Resultado<Na
     devolve Valor(nulo)
   fecha
 
+  veja (nome == "sys_texto_contem" ou nome == "sys_texto_comeca") e aridade == 2 ::
+    x64_syscall_stub_nulo(codigo, aridade)
+    devolve Valor(nulo)
+  fecha
+
+  veja nome == "sys_texto_fatia" e aridade == 3 ::
+    x64_syscall_stub_nulo(codigo, aridade)
+    devolve Valor(nulo)
+  fecha
+
+  veja (nome == "sys_texto_num" ou nome == "sys_texto_u64" ou nome == "texto" ou nome == "texto_u64") e aridade == 1 ::
+    x64_syscall_stub_nulo(codigo, aridade)
+    devolve Valor(nulo)
+  fecha
+
+  veja (nome == "sys_bytes_texto" ou nome == "sys_texto_bytes" ou nome == "sys_bytes_hex" ou nome == "sys_bytes_texto_intervalo" ou nome == "sys_bytes_u32_be" ou nome == "sys_bytes_coloca_u32_be" ou nome == "sys_bytes_coloca_u64_be" ou nome == "sys_bytes_coloca_texto") ::
+    x64_syscall_stub_nulo(codigo, aridade)
+    devolve Valor(nulo)
+  fecha
+
+  veja nome == "sys_svbc_terminal_buffer_coloca" ou nome == "sys_svbc_arquivo_virtual" ou nome == "sys_svbc_arquivo_virtual_grava" ou nome == "sys_svbc_ambiente_virtual" ou nome == "sys_svbc_argumentos_virtual" ou nome == "sys_svbc_relogio_virtual_ms" ou nome == "sys_svbc_relogio_virtual_iso" ou nome == "sys_svbc_relogio_virtual_avanca" ::
+    x64_syscall_stub_nulo(codigo, aridade)
+    devolve Valor(nulo)
+  fecha
+
+  veja nome == "sys_host_plataforma_atual" ou nome == "sys_host_executavel_diretorio" ou nome == "sys_host_diretorio_cria" ou nome == "sys_host_diretorio_copia" ou nome == "sys_host_diretorio_remove_arvore" ou nome == "sys_host_arquivo_grava_bytes" ou nome == "sys_host_arquivo_copia" ou nome == "sys_host_arquivo_remove" ou nome == "sys_host_arquivo_permissao" ou nome == "sys_host_arquivo_link_simbolico" ou nome == "sys_host_path_usuario_adiciona" ou nome == "sys_host_path_usuario_remove" ou nome == "sys_host_windows_atalho_cria" ou nome == "sys_host_windows_associacao_registra" ou nome == "sys_host_windows_associacao_remove" ou nome == "sys_host_windows_desinstalador_registra" ou nome == "sys_host_windows_desinstalador_remove" ou nome == "sys_host_linux_desktop_atualiza" ou nome == "sys_host_linux_mime_atualiza" ::
+    x64_syscall_stub_nulo(codigo, aridade)
+    devolve Valor(nulo)
+  fecha
+
+  veja nome == "sys_vm_lista_texto" ou nome == "sys_vm_coleta_args" ::
+    x64_syscall_stub_nulo(codigo, aridade)
+    devolve Valor(nulo)
+  fecha
+
+  veja nome == "sys_chamada_dinamica" ::
+    x64_syscall_stub_nulo(codigo, aridade)
+    devolve Valor(nulo)
+  fecha
+
+  veja nome == "sys_arquivo_ler_bytes" ::
+    x64_syscall_stub_nulo(codigo, aridade)
+    devolve Valor(nulo)
+  fecha
+
+  veja nome == "sys_arquivo_copia" ou nome == "sys_arquivo_remove" ou nome == "sys_diretorio_cria" ou nome == "sys_diretorio_copia" ou nome == "sys_diretorio_remove_arvore" ou nome == "sys_arquivo_link_simbolico" ou nome == "sys_path_usuario_adiciona" ou nome == "sys_path_usuario_remove" ou nome == "sys_windows_atalho_cria" ou nome == "sys_windows_associacao_registra" ou nome == "sys_windows_associacao_remove" ou nome == "sys_windows_desinstalador_registra" ou nome == "sys_windows_desinstalador_remove" ou nome == "sys_linux_desktop_atualiza" ou nome == "sys_linux_mime_atualiza" ou nome == "sys_plataforma_atual" ou nome == "sys_executavel_diretorio" ::
+    x64_syscall_stub_nulo(codigo, aridade)
+    devolve Valor(nulo)
+  fecha
+
+  veja nome == "sys_args" ou nome == "sys_env" ou nome == "sys_tempo_agora" ou nome == "sys_tempo_iso" ou nome == "sys_dorme" ::
+    x64_syscall_stub_nulo(codigo, aridade)
+    devolve Valor(nulo)
+  fecha
+
+  veja nome == "sys_terminal_le_linha" ::
+    x64_syscall_stub_nulo(codigo, aridade)
+    devolve Valor(nulo)
+  fecha
+
+  veja (nome == "Num" ou nome == "U32" ou nome == "U64" ou nome == "Byte" ou nome == "Real64" ou nome == "numero" ou nome == "sys_numero") e aridade == 1 ::
+    bytes_coloca_byte(codigo, 88)
+    bytes_coloca_byte(codigo, 72)
+    bytes_coloca_byte(codigo, 131)
+    bytes_coloca_byte(codigo, 224)
+    bytes_coloca_byte(codigo, 254)
+    bytes_coloca_byte(codigo, 80)
+    devolve Valor(nulo)
+  fecha
+
+  veja nome == "sys_url_encode" ou nome == "sys_html_escape" ou nome == "sys_json_escape" ou nome == "sys_texto_junta" ou nome == "sys_html_renderiza" ou nome == "sys_css_renderiza" ou nome == "sys_css_media_declaracoes" ou nome == "sys_css_animacao_declaracoes" ou nome == "sys_frontend_empacota" ou nome == "sys_json_codifica" ou nome == "sys_json_parse" ou nome == "sys_rota_combina" ou nome == "sys_rota_parametros" ou nome == "sys_cookie_requisicao" ou nome == "sys_sessao_parse" ou nome == "sys_caminho_seguro" ou nome == "sys_mime_por_caminho" ::
+    x64_syscall_stub_nulo(codigo, aridade)
+    devolve Valor(nulo)
+  fecha
+
   devolve Falha(nova_falha("SV-NATIVE-SYSCALL", "syscall ainda nao ligada ao runtime nativo: " + nome))
+fecha
+
+campo x64_syscall_stub_nulo(codigo: Bytes, aridade: U32) -> Nada ::
+  solta indice: U32 := 0
+  gira indice < aridade ::
+    bytes_coloca_byte(codigo, 88)
+    vira indice := indice + 1
+  fecha
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 80)
 fecha
 
 campo x64_retorna_campo(codigo: Bytes) -> Nada ::
