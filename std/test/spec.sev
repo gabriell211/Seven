@@ -28,6 +28,6 @@ fecha
 
 campo espera(condicao: Bit, mensagem: Texto) -> Nada ::
   veja nao condicao ::
-    falha "SV-TEST-FALHOU" mensagem
+    falha "SV-TEST-FALHOU" "expectativa de teste nao atendida"
   fecha
 fecha
