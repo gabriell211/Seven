@@ -16,6 +16,13 @@
 #endif
 
 static int vm_run(Image*im,int argc,char**argv);
+static char transition_release_root[4096]={0};
+
+static int transition_root_path(char*destino,size_t capacidade,const char*relativo){
+ if(!transition_release_root[0])return 0;
+ int written=snprintf(destino,capacidade,"%s%c%s",transition_release_root,PATH_SEP,relativo);
+ return written>=0&&(size_t)written<capacidade;
+}
 
 static Value syscall(VM*vm,String name,Value*args,uint32_t argc){
 #define IS(x) str_eq_c(name,x)
@@ -41,6 +48,31 @@ static Value syscall(VM*vm,String name,Value*args,uint32_t argc){
     return v_null();
   }
   return v_null();
+ }
+ if(IS("arquivo_ler")&&argc==1&&transition_release_root[0]){
+  String path=text(args[0]);
+  size_t length=0;
+  uint8_t*data=read_file(path.data,&length);
+  if(!data){
+    char installed[4096];
+    if(transition_root_path(installed,sizeof(installed),path.data))data=read_file(installed,&length);
+  }
+  if(!data){vm_fail(vm,"cannot read source file");return v_null();}
+  String value=str_n((char*)data,length);
+  free(data);
+  return v_str(value);
+ }
+ if(IS("sys_arquivo_existe")&&argc==1&&transition_release_root[0]){
+  String path=text(args[0]);
+  size_t length=0;
+  uint8_t*data=read_file(path.data,&length);
+  if(data){free(data);return v_bool(1);}
+  char installed[4096];
+  if(transition_root_path(installed,sizeof(installed),path.data)){
+    data=read_file(installed,&length);
+    if(data){free(data);return v_bool(1);}
+  }
+  return v_bool(0);
  }
  if(IS("sys_svbc_run")){
   if(argc!=1){vm_fail(vm,"sys_svbc_run expects one argument");return v_null();}
@@ -82,8 +114,11 @@ static int transition_release_main(int argc,char**argv){
  if(!bin_sep)die("cannot resolve release root directory");
  *bin_sep=0;
 
+ int root_written=snprintf(transition_release_root,sizeof(transition_release_root),"%s",executable);
+ if(root_written<0||(size_t)root_written>=sizeof(transition_release_root))die("release root path too long");
+
  char image_path[4096];
- int written=snprintf(image_path,sizeof(image_path),"%s%cseven.svbc",executable,PATH_SEP);
+ int written=snprintf(image_path,sizeof(image_path),"%s%cseven.svbc",transition_release_root,PATH_SEP);
  if(written<0||(size_t)written>=sizeof(image_path))die("release image path too long");
  Image image=load_image(image_path);
  return vm_run(&image,argc>0?argc-1:0,argc>0?argv+1:NULL);
