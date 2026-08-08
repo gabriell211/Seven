@@ -190,6 +190,77 @@ jobs:
           set -e
           test "$proof_exit" -eq 42
 
+      - name: Compile and exercise self-hosted Web API with Stage 2
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > build/api-server.stage2.sources <<'EOF'
+          std/base/lista.sev
+          std/base/resultado.sev
+          std/base/talvez.sev
+          std/base/convert.sev
+          std/base/texto.sev
+          std/mem/bytes.sev
+          std/env/runtime.sev
+          std/io/console.sev
+          std/time/clock.sev
+          std/config/app.sev
+          std/log/logger.sev
+          std/net/tcp.sev
+          std/web/http.sev
+          std/web/json.sev
+          std/web/router.sev
+          std/web/security.sev
+          std/web/server.sev
+          examples/api-server/main.sev
+          EOF
+          cat > build/api-server.stage2.pkg <<'EOF'
+          pacote api-server-stage2
+          versao 0.0.1
+          criador Gabriel Barcelos
+          entrada examples.api_server.main.inicio
+          alvo svbc
+          indice build/api-server.stage2.sources
+          EOF
+
+          build/genesis-host build/seven.stage2.svbc build/api-server.stage2.pkg build/api-server.stage2.svbc
+          test -s build/api-server.stage2.svbc
+          test "$(od -An -tx1 -N4 build/api-server.stage2.svbc | tr -d ' \n')" = '53564243'
+
+          PORT=18080 build/genesis-host build/api-server.stage2.svbc > build/api-server.stage2.stdout 2> build/api-server.stage2.stderr &
+          server_pid=$!
+          cleanup() {
+            if kill -0 "$server_pid" 2>/dev/null; then
+              kill "$server_pid" 2>/dev/null || true
+              wait "$server_pid" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+
+          headers=''
+          body=''
+          for tentativa in $(seq 1 40); do
+            if curl --fail --silent --show-error --max-time 2 \
+              --dump-header build/api-server.stage2.headers \
+              --output build/api-server.stage2.body \
+              http://127.0.0.1:18080/health; then
+              headers="$(cat build/api-server.stage2.headers)"
+              body="$(cat build/api-server.stage2.body)"
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              cat build/api-server.stage2.stdout
+              cat build/api-server.stage2.stderr >&2
+              exit 1
+            fi
+            sleep 0.25
+          done
+
+          printf '%s\n\n%s\n' "$headers" "$body" > build/api-server.stage2.response
+          grep -q 'HTTP/1.1 200 OK' build/api-server.stage2.response
+          grep -qi 'content-type: application/json; charset=utf-8' build/api-server.stage2.response
+          test "$body" = '{"status":"ok","language":"Seven","creator":"Gabriel Barcelos"}'
+
       - name: Record Stage 1 provenance
         shell: bash
         run: |
@@ -232,5 +303,7 @@ jobs:
             build/seven.stage2.self.svbc
             build/stage1-proof.svbc
             build/stage2-proof.svbc
+            build/api-server.stage2.svbc
+            build/api-server.stage2.response
             build/stage1.provenance
           if-no-files-found: error
