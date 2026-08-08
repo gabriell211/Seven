@@ -1,0 +1,100 @@
+name: Seven Native Compiler Cutover Probe
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seven-native-cutover-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    name: Rebuild and execute current Seven compiler
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build audited Stage 1 chain
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tests/compiler/web_source_e2e.sh
+
+      - name: Compile current Seven package with Stage 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          build/genesis-host build/seven.stage1.svbc seven.pkg build/seven.current.svbc
+          test -s build/seven.current.svbc
+          test "$(od -An -tx1 -N4 build/seven.current.svbc | tr -d ' \n')" = '53564243'
+          sha256sum build/seven.current.svbc
+
+      - name: Execute current compiler image
+        shell: bash
+        run: |
+          set -euo pipefail
+          build/genesis-host build/seven.current.svbc --version | tee build/current-version.txt
+          grep -q 'Seven 0.2.0' build/current-version.txt
+
+      - name: Prove current compiler Web build
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf build/cutover-web
+          build/genesis-host build/seven.current.svbc web build examples/web_app.sev build/cutover-web
+          test -s build/cutover-web/app.wasm
+          test -s build/cutover-web/seven.web.json
+          test "$(od -An -tx1 -N4 build/cutover-web/app.wasm | tr -d ' \n')" = '0061736d'
+
+          node - build/cutover-web/app.wasm <<'JS'
+          const fs = require('fs');
+          const bytes = fs.readFileSync(process.argv[2]);
+          if (!WebAssembly.validate(bytes)) throw new Error('WebAssembly invalido');
+
+          let memory;
+          const calls = [];
+          const decoder = new TextDecoder();
+          const decode = descriptor => {
+            if (!descriptor) return '';
+            const view = new DataView(memory.buffer);
+            const pointer = view.getUint32(descriptor, true);
+            const length = view.getUint32(descriptor + 4, true);
+            return decoder.decode(new Uint8Array(memory.buffer, pointer, length));
+          };
+
+          const names = [
+            'terminal_diga', 'frontend_monta', 'frontend_texto', 'frontend_atributo',
+            'frontend_classe_adiciona', 'frontend_classe_remove', 'frontend_escuta',
+            'frontend_navega', 'frontend_injeta_css', 'frontend_fetch_texto',
+            'frontend_resposta_texto', 'frontend_resposta_status', 'frontend_evento_valor',
+            'frontend_armazena', 'frontend_carrega', 'frontend_remove'
+          ];
+          const seven = {};
+          for (const name of names) {
+            seven[name] = (...args) => {
+              calls.push({ name, args: args.map(decode) });
+              return 0;
+            };
+          }
+
+          (async () => {
+            const { instance } = await WebAssembly.instantiate(bytes, { seven });
+            memory = instance.exports.memory;
+            const code = instance.exports.seven_start();
+            if (code !== 0) throw new Error(`seven_start retornou ${code}`);
+            const called = calls.map(call => call.name);
+            for (const expected of ['frontend_injeta_css', 'frontend_monta', 'frontend_escuta']) {
+              if (!called.includes(expected)) throw new Error(`ABI nao chamada: ${expected}`);
+            }
+            console.log(`distributed-candidate frontend calls: ${calls.length}`);
+          })().catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
+          JS
