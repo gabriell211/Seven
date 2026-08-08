@@ -5,4 +5,11 @@
 #include "genesis-host.part03.inc"
 #undef syscall
 #include "genesis-host.transition.inc"
+#ifdef SEVEN_RELEASE_HOST
+#define main genesis_bootstrap_main
+#endif
 #include "genesis-host.part04.inc"
+#ifdef SEVEN_RELEASE_HOST
+#undef main
+int main(int argc,char**argv){return transition_release_main(argc,argv);}
+#endif
