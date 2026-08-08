@@ -1,0 +1,68 @@
+modulo tests.compiler.web_source_e2e
+
+usa seven.compiler.source
+usa seven.compiler.lexer
+usa seven.compiler.parser
+usa seven.compiler.semantic
+usa seven.compiler.ir
+usa seven.compiler.web_ir
+usa seven.compiler.driver
+usa seven.compiler.diagnostic
+usa seven.compiler.package
+usa seven.compiler.wasm
+usa std.base.lista
+usa std.fs.file
+usa std.io.console
+
+campo inicio(argumentos: Lista<Texto>) -> Num toca terminal, disco, ambiente ::
+  veja lista_tamanho(argumentos) < 2 ::
+    diga("uso: web-source-e2e <entrada.sev> <saida.wasm>")
+    devolve 2
+  fecha
+
+  guarda entrada := lista_pega(argumentos, 0)
+  guarda saida := lista_pega(argumentos, 1)
+  guarda pacote := pacote_parse(
+    "pacote seven-web-e2e\n" +
+    "versao 0.2.0\n" +
+    "criador Gabriel Barcelos\n" +
+    "entrada " + entrada + "\n" +
+    "alvo webassembly\n" +
+    "fonte std/frontend/intrinsics.sev\n" +
+    "fonte " + entrada + "\n"
+  )
+
+  guarda fontes := fonte_carrega_pacote(pacote)
+  guarda tokens := varre_unidade(fontes)
+  guarda sintaxe := monta_unidade(tokens)
+
+  veja diagnosticos_tem_erros(sintaxe.diagnosticos) ::
+    mostra_diagnosticos(sintaxe.diagnosticos)
+    devolve 1
+  fecha
+
+  guarda semantica := mede(sintaxe.programas, pacote)
+  guarda diagnosticos := junta_diagnosticos(sintaxe.diagnosticos, semantica)
+
+  veja diagnosticos_tem_erros(diagnosticos) ::
+    mostra_diagnosticos(diagnosticos)
+    devolve 1
+  fecha
+
+  guarda meio := baixa_ir(sintaxe.programas, semantica.tipos, semantica.efeitos)
+  guarda otimizado := prepara_ir_web(otimiza_ir(meio, "seguro"))
+  guarda wasm := emite_wasm(otimizado)
+
+  veja wasm e Falha ::
+    diga(wasm.valor.codigo + ": " + wasm.valor.mensagem)
+    devolve 1
+  fecha
+
+  guarda gravacao := arquivo_salva_bytes(saida, wasm.valor)
+  veja gravacao e Falha ::
+    diga(gravacao.valor.codigo + ": " + gravacao.valor.mensagem)
+    devolve 1
+  fecha
+
+  devolve 0
+fecha
