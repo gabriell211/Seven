@@ -33,7 +33,9 @@ static Value syscall(VM*vm,String name,Value*args,uint32_t argc){
 #define IS(x) str_eq_c(name,x)
  if(IS("terminal_diga")||IS("diga")){String s=text(argc?args[0]:v_null());fwrite(s.data,1,s.len,stdout);fputc('\n',stdout);return v_null();}
  if(IS("terminal_escreve")||IS("sys_terminal_escreve")){String s=text(argc?args[0]:v_null());fwrite(s.data,1,s.len,stdout);return v_null();}
+ if(IS("sys_svbc_terminal_buffer_coloca")){String s=text(argc?args[0]:v_null());fwrite(s.data,1,s.len,stdout);return v_null();}
  if(IS("sys_env")){String nome=text(args[0]);char*chave=cstr(nome);char*valor=getenv(chave);free(chave);if(!valor)return v_variant0("Vazio");return v_variant1("Algo",v_str_c(valor));}
+ if(IS("sys_svbc_ambiente_virtual")){String nome=text(args[0]);char*chave=cstr(nome);char*valor=getenv(chave);free(chave);if(!valor)return v_variant0("Vazio");return v_variant1("Algo",v_str_c(valor));}
  if(IS("sys_plataforma_atual")){
 #ifdef _WIN32
   return v_str_c("windows");
@@ -42,8 +44,9 @@ static Value syscall(VM*vm,String name,Value*args,uint32_t argc){
 #endif
  }
  if(IS("sys_executavel_diretorio"))return v_str_c(".");
- if(IS("sys_args"))return v_list(list_new());
+ if(IS("sys_args")||IS("sys_svbc_argumentos_virtual")){List*l=list_new();for(int i=0;i<vm->arg_count;i++)list_push(l,v_str_c(vm->args[i]));return v_list(l);}
  if(IS("sys_tempo_agora"))return v_int((int64_t)time(NULL)*1000);
+ if(IS("sys_svbc_relogio_virtual_ms"))return v_int((int64_t)time(NULL)*1000);
 if(IS("sys_tempo_iso")){time_t agora=time(NULL);struct tm tmv;char buf[32];
 #ifdef _WIN32
 gmtime_s(&tmv,&agora);
@@ -51,6 +54,14 @@ gmtime_s(&tmv,&agora);
 struct tm*tmp=gmtime(&agora);if(!tmp)return v_str_c("1970-01-01T00:00:00Z");tmv=*tmp;
 #endif
 strftime(buf,sizeof(buf),"%Y-%m-%dT%H:%M:%SZ",&tmv);return v_str_c(buf);}
+if(IS("sys_svbc_relogio_virtual_iso")){time_t agora=time(NULL);struct tm tmv;char buf[32];
+#ifdef _WIN32
+gmtime_s(&tmv,&agora);
+#else
+struct tm*tmp=gmtime(&agora);if(!tmp)return v_str_c("1970-01-01T00:00:00Z");tmv=*tmp;
+#endif
+strftime(buf,sizeof(buf),"%Y-%m-%dT%H:%M:%SZ",&tmv);return v_str_c(buf);}
+ if(IS("sys_svbc_relogio_virtual_avanca"))return v_null();
  if(IS("texto")||IS("texto_u64")||IS("sys_texto_num")||IS("sys_texto_u64"))return v_str(text(argc?args[0]:v_null()));
  if(IS("numero")||IS("sys_numero")||IS("sys_num_cast")||IS("U32")||IS("U64")||IS("Num")||IS("Byte")||IS("Real64"))return v_int(number(argc?args[0]:v_int(0)));
  if(IS("tamanho")){Value x=args[0];if(x.tag==V_STRING)return v_int((int64_t)x.as.s.len);if(x.tag==V_LIST)return v_int((int64_t)x.as.list->len);if(x.tag==V_BYTES)return v_int((int64_t)x.as.bytes->len);if(x.tag==V_OBJECT)return v_int((int64_t)x.as.obj->len);return v_int(0);}
@@ -60,6 +71,8 @@ strftime(buf,sizeof(buf),"%Y-%m-%dT%H:%M:%SZ",&tmv);return v_str_c(buf);}
  if(IS("sys_lista_pega")||IS("lista_pega")){if(args[0].tag!=V_LIST){vm_fail(vm,"lista_pega expects list");return v_null();}size_t i=(size_t)number(args[1]);if(i>=args[0].as.list->len){vm_fail(vm,"list index out of bounds");return v_null();}return args[0].as.list->items[i];}
  if(IS("sys_lista_define")||IS("lista_define")){if(args[0].tag!=V_LIST){vm_fail(vm,"lista_define expects list");return v_null();}size_t i=(size_t)number(args[1]);if(i>=args[0].as.list->len){vm_fail(vm,"list define out of bounds");return v_null();}args[0].as.list->items[i]=args[2];return args[0];}
  if(IS("sys_lista_insere")){if(args[0].tag!=V_LIST){vm_fail(vm,"lista_insere expects list");return v_null();}list_insert(args[0].as.list,(size_t)number(args[1]),args[2]);return args[0];}
+ if(IS("sys_lista_pop")){if(args[0].tag!=V_LIST){vm_fail(vm,"lista_pop expects list");return v_null();}List*l=args[0].as.list;if(!l->len){vm_fail(vm,"list pop from empty list");return v_null();}return l->items[--l->len];}
+ if(IS("sys_lista_remove")){if(args[0].tag!=V_LIST){vm_fail(vm,"lista_remove expects list");return v_null();}List*l=args[0].as.list;size_t i=(size_t)number(args[1]);if(i>=l->len){vm_fail(vm,"list remove out of bounds");return v_null();}Value v=l->items[i];memmove(l->items+i,l->items+i+1,(l->len-i-1)*sizeof(Value));l->len--;return v;}
  if(IS("sys_mapa_copia")){
   if(args[0].tag!=V_OBJECT){vm_fail(vm,"mapa_copia expects object");return v_null();}
   Object*orig=args[0].as.obj;Object*copy=obj_new();

@@ -51,7 +51,7 @@ typedef struct Field { String name; uint32_t entry, locals, params; } Field;
 typedef struct Instr { uint8_t op; uint32_t a,b; } Instr;
 typedef struct Image { String *names,*texts; uint32_t *nums; Value *consts; Field *fields; Instr *code; uint32_t name_count,text_count,num_count,const_count,field_count,code_count; int stable; } Image;
 typedef struct Frame { uint32_t field, ret_ip; Value *locals; uint32_t local_count; } Frame;
-typedef struct VM { Image *img; Value *stack; size_t sp, stack_cap; Frame *frames; size_t fp, frame_cap; uint32_t field, ip; Value *locals; uint32_t local_count; int failed; char error[512]; } VM;
+typedef struct VM { Image *img; Value *stack; size_t sp, stack_cap; Frame *frames; size_t fp, frame_cap; uint32_t field, ip; Value *locals; uint32_t local_count; int arg_count; char **args; int failed; char error[512]; } VM;
 
 static void die(const char *msg) { fprintf(stderr,"genesis-host: %s\n",msg); exit(1); }
 static void *xmalloc(size_t n){ void *p=malloc(n?n:1); if(!p) die("out of memory"); return p; }

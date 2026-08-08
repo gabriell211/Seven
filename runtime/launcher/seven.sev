@@ -3,9 +3,48 @@ modulo seven.runtime.launcher
 usa seven.runtime.svbc.runner
 
 campo seven_launcher(argumentos: Lista<Texto>) -> Num toca disco, terminal, rede, tempo, ambiente, frontend ::
-  devolve roda_svbc_com_args("build/seven.svbc", argumentos)
+  veja lista_tamanho(argumentos) == 0 ou lista_pega(argumentos, 0) == "--help" ou lista_pega(argumentos, 0) == "help" ::
+    diga "Seven 0.2.0"
+    diga "usage:"
+    diga "  seven --version"
+    diga "  seven doctor"
+    diga "  seven build <pacote.pkg> <saida.svbc>"
+    devolve 0
+  fecha
+
+  guarda comando := lista_pega(argumentos, 0)
+
+  veja comando == "--version" ::
+    diga "Seven 0.2.0"
+    diga "Creator: Gabriel Barcelos"
+    devolve 0
+  fecha
+
+  veja comando == "doctor" ::
+    diga "seven doctor: host nativo SVBC operacional, argv real e launcher Seven ativo"
+    devolve 0
+  fecha
+
+  veja comando == "build" ::
+    solta args_compilador := lista<Texto>()
+    lista_coloca(args_compilador, arg_ou(argumentos, 1, "seven.pkg"))
+    lista_coloca(args_compilador, arg_ou(argumentos, 2, "build/out.svbc"))
+    devolve roda_svbc_com_args("build/seven.stage2.svbc", args_compilador)
+  fecha
+
+  diga "comando ainda nao conectado no launcher nativo: " + comando
+  diga "use: seven --help"
+  devolve 2
 fecha
 
 campo inicio() -> Num toca disco, terminal, rede, tempo, ambiente, frontend ::
   devolve seven_launcher(sys_args())
+fecha
+
+campo arg_ou(argumentos: Lista<Texto>, indice: U64, padrao: Texto) -> Texto ::
+  veja lista_tamanho(argumentos) <= indice ::
+    devolve padrao
+  fecha
+
+  devolve lista_pega(argumentos, indice)
 fecha

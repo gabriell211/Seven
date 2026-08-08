@@ -35,6 +35,8 @@ static int vm_dynamic_call(VM *vm, uint32_t argc, size_t base) {
 static int vm_run(Image *im, int argc, char **argv) {
   VM vm = {0};
   vm.img = im;
+  vm.arg_count = argc;
+  vm.args = argv;
 
   int entry = field_index_entry(im);
   if (entry < 0) die("entry field inicio missing");
@@ -209,11 +211,76 @@ static int vm_run(Image *im, int argc, char **argv) {
   return 1;
 }
 
+static int has_suffix(const char *text, const char *suffix) {
+  size_t text_len = strlen(text);
+  size_t suffix_len = strlen(suffix);
+  return text_len >= suffix_len && memcmp(text + text_len - suffix_len, suffix, suffix_len) == 0;
+}
+
+static char *dirname_dup_c(const char *path) {
+  const char *last_slash = strrchr(path, '/');
+  const char *last_backslash = strrchr(path, '\\');
+  const char *last = last_slash;
+  if (last_backslash && (!last || last_backslash > last)) last = last_backslash;
+  if (!last) return str_c(".").data;
+  return str_n(path, (size_t)(last - path)).data;
+}
+
+static const char *default_launcher_image(const char *executable_path) {
+  static const char *repo_launcher = "build/seven.launcher.svbc";
+  static const char *local_launcher = "seven.launcher.svbc";
+  static const char *bin_launcher = "bin/seven.launcher.svbc";
+  static char *sibling_launcher = NULL;
+
+  if (path_exists_c(repo_launcher)) return repo_launcher;
+  if (path_exists_c(local_launcher)) return local_launcher;
+  if (path_exists_c(bin_launcher)) return bin_launcher;
+
+  char *dir = dirname_dup_c(executable_path);
+  sibling_launcher = path_join_c(dir, "seven.launcher.svbc");
+  free(dir);
+  if (path_exists_c(sibling_launcher)) return sibling_launcher;
+
+  return repo_launcher;
+}
+
+static const char *default_compiler_image(const char *executable_path) {
+  static const char *repo_compiler = "build/seven.stage2.svbc";
+  static const char *local_compiler = "seven.stage2.svbc";
+  static const char *bin_compiler = "bin/seven.stage2.svbc";
+  static char *sibling_compiler = NULL;
+
+  if (path_exists_c(repo_compiler)) return repo_compiler;
+  if (path_exists_c(local_compiler)) return local_compiler;
+  if (path_exists_c(bin_compiler)) return bin_compiler;
+
+  char *dir = dirname_dup_c(executable_path);
+  sibling_compiler = path_join_c(dir, "seven.stage2.svbc");
+  free(dir);
+  if (path_exists_c(sibling_compiler)) return sibling_compiler;
+
+  return repo_compiler;
+}
+
 int main(int argc, char **argv) {
-  if (argc < 2) {
-    fprintf(stderr, "usage: %s IMAGE.svbc [program args...]\n", argv[0]);
-    return 2;
+  const char *image_path = NULL;
+  int program_argc = 0;
+  char **program_argv = NULL;
+
+  if (argc >= 2 && has_suffix(argv[1], ".svbc")) {
+    image_path = argv[1];
+    program_argc = argc - 2;
+    program_argv = argv + 2;
+  } else if (argc >= 2 && strcmp(argv[1], "build") == 0) {
+    image_path = default_compiler_image(argv[0]);
+    program_argc = argc - 2;
+    program_argv = argv + 2;
+  } else {
+    image_path = default_launcher_image(argv[0]);
+    program_argc = argc - 1;
+    program_argv = argv + 1;
   }
-  Image im = load_image(argv[1]);
-  return vm_run(&im, argc - 2, argv + 2);
+
+  Image im = load_image(image_path);
+  return vm_run(&im, program_argc, program_argv);
 }
