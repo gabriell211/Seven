@@ -9,6 +9,10 @@ campo prepara_ir_web(unidade: UnidadeIr) -> UnidadeIr ::
     para cada bloco em campo.blocos ::
       dobra_texto_constante_web(bloco)
     fecha
+
+    veja lista_tamanho(campo.blocos) == 1 ::
+      elimina_constantes_web_mortas(lista_pega(campo.blocos, 0))
+    fecha
   fecha
 
   devolve unidade
@@ -40,6 +44,89 @@ campo dobra_texto_constante_web(bloco: BlocoIr) -> Nada ::
 
     vira indice := indice + 1
   fecha
+fecha
+
+campo elimina_constantes_web_mortas(bloco: BlocoIr) -> Nada ::
+  solta filtradas := lista<InstrucaoIr>()
+  solta indice: U64 := 0
+
+  gira indice < lista_tamanho(bloco.instrucoes) ::
+    guarda instrucao := lista_pega(bloco.instrucoes, indice)
+    solta mantem := sim
+
+    veja instrucao e IrConst ::
+      veja nao local_web_usado_depois(bloco.instrucoes, indice + 1, instrucao.destino) ::
+        vira mantem := nao
+      fecha
+    fecha
+
+    veja mantem ::
+      lista_coloca(filtradas, instrucao)
+    fecha
+
+    vira indice := indice + 1
+  fecha
+
+  vira bloco.instrucoes := filtradas
+fecha
+
+campo local_web_usado_depois(
+  instrucoes: Lista<InstrucaoIr>,
+  inicio: U64,
+  local: U32
+) -> Bit ::
+  solta indice := inicio
+
+  gira indice < lista_tamanho(instrucoes) ::
+    guarda instrucao := lista_pega(instrucoes, indice)
+
+    veja instrucao e IrMove ::
+      veja instrucao.origem == local :: devolve sim fecha
+    fecha
+
+    veja instrucao e IrBin ::
+      veja instrucao.esquerda == local ou instrucao.direita == local :: devolve sim fecha
+    fecha
+
+    veja instrucao e IrChama ::
+      veja argumentos_web_tem_local(instrucao.argumentos, local) :: devolve sim fecha
+    fecha
+
+    veja instrucao e IrSyscall ::
+      veja argumentos_web_tem_local(instrucao.argumentos, local) :: devolve sim fecha
+    fecha
+
+    veja instrucao e IrSaltaSeNao ::
+      veja instrucao.condicao == local :: devolve sim fecha
+    fecha
+
+    veja instrucao e IrRetorna ::
+      veja instrucao.origem == local :: devolve sim fecha
+    fecha
+
+    veja instrucao e IrCaixa ::
+      veja instrucao.tamanho == local :: devolve sim fecha
+    fecha
+
+    veja instrucao e IrMarcaByte ::
+      veja instrucao.bloco == local ou instrucao.indice == local ou instrucao.valor == local :: devolve sim fecha
+    fecha
+
+    veja instrucao e IrPegaByte ::
+      veja instrucao.bloco == local ou instrucao.indice == local :: devolve sim fecha
+    fecha
+
+    vira indice := indice + 1
+  fecha
+
+  devolve nao
+fecha
+
+campo argumentos_web_tem_local(argumentos: Lista<U32>, local: U32) -> Bit ::
+  para cada argumento em argumentos ::
+    veja argumento == local :: devolve sim fecha
+  fecha
+  devolve nao
 fecha
 
 campo constante_web_antes(
