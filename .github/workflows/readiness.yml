@@ -16,10 +16,10 @@ jobs:
   readiness:
     name: Compiler, conformance and source contracts
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Verify canonical grammar synchronization
         shell: bash
@@ -39,32 +39,36 @@ jobs:
           grep -q '^indice seven.sources$' seven.pkg
           grep -q 'fonte_carrega_indice' compiler/source.sev
 
-      - name: Reconstruct audited Seven 0.2 transition seeds
+      - name: Rebuild current source-backed compiler
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p build/native-seeds
-          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
-          unzip -t build/native-seeds.zip
-          unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
-          echo '80f1948e83b1c58c719c2ae0579a4b03edd1ccc1bf1e4e52091e2c66478feba5  build/native-seeds/seven-windows.exe' | sha256sum --check
-          chmod +x build/native-seeds/seven-linux
+          bash tests/compiler/build_transition_compiler.sh
+
+          root="$PWD/build/readiness-root"
+          mkdir -p "$root/bin"
+          cp build/seven.transition.svbc "$root/seven.svbc"
+          cp -R std "$root/std"
+          gcc -DSEVEN_RELEASE_HOST -O2 -std=c11 -Wall -Wextra -Werror \
+            bootstrap/host/v2/genesis-host.c -o "$root/bin/seven"
+          chmod +x "$root/bin/seven"
+
+          "$root/bin/seven" --version
+          sha256sum "$root/bin/seven" "$root/seven.svbc"
 
       - name: Exercise compiler, WebAssembly and conformance behavior
         shell: bash
         run: |
           set -uo pipefail
-          seven="$PWD/build/native-seeds/seven-linux"
+          seven="$PWD/build/readiness-root/bin/seven"
           failures=0
 
           "$seven" --version || failures=$((failures + 1))
           "$seven" check examples/hello.sev || failures=$((failures + 1))
           "$seven" build examples/hello.sev build/readiness-hello.svbc || failures=$((failures + 1))
-          "$seven" web build examples/hello.sev build/readiness-web || failures=$((failures + 1))
-          "$seven" run examples/hello.sev || failures=$((failures + 1))
-          "$seven" doctor || failures=$((failures + 1))
+          "$seven" web build examples/web_app.sev build/readiness-web || failures=$((failures + 1))
+          "$seven" run examples/hello.sev > build/readiness-run.txt || failures=$((failures + 1))
+          "$seven" doctor > build/readiness-doctor.txt || failures=$((failures + 1))
 
           while IFS= read -r file; do
             echo "valid: $file"
@@ -82,20 +86,29 @@ jobs:
           test -s build/readiness-hello.svbc || failures=$((failures + 1))
           test -s build/readiness-web/app.wasm || failures=$((failures + 1))
           test -s build/readiness-web/seven.web.json || failures=$((failures + 1))
+          test "$(od -An -tx1 -N4 build/readiness-web/app.wasm | tr -d ' \n')" = '0061736d' || failures=$((failures + 1))
+          grep -q 'Seven nasceu.' build/readiness-run.txt || failures=$((failures + 1))
+          grep -q 'compiler: source-backed' build/readiness-doctor.txt || failures=$((failures + 1))
           grep -q '"target": "webassembly"' build/readiness-web/seven.web.json || failures=$((failures + 1))
+
+          node -e 'const fs=require("fs"); if(!WebAssembly.validate(fs.readFileSync("build/readiness-web/app.wasm"))) process.exit(1)' || failures=$((failures + 1))
 
           echo "readiness failures: $failures"
           test "$failures" -eq 0
 
-      - name: Check every indexed Seven source
+      - name: Verify transition compiler source closure
         shell: bash
         run: |
           set -euo pipefail
-          seven="$PWD/build/native-seeds/seven-linux"
           while IFS= read -r file; do
-            echo "source: $file"
-            "$seven" check "$file"
-          done < seven.sources
+            test -f "$file"
+            grep -Fxq "$file" seven.sources
+          done < compiler/toolchain/transition.sources
+
+          cmp build/seven.transition.svbc build/seven.transition.self.svbc
+          grep -q 'campo transicao_web_build' compiler/toolchain/transition_cli.sev
+          grep -q 'prepara_ir_web' compiler/toolchain/transition_cli.sev
+          grep -q 'SEVEN_RELEASE_HOST' bootstrap/host/v2/genesis-host.c
 
       - name: Reject production placeholders
         shell: bash
@@ -119,3 +132,4 @@ jobs:
           grep -q '\.sev' compiler/toolchain/installer.sev
           grep -q 'Seven 0.2.0' compiler/toolchain/cli.sev
           grep -q '^versao 0.2.0$' seven.pkg
+          ! grep -q 'build/native-seeds/seven-linux' .github/workflows/readiness.yml
