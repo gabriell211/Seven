@@ -3,11 +3,24 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 
 #ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "Ws2_32.lib")
 #define PATH_SEP '\\'
+typedef SOCKET SvSocket;
+#define SV_INVALID_SOCKET INVALID_SOCKET
 #else
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <unistd.h>
 #define PATH_SEP '/'
+typedef int SvSocket;
+#define SV_INVALID_SOCKET (-1)
 #endif
 
 typedef struct String { char *data; size_t len; } String;
@@ -57,6 +70,29 @@ static void obj_set(Object*o,String k,Value v){ int i=obj_index(o,k);if(i>=0){o-
 static Value obj_get(Object*o,String k){ int i=obj_index(o,k);return i>=0?o->pairs[i].value:v_null(); }
 static Value obj_get_c(Object*o,const char*k){ size_t n=strlen(k);for(size_t i=0;i<o->len;i++)if(o->pairs[i].key.len==n&&!memcmp(o->pairs[i].key.data,k,n))return o->pairs[i].value;return v_null(); }
 static Value v_obj(Object*o){ Value v={0};v.tag=V_OBJECT;v.as.obj=o;return v; }
+static Value v_result(const char*tag,Value value){Object*o=obj_new();obj_set(o,str_c("__tipo"),v_str_c(tag));obj_set(o,str_c("tag"),v_str_c(tag));obj_set(o,str_c("valor"),value);return v_obj(o);}
+static Value v_ok(Value value){return v_result("Valor",value);}
+static Value v_fail_value(const char*codigo,const char*mensagem){Object*f=obj_new();obj_set(f,str_c("codigo"),v_str_c(codigo));obj_set(f,str_c("mensagem"),v_str_c(mensagem));return v_result("Falha",v_obj(f));}
+static Value v_variant0(const char*tag){Object*o=obj_new();obj_set(o,str_c("__tipo"),v_str_c(tag));obj_set(o,str_c("tag"),v_str_c(tag));return v_obj(o);}
+static Value v_variant1(const char*tag,Value value){Object*o=obj_new();obj_set(o,str_c("__tipo"),v_str_c(tag));obj_set(o,str_c("tag"),v_str_c(tag));obj_set(o,str_c("valor"),value);return v_obj(o);}
+static char *cstr(String s){char*p=(char*)xmalloc(s.len+1);memcpy(p,s.data,s.len);p[s.len]=0;return p;}
+static int net_init(void){
+#ifdef _WIN32
+ static int started=0;if(started)return 1;WSADATA wsa;if(WSAStartup(MAKEWORD(2,2),&wsa)!=0)return 0;started=1;return 1;
+#else
+ return 1;
+#endif
+}
+static void net_close(SvSocket s){
+#ifdef _WIN32
+ closesocket(s);
+#else
+ close(s);
+#endif
+}
+static Value v_typed_id(const char*tipo,uint64_t id){Object*o=obj_new();obj_set(o,str_c("__tipo"),v_str_c(tipo));obj_set(o,str_c("id"),v_int((int64_t)id));return v_obj(o);}
+static int socket_from_value(Value v,SvSocket*out){if(v.tag!=V_OBJECT)return 0;Value id=obj_get_c(v.as.obj,"id");if(id.tag!=V_INT)return 0;*out=(SvSocket)(uintptr_t)id.as.i;return 1;}
+static Value tcp_fail(const char*mensagem){return v_fail_value("SV-NET-TCP",mensagem);}
 static Bytes *bytes_new(void){ return (Bytes*)xcalloc(1,sizeof(Bytes)); }
 static void bytes_reserve(Bytes*b,size_t n){ if(n<=b->cap)return;size_t c=b->cap?b->cap*2:64;while(c<n)c*=2;b->data=(uint8_t*)xrealloc(b->data,c);b->cap=c; }
 static void bytes_push(Bytes*b,uint8_t x){bytes_reserve(b,b->len+1);b->data[b->len++]=x;}

@@ -1,5 +1,7 @@
 modulo std.web.router
 
+usa std.base.lista
+usa std.base.texto
 usa std.web.http
 
 molde ParametroRota ::
@@ -51,20 +53,116 @@ campo resolver(router: Roteador, req: Requisicao) -> Resposta ::
         requisicao: req,
         parametros: parametros_extrai(rota.padrao, req.caminho)
       }
-      devolve rota.acao(ctx)
+      guarda acao := rota.acao
+      devolve acao(ctx)
     fecha
   fecha
 
-  devolve router.fallback(Contexto {
+  guarda fallback := router.fallback
+  devolve fallback(Contexto {
     requisicao: req,
     parametros: lista<ParametroRota>()
   })
 fecha
 
+campo rota_texto_fatia(valor: Texto, inicio: U64, fim: U64) -> Texto ::
+  solta saida := ""
+  solta indice := inicio
+
+  gira indice < fim e indice < tamanho(valor) ::
+    vira saida := saida + sys_texto_caractere(valor, indice)
+    vira indice := indice + 1
+  fecha
+
+  devolve saida
+fecha
+
+campo rota_segmentos(caminho: Texto) -> Lista<Texto> ::
+  solta saida := lista<Texto>()
+  solta atual := ""
+  solta indice: U64 := 0
+
+  gira indice < tamanho(caminho) ::
+    guarda caractere := sys_texto_caractere(caminho, indice)
+
+    veja caractere == "/" ::
+      veja atual != "" ::
+        lista_coloca(saida, atual)
+        vira atual := ""
+      fecha
+    outro ::
+      vira atual := atual + caractere
+    fecha
+
+    vira indice := indice + 1
+  fecha
+
+  veja atual != "" ::
+    lista_coloca(saida, atual)
+  fecha
+
+  devolve saida
+fecha
+
+campo segmento_parametro(segmento: Texto) -> Bit ::
+  devolve tamanho(segmento) > 1 e sys_texto_caractere(segmento, 0) == ":"
+fecha
+
+campo nome_parametro(segmento: Texto) -> Texto ::
+  devolve rota_texto_fatia(segmento, 1, tamanho(segmento))
+fecha
+
 campo caminho_combina(padrao: Texto, caminho: Texto) -> Bit ::
-  devolve sys_rota_combina(padrao, caminho)
+  guarda partes_padrao := rota_segmentos(padrao)
+  guarda partes_caminho := rota_segmentos(caminho)
+
+  veja lista_tamanho(partes_padrao) != lista_tamanho(partes_caminho) ::
+    devolve nao
+  fecha
+
+  solta indice: U64 := 0
+  gira indice < lista_tamanho(partes_padrao) ::
+    guarda esperado := lista_pega(partes_padrao, indice)
+    guarda recebido := lista_pega(partes_caminho, indice)
+
+    veja segmento_parametro(esperado) ::
+      veja recebido == "" ::
+        devolve nao
+      fecha
+    outro ::
+      veja esperado != recebido ::
+        devolve nao
+      fecha
+    fecha
+
+    vira indice := indice + 1
+  fecha
+
+  devolve sim
 fecha
 
 campo parametros_extrai(padrao: Texto, caminho: Texto) -> Lista<ParametroRota> ::
-  devolve sys_rota_parametros(padrao, caminho)
+  solta parametros := lista<ParametroRota>()
+  guarda partes_padrao := rota_segmentos(padrao)
+  guarda partes_caminho := rota_segmentos(caminho)
+
+  veja lista_tamanho(partes_padrao) != lista_tamanho(partes_caminho) ::
+    devolve parametros
+  fecha
+
+  solta indice: U64 := 0
+  gira indice < lista_tamanho(partes_padrao) ::
+    guarda esperado := lista_pega(partes_padrao, indice)
+
+    veja segmento_parametro(esperado) ::
+      lista_coloca(parametros, ParametroRota {
+        nome: nome_parametro(esperado),
+        valor: lista_pega(partes_caminho, indice)
+      })
+    fecha
+
+    vira indice := indice + 1
+  fecha
+
+  devolve parametros
 fecha

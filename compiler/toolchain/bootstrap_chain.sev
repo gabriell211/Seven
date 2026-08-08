@@ -2,6 +2,7 @@ modulo seven.compiler.toolchain.bootstrap_chain
 
 usa std.base.resultado
 usa std.base.texto
+usa std.crypto.hash
 usa std.fs.file
 usa std.mem.bytes
 

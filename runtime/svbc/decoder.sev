@@ -20,13 +20,13 @@ campo svbc_decodifica(dados: Bytes) -> Resultado<ImagemSvbc, Falha> ::
 
   guarda magic := le_texto_fixo(c, 4)
 
-  veja magic != MagicSvbc ::
+  veja magic != "SVBC" ::
     devolve Falha(nova_falha("SVBC-MAGIC", "imagem SVBC invalida"))
   fecha
 
   guarda versao := le_u32(c)
 
-  veja versao != VersaoSvbc ::
+  veja versao != 1 ::
     devolve Falha(nova_falha("SVBC-VERSAO", "versao SVBC nao suportada"))
   fecha
 

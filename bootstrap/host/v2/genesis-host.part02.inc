@@ -22,6 +22,8 @@ static void vm_fail(VM*vm,const char*msg){vm->failed=1;snprintf(vm->error,sizeof
 static void push(VM*vm,Value v){if(vm->sp==vm->stack_cap){vm->stack_cap=vm->stack_cap?vm->stack_cap*2:1024;vm->stack=(Value*)xrealloc(vm->stack,vm->stack_cap*sizeof(Value));}vm->stack[vm->sp++]=v;}
 static Value pop(VM*vm){if(!vm->sp){vm_fail(vm,"stack underflow");return v_null();}return vm->stack[--vm->sp];}
 static int field_index(Image*im,const char*name){for(uint32_t i=0;i<im->field_count;i++)if(str_eq_c(im->fields[i].name,name))return (int)i;return -1;}
+static int field_index_string(Image*im,String name){for(uint32_t i=0;i<im->field_count;i++)if(str_eq(im->fields[i].name,name))return (int)i;return -1;}
+static int field_index_entry(Image*im){int exact=field_index(im,"inicio");if(exact>=0)return exact;for(uint32_t i=0;i<im->field_count;i++){String n=im->fields[i].name;if(n.len>=7&&!memcmp(n.data+n.len-7,".inicio",7))return (int)i;}return -1;}
 static void frame_push(VM*vm,Frame fr){if(vm->fp==vm->frame_cap){vm->frame_cap=vm->frame_cap?vm->frame_cap*2:256;vm->frames=(Frame*)xrealloc(vm->frames,vm->frame_cap*sizeof(Frame));}vm->frames[vm->fp++]=fr;}
 static String value_key(Value v){return text(v);}
 
@@ -30,8 +32,19 @@ static Value binary(VM*vm,Value l,String op,Value r){if(str_eq_c(op,"=="))return
 static Value syscall(VM*vm,String name,Value*args,uint32_t argc){
 #define IS(x) str_eq_c(name,x)
  if(IS("terminal_diga")||IS("diga")){String s=text(argc?args[0]:v_null());fwrite(s.data,1,s.len,stdout);fputc('\n',stdout);return v_null();}
- if(IS("texto")||IS("texto_u64"))return v_str(text(argc?args[0]:v_null()));
- if(IS("numero")||IS("sys_num_cast")||IS("U32")||IS("U64")||IS("Num")||IS("Byte")||IS("Real64"))return v_int(number(argc?args[0]:v_int(0)));
+ if(IS("terminal_escreve")||IS("sys_terminal_escreve")){String s=text(argc?args[0]:v_null());fwrite(s.data,1,s.len,stdout);return v_null();}
+ if(IS("sys_env")){String nome=text(args[0]);char*chave=cstr(nome);char*valor=getenv(chave);free(chave);if(!valor)return v_variant0("Vazio");return v_variant1("Algo",v_str_c(valor));}
+ if(IS("sys_args"))return v_list(list_new());
+ if(IS("sys_tempo_agora"))return v_int((int64_t)time(NULL)*1000);
+ if(IS("sys_tempo_iso")){time_t agora=time(NULL);struct tm tmv;char buf[32];
+#ifdef _WIN32
+gmtime_s(&tmv,&agora);
+#else
+gmtime_r(&agora,&tmv);
+#endif
+strftime(buf,sizeof(buf),"%Y-%m-%dT%H:%M:%SZ",&tmv);return v_str_c(buf);}
+ if(IS("texto")||IS("texto_u64")||IS("sys_texto_num")||IS("sys_texto_u64"))return v_str(text(argc?args[0]:v_null()));
+ if(IS("numero")||IS("sys_numero")||IS("sys_num_cast")||IS("U32")||IS("U64")||IS("Num")||IS("Byte")||IS("Real64"))return v_int(number(argc?args[0]:v_int(0)));
  if(IS("tamanho")){Value x=args[0];if(x.tag==V_STRING)return v_int((int64_t)x.as.s.len);if(x.tag==V_LIST)return v_int((int64_t)x.as.list->len);if(x.tag==V_BYTES)return v_int((int64_t)x.as.bytes->len);if(x.tag==V_OBJECT)return v_int((int64_t)x.as.obj->len);return v_int(0);}
  if(IS("sys_lista_nova"))return v_list(list_new());
  if(IS("lista_tamanho")){if(args[0].tag!=V_LIST){vm_fail(vm,"lista_tamanho expects list");return v_null();}return v_int((int64_t)args[0].as.list->len);}

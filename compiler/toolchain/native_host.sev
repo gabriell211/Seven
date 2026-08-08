@@ -39,7 +39,7 @@ campo host_executavel_padrao() -> PlanoHostExecutavel ::
     formato: "SVBC-v1",
     alvo_padrao: "win-x64-exe",
     runtime: runtime,
-    self_hosted: nao
+    self_hosted: sim
   }
 fecha
 
@@ -77,6 +77,10 @@ fecha
 campo host_executavel_contrato_valido() -> Bit toca disco ::
   guarda plano := host_executavel_padrao()
 
+  veja plano.self_hosted == nao ::
+    devolve nao
+  fecha
+
   veja arquivo_existe(plano.entrada) == nao ::
     devolve nao
   fecha
@@ -97,6 +101,22 @@ campo host_executavel_contrato_valido() -> Bit toca disco ::
     veja arquivo_existe(fonte) == nao ::
       devolve nao
     fecha
+  fecha
+
+  veja arquivo_existe("build/native/windows/seven.exe") == nao ::
+    devolve nao
+  fecha
+
+  veja arquivo_existe("build/native/windows/seven.exe.sha256") == nao ::
+    devolve nao
+  fecha
+
+  veja arquivo_existe("build/native/linux/seven") == nao ::
+    devolve nao
+  fecha
+
+  veja arquivo_existe("build/native/linux/seven.sha256") == nao ::
+    devolve nao
   fecha
 
   devolve sim

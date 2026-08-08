@@ -101,6 +101,7 @@ campo imports_nativos_padrao() -> Lista<ContratoIntrinseco> ::
   lista_coloca(imports, contrato_intrinseco("sys_tcp_aceita", CapRede, "Resultado<ConexaoTcp, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_tcp_le", CapRede, "Resultado<Bytes, Falha>"))
   lista_coloca(imports, contrato_intrinseco("sys_tcp_escreve", CapRede, "Resultado<Nada, Falha>"))
+  lista_coloca(imports, contrato_intrinseco("sys_tcp_fecha", CapRede, "Nada"))
   lista_coloca(imports, contrato_intrinseco("sys_tempo_agora", CapTempo, "U64"))
   lista_coloca(imports, contrato_intrinseco("sys_env", CapAmbiente, "Resultado<Texto, Falha>"))
 

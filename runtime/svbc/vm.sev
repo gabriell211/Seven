@@ -380,12 +380,59 @@ campo vm_syscall(
   fecha
 
   guarda nome := lista_pega(vm.imagem.nomes, instr.a)
+
+  veja nome == "sys_chamada_dinamica" ::
+    devolve vm_chama_dinamica(vm, args.valor)
+  fecha
+
   guarda saida := syscall_chama(vm.syscalls, nome, args.valor)
   veja saida e Falha ::
     devolve saida
   fecha
 
   lista_coloca(vm.pilha, saida.valor)
+  devolve Valor(nulo)
+fecha
+
+campo vm_chama_dinamica(vm: EstadoVm, args: Lista<ValorVm>) -> Resultado<Nada, Falha> ::
+  veja lista_tamanho(args) == 0 ::
+    devolve Falha(nova_falha("SVBC-CALL-DINAMICA", "chamada dinamica sem alvo"))
+  fecha
+
+  guarda alvo_valor := lista_pega(args, 0)
+  veja nao (alvo_valor e VmTexto) ::
+    devolve Falha(nova_falha("SVBC-CALL-DINAMICA", "alvo dinamico precisa ser texto"))
+  fecha
+
+  guarda indice := campo_indice_opcional(vm.imagem, alvo_valor.valor)
+  veja indice e Nada ::
+    devolve Falha(nova_falha("SVBC-CALL-DINAMICA", "campo dinamico nao encontrado: " + alvo_valor.valor))
+  fecha
+
+  guarda alvo := lista_pega(vm.imagem.campos, indice.valor)
+  veja lista_tamanho(args) - 1 != alvo.parametros ::
+    devolve Falha(nova_falha("SVBC-ARIDADE", "quantidade de argumentos invalida em chamada dinamica"))
+  fecha
+
+  solta locais := lista<ValorVm>()
+  solta indice_arg: U64 := 1
+  gira indice_arg < lista_tamanho(args) ::
+    lista_coloca(locais, lista_pega(args, indice_arg))
+    vira indice_arg := indice_arg + 1
+  fecha
+
+  gira lista_tamanho(locais) < alvo.locais ::
+    lista_coloca(locais, VmNada)
+  fecha
+
+  lista_coloca(vm.quadros, QuadroVm {
+    campo: vm.campo_atual,
+    ip_retorno: vm.ip,
+    locais: vm.locais
+  })
+  vira vm.campo_atual := indice.valor
+  vira vm.locais := locais
+  vira vm.ip := alvo.entrada
   devolve Valor(nulo)
 fecha
 

@@ -32,7 +32,7 @@ campo launcher_padrao() -> PlanoLauncher ::
     manifesto: "build/seven.launcher",
     runtime: runtime,
     formato: "SVBC-v1",
-    self_hosted: nao
+    self_hosted: sim
   }
 fecha
 
@@ -67,6 +67,10 @@ fecha
 
 campo launcher_contrato_valido() -> Bit toca disco ::
   guarda plano := launcher_padrao()
+
+  veja plano.self_hosted == nao ::
+    devolve nao
+  fecha
 
   veja arquivo_existe(plano.entrada) == nao ::
     devolve nao

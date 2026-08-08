@@ -9,13 +9,13 @@ campo suite_instalador() -> Suite ::
   solta s := suite("native installer")
 
   testa(s, "nomes de sistema", campo() -> Nada ::
-    espera(sistema_instalacao_nome(WindowsX64) == "windows-x64", "nome do alvo Windows incorreto")
-    espera(sistema_instalacao_nome(LinuxX64) == "linux-x64", "nome do alvo Linux incorreto")
+    espera(sistema_instalacao_nome(InstaladorWindowsX64) == "windows-x64", "nome do alvo Windows incorreto")
+    espera(sistema_instalacao_nome(InstaladorLinuxX64) == "linux-x64", "nome do alvo Linux incorreto")
   fecha)
 
   testa(s, "nomes de executavel", campo() -> Nada ::
-    espera(nome_instalador(WindowsX64) == "seven-installer.exe", "instalador Windows precisa ser EXE")
-    espera(nome_instalador(LinuxX64) == "seven-installer", "instalador Linux precisa ser ELF sem extensao")
+    espera(nome_instalador(InstaladorWindowsX64) == "seven-installer.exe", "instalador Windows precisa ser EXE")
+    espera(nome_instalador(InstaladorLinuxX64) == "seven-installer", "instalador Linux precisa ser ELF sem extensao")
   fecha)
 
   testa(s, "alvos aceitos", campo() -> Nada ::

@@ -183,6 +183,17 @@ campo resolve_tipo(sintaxe: TipoSintaxe, genericos: Lista<Texto>, tabela: Tabela
   veja sintaxe.nome == "Ptr" e lista_tamanho(argumentos) == 1 ::
     devolve TipoPonteiro(lista_pega(argumentos, 0))
   fecha
+  veja sintaxe.nome == "Campo" e lista_tamanho(argumentos) > 0 ::
+    solta parametros := lista<Tipo>()
+    solta indice: U64 := 0
+
+    gira indice + 1 < lista_tamanho(argumentos) ::
+      lista_coloca(parametros, lista_pega(argumentos, indice))
+      vira indice := indice + 1
+    fecha
+
+    devolve TipoCampo(parametros, lista_pega(argumentos, lista_tamanho(argumentos) - 1))
+  fecha
   veja lista_tamanho(argumentos) > 0 ::
     devolve TipoAplicado(sintaxe.nome, argumentos)
   fecha

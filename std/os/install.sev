@@ -66,11 +66,11 @@ campo diretorio_remove_arvore(caminho: Texto) -> Resultado<Nada, Falha> toca dis
   devolve sys_diretorio_remove_arvore(caminho)
 fecha
 
-campo arquivo_copia(origem: Texto, destino: Texto) -> Resultado<Nada, Falha> toca disco ::
+campo instalador_arquivo_copia(origem: Texto, destino: Texto) -> Resultado<Nada, Falha> toca disco ::
   devolve sys_arquivo_copia(origem, destino)
 fecha
 
-campo arquivo_remove(caminho: Texto) -> Resultado<Nada, Falha> toca disco ::
+campo instalador_arquivo_remove(caminho: Texto) -> Resultado<Nada, Falha> toca disco ::
   devolve sys_arquivo_remove(caminho)
 fecha
 
@@ -139,6 +139,6 @@ campo linux_mime_atualiza() -> Resultado<Nada, Falha> toca disco, ambiente ::
   devolve sys_linux_mime_atualiza()
 fecha
 
-campo arquivo_grava_bytes(caminho: Texto, dados: Bytes) -> Resultado<Nada, Falha> toca disco ::
+campo instalador_arquivo_grava_bytes(caminho: Texto, dados: Bytes) -> Resultado<Nada, Falha> toca disco ::
   devolve sys_arquivo_grava_bytes(caminho, dados)
 fecha

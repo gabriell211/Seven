@@ -6,8 +6,12 @@ usa seven.runtime.platform.native.target
 usa seven.runtime.platform.native.linker
 usa seven.runtime.svbc.decoder
 usa std.base.resultado
+usa std.crypto.hash
 usa std.mem.bytes
 usa std.os.install
+
+const InstallerBuilderSevenNome: Texto := "Seven Programming Language"
+const InstallerBuilderSevenVersao: Texto := "0.1.0"
 
 molde PacoteInstalador ::
   sistema: SistemaInstalacao
@@ -23,7 +27,7 @@ campo gera_instalador(
   contexto: ContextoToolchain,
   sistema_nome: Texto,
   saida: Texto
-) -> Resultado<PacoteInstalador, Falha> toca disco ::
+) -> Resultado<PacoteInstalador, Falha> toca disco, ambiente ::
   guarda sistema_resultado := sistema_instalacao_por_nome(sistema_nome)
 
   veja sistema_resultado e Falha ::
@@ -96,7 +100,7 @@ campo gera_instalador(
 
   devolve Valor(PacoteInstalador {
     sistema: sistema,
-    versao: SevenVersao,
+    versao: InstallerBuilderSevenVersao,
     diretorio: diretorio,
     instalador: instalador,
     manifesto: manifesto,
@@ -107,11 +111,11 @@ fecha
 
 campo sistema_instalacao_por_nome(nome: Texto) -> Resultado<SistemaInstalacao, Falha> ::
   veja nome == "windows" ou nome == "windows-x64" ou nome == "win-x64" ::
-    devolve Valor(WindowsX64)
+    devolve Valor(InstaladorWindowsX64)
   fecha
 
   veja nome == "linux" ou nome == "linux-x64" ::
-    devolve Valor(LinuxX64)
+    devolve Valor(InstaladorLinuxX64)
   fecha
 
   devolve Falha(nova_falha(
@@ -121,7 +125,7 @@ campo sistema_instalacao_por_nome(nome: Texto) -> Resultado<SistemaInstalacao, F
 fecha
 
 campo alvo_instalador(sistema: SistemaInstalacao) -> AlvoNativo ::
-  veja sistema e WindowsX64 ::
+  veja sistema e InstaladorWindowsX64 ::
     devolve alvo_instalador_win_x64("brand/seven.ico")
   fecha
 
@@ -137,7 +141,7 @@ campo diretorio_pacote(
     devolve saida
   fecha
 
-  devolve contexto.destino + "/installers/seven-" + SevenVersao + "-" + sistema_instalacao_nome(sistema)
+  devolve contexto.destino + "/installers/seven-" + InstallerBuilderSevenVersao + "-" + sistema_instalacao_nome(sistema)
 fecha
 
 campo caminho_instalador(diretorio: Texto, sistema: SistemaInstalacao) -> Texto ::
@@ -145,7 +149,7 @@ campo caminho_instalador(diretorio: Texto, sistema: SistemaInstalacao) -> Texto 
 fecha
 
 campo nome_instalador(sistema: SistemaInstalacao) -> Texto ::
-  veja sistema e WindowsX64 ::
+  veja sistema e InstaladorWindowsX64 ::
     devolve "seven-installer.exe"
   fecha
 
@@ -168,34 +172,34 @@ campo prepara_payload(sistema: SistemaInstalacao, payload: Texto) -> Resultado<N
   fecha
 
   solta destino_compilador := payload + "/seven"
-  veja sistema e WindowsX64 ::
+  veja sistema e InstaladorWindowsX64 ::
     vira destino_compilador := payload + "/seven.exe"
   fecha
 
-  guarda c1 := arquivo_copia(compilador, destino_compilador)
+  guarda c1 := instalador_arquivo_copia(compilador, destino_compilador)
   veja c1 e Falha :: devolve c1 fecha
-  guarda c2 := arquivo_copia("build/seven.svbc", payload + "/seven.svbc")
+  guarda c2 := instalador_arquivo_copia("build/seven.svbc", payload + "/seven.svbc")
   veja c2 e Falha :: devolve c2 fecha
-  guarda c3 := arquivo_copia("build/seven.host.svbc", payload + "/seven.host.svbc")
+  guarda c3 := instalador_arquivo_copia("build/seven.host.svbc", payload + "/seven.host.svbc")
   veja c3 e Falha :: devolve c3 fecha
-  guarda c4 := arquivo_copia("build/seven.launcher.svbc", payload + "/seven.launcher.svbc")
+  guarda c4 := instalador_arquivo_copia("build/seven.launcher.svbc", payload + "/seven.launcher.svbc")
   veja c4 e Falha :: devolve c4 fecha
-  guarda c5 := arquivo_copia("brand/seven.ico", payload + "/seven.ico")
+  guarda c5 := instalador_arquivo_copia("brand/seven.ico", payload + "/seven.ico")
   veja c5 e Falha :: devolve c5 fecha
-  guarda c6 := arquivo_copia("brand/seven-mark.svg", payload + "/seven-mark.svg")
+  guarda c6 := instalador_arquivo_copia("brand/seven-mark.svg", payload + "/seven-mark.svg")
   veja c6 e Falha :: devolve c6 fecha
   guarda c7 := diretorio_copia("std", payload + "/std")
   veja c7 e Falha :: devolve c7 fecha
-  guarda c8 := arquivo_copia("LICENSE", payload + "/LICENSE")
+  guarda c8 := instalador_arquivo_copia("LICENSE", payload + "/LICENSE")
   veja c8 e Falha :: devolve c8 fecha
-  guarda c9 := arquivo_copia("NOTICE", payload + "/NOTICE")
+  guarda c9 := instalador_arquivo_copia("NOTICE", payload + "/NOTICE")
   veja c9 e Falha :: devolve c9 fecha
 
   devolve Valor(nulo)
 fecha
 
 campo compilador_nativo_origem(sistema: SistemaInstalacao) -> Texto ::
-  veja sistema e WindowsX64 ::
+  veja sistema e InstaladorWindowsX64 ::
     devolve "build/native/windows/seven.exe"
   fecha
 
@@ -209,8 +213,8 @@ campo manifesto_pacote(
   payload: Texto
 ) -> Texto ::
   devolve "seven-installer 2\n" +
-    "nome " + SevenNome + "\n" +
-    "versao " + SevenVersao + "\n" +
+    "nome " + InstallerBuilderSevenNome + "\n" +
+    "versao " + InstallerBuilderSevenVersao + "\n" +
     "criador Gabriel Barcelos\n" +
     "sistema " + sistema_instalacao_nome(sistema) + "\n" +
     "diretorio " + diretorio + "\n" +

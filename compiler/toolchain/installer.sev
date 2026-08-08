@@ -10,8 +10,8 @@ const SevenPublicador: Texto := "Gabriel Barcelos"
 const SevenVersao: Texto := "0.1.0"
 
 selo SistemaInstalacao ::
-  WindowsX64
-  LinuxX64
+  InstaladorWindowsX64
+  InstaladorLinuxX64
 fecha
 
 molde PlanoInstalacao ::
@@ -73,7 +73,7 @@ campo plano_instalacao_padrao(prefixo: Texto) -> PlanoInstalacao toca ambiente :
 fecha
 
 campo plano_instalacao_sistema(sistema: SistemaInstalacao, pacote_raiz: Texto, prefixo: Texto) -> PlanoInstalacao toca ambiente ::
-  veja sistema e WindowsX64 ::
+  veja sistema e InstaladorWindowsX64 ::
     devolve plano_instalacao_windows(pacote_raiz, prefixo)
   fecha
 
@@ -86,7 +86,7 @@ campo plano_instalacao_windows(pacote_raiz: Texto, prefixo: Texto) -> PlanoInsta
   guarda appdata := env_ou("APPDATA", destino)
 
   devolve PlanoInstalacao {
-    sistema: WindowsX64,
+    sistema: InstaladorWindowsX64,
     versao: SevenVersao,
     pacote_raiz: pacote_raiz,
     payload: payload,
@@ -122,7 +122,7 @@ campo plano_instalacao_linux(pacote_raiz: Texto, prefixo: Texto) -> PlanoInstala
   guarda payload := pacote_raiz + "/payload"
 
   devolve PlanoInstalacao {
-    sistema: LinuxX64,
+    sistema: InstaladorLinuxX64,
     versao: SevenVersao,
     pacote_raiz: pacote_raiz,
     payload: payload,
@@ -219,17 +219,17 @@ campo instala_layout(plano: PlanoInstalacao) -> Resultado<Nada, Falha> toca disc
   guarda r4 := diretorio_cria(plano.cache)
   veja r4 e Falha :: devolve r4 fecha
 
-  guarda c1 := arquivo_copia(plano.binario_origem, plano.binario)
+  guarda c1 := instalador_arquivo_copia(plano.binario_origem, plano.binario)
   veja c1 e Falha :: devolve c1 fecha
-  guarda c2 := arquivo_copia(plano.compilador_bytecode_origem, plano.compilador_bytecode)
+  guarda c2 := instalador_arquivo_copia(plano.compilador_bytecode_origem, plano.compilador_bytecode)
   veja c2 e Falha :: devolve c2 fecha
-  guarda c3 := arquivo_copia(plano.host_bytecode_origem, plano.host_bytecode)
+  guarda c3 := instalador_arquivo_copia(plano.host_bytecode_origem, plano.host_bytecode)
   veja c3 e Falha :: devolve c3 fecha
-  guarda c4 := arquivo_copia(plano.launcher_bytecode_origem, plano.launcher_bytecode)
+  guarda c4 := instalador_arquivo_copia(plano.launcher_bytecode_origem, plano.launcher_bytecode)
   veja c4 e Falha :: devolve c4 fecha
-  guarda c5 := arquivo_copia(plano.icone_ico_origem, plano.icone_ico)
+  guarda c5 := instalador_arquivo_copia(plano.icone_ico_origem, plano.icone_ico)
   veja c5 e Falha :: devolve c5 fecha
-  guarda c6 := arquivo_copia(plano.icone_svg_origem, plano.share_dir + "/seven-mark.svg")
+  guarda c6 := instalador_arquivo_copia(plano.icone_svg_origem, plano.share_dir + "/seven-mark.svg")
   veja c6 e Falha :: devolve c6 fecha
   guarda c7 := diretorio_copia(plano.payload + "/std", plano.stdlib)
   veja c7 e Falha :: devolve c7 fecha
@@ -241,7 +241,7 @@ campo instala_layout(plano: PlanoInstalacao) -> Resultado<Nada, Falha> toca disc
 fecha
 
 campo integra_sistema(plano: PlanoInstalacao) -> Resultado<Nada, Falha> toca disco, ambiente ::
-  veja plano.sistema e WindowsX64 ::
+  veja plano.sistema e InstaladorWindowsX64 ::
     devolve integra_windows(plano)
   fecha
 
@@ -297,11 +297,11 @@ campo integra_linux(plano: PlanoInstalacao) -> Resultado<Nada, Falha> toca disco
   guarda d4 := diretorio_cria(home + "/.local/share/icons/hicolor/scalable/apps")
   veja d4 e Falha :: devolve d4 fecha
 
-  arquivo_remove(plano.link)
+  instalador_arquivo_remove(plano.link)
   guarda link := arquivo_link_simbolico(plano.binario, plano.link)
   veja link e Falha :: devolve link fecha
 
-  guarda icone := arquivo_copia(plano.icone_svg_origem, plano.icone_svg)
+  guarda icone := instalador_arquivo_copia(plano.icone_svg_origem, plano.icone_svg)
   veja icone e Falha :: devolve icone fecha
 
   guarda desktop := sys_arquivo_grava_texto(plano.desktop, desktop_linux(plano))
@@ -322,17 +322,17 @@ fecha
 campo remove_instalacao(prefixo: Texto) -> Resultado<InstalacaoSeven, Falha> toca disco, ambiente ::
   guarda plano := plano_instalacao_padrao(prefixo)
 
-  veja plano.sistema e WindowsX64 ::
+  veja plano.sistema e InstaladorWindowsX64 ::
     windows_associacao_remove(SevenAppId + ".Source", ".sev")
     windows_desinstalador_remove(SevenAppId)
     path_usuario_remove(plano.bin_dir)
-    arquivo_remove(plano.atalho)
+    instalador_arquivo_remove(plano.atalho)
   outro ::
     path_usuario_remove(env_ou("HOME", ".") + "/.local/bin")
-    arquivo_remove(plano.link)
-    arquivo_remove(plano.desktop)
-    arquivo_remove(plano.mime)
-    arquivo_remove(plano.icone_svg)
+    instalador_arquivo_remove(plano.link)
+    instalador_arquivo_remove(plano.desktop)
+    instalador_arquivo_remove(plano.mime)
+    instalador_arquivo_remove(plano.icone_svg)
     linux_desktop_atualiza()
     linux_mime_atualiza()
   fecha
@@ -403,7 +403,7 @@ campo ambiente_instalacao(plano: PlanoInstalacao) -> Texto ::
 fecha
 
 campo sistema_instalacao_nome(sistema: SistemaInstalacao) -> Texto ::
-  veja sistema e WindowsX64 ::
+  veja sistema e InstaladorWindowsX64 ::
     devolve "windows-x64"
   fecha
 

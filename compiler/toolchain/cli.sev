@@ -255,7 +255,7 @@ campo executa_installer(
   contexto: ContextoToolchain,
   sistema: Texto,
   saida: Texto
-) -> SaidaToolchain toca terminal, disco ::
+) -> SaidaToolchain toca terminal, disco, ambiente ::
   guarda pacote := gera_instalador(contexto, sistema, saida)
 
   veja pacote e Falha ::

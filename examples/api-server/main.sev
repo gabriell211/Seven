@@ -17,7 +17,7 @@ campo health(ctx: Contexto) -> Resposta ::
   devolve json(json_codifica(json_objeto(campos)))
 fecha
 
-campo inicio() -> Num toca rede, terminal, ambiente ::
+campo inicio() -> Num toca rede, terminal, ambiente, tempo ::
   guarda cfg := config_carrega("seven-api")
   guarda log := logger("api")
   solta rotas := roteador()

@@ -5,6 +5,7 @@ usa seven.runtime.platform.native.target
 usa seven.runtime.platform.native.linker
 usa seven.runtime.svbc.decoder
 usa std.base.resultado
+usa std.crypto.hash
 usa std.os.install
 
 molde CompiladoresNativos ::
@@ -14,7 +15,7 @@ molde CompiladoresNativos ::
   linux_hash: Texto
 fecha
 
-campo gera_compiladores_nativos(contexto: ContextoToolchain) -> Resultado<CompiladoresNativos, Falha> toca disco ::
+campo gera_compiladores_nativos(contexto: ContextoToolchain) -> Resultado<CompiladoresNativos, Falha> toca disco, ambiente ::
   guarda host_caminho := contexto.destino + "/seven.host.svbc"
 
   veja caminho_existe(host_caminho) == nao ::

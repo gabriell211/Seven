@@ -1,6 +1,8 @@
 modulo std.web.json
 
+usa std.base.lista
 usa std.base.resultado
+usa std.base.texto
 
 selo Json ::
   JNulo
@@ -45,12 +47,12 @@ campo json_codifica(valor: Json) -> Texto ::
       outro ::
         devolve "false"
       fecha
-    outro ::
-      veja valor e JNum ::
-        devolve texto(valor.valor)
       outro ::
-        veja valor e JTexto ::
-          devolve "\"" + json_escape(valor.valor) + "\""
+        veja valor e JNum ::
+          devolve texto(valor.valor)
+        outro ::
+          veja valor e JTexto ::
+          devolve "\"" + json_escape_texto(valor.valor) + "\""
         outro ::
           devolve json_composto(valor)
         fecha
@@ -64,9 +66,83 @@ campo json_parse(texto_json: Texto) -> Resultado<Json, Falha> ::
 fecha
 
 campo json_composto(valor: Json) -> Texto ::
-  devolve sys_json_codifica(valor)
+  veja valor e JLista ::
+    devolve json_lista(valor.valor)
+  fecha
+
+  veja valor e JObjeto ::
+    devolve json_objeto_texto(valor.valor)
+  fecha
+
+  devolve "null"
 fecha
 
 campo json_parser(texto_json: Texto) -> Resultado<Json, Falha> ::
   devolve sys_json_parse(texto_json)
+fecha
+
+campo json_lista(valores: Lista<Json>) -> Texto ::
+  solta saida := "["
+  solta indice: U64 := 0
+
+  gira indice < lista_tamanho(valores) ::
+    veja indice > 0 ::
+      vira saida := saida + ","
+    fecha
+    vira saida := saida + json_codifica(lista_pega(valores, indice))
+    vira indice := indice + 1
+  fecha
+
+  devolve saida + "]"
+fecha
+
+campo json_objeto_texto(campos: Lista<JsonCampo>) -> Texto ::
+  solta saida := "{"
+  solta indice: U64 := 0
+
+  gira indice < lista_tamanho(campos) ::
+    guarda campo_atual := lista_pega(campos, indice)
+    veja indice > 0 ::
+      vira saida := saida + ","
+    fecha
+    vira saida := saida + "\"" + json_escape_texto(campo_atual.nome) + "\":" + json_codifica(campo_atual.valor)
+    vira indice := indice + 1
+  fecha
+
+  devolve saida + "}"
+fecha
+
+campo json_escape_texto(valor: Texto) -> Texto ::
+  solta saida := ""
+  solta indice: U64 := 0
+
+  gira indice < tamanho(valor) ::
+    guarda caractere := sys_texto_caractere(valor, indice)
+
+    veja caractere == "\"" ::
+      vira saida := saida + "\\\""
+    outro ::
+      veja caractere == "\\" ::
+        vira saida := saida + "\\\\"
+      outro ::
+        veja caractere == "\n" ::
+          vira saida := saida + "\\n"
+        outro ::
+          veja caractere == "\r" ::
+            vira saida := saida + "\\r"
+          outro ::
+            veja caractere == "\t" ::
+              vira saida := saida + "\\t"
+            outro ::
+              vira saida := saida + caractere
+            fecha
+          fecha
+        fecha
+      fecha
+    fecha
+
+    vira indice := indice + 1
+  fecha
+
+  devolve saida
 fecha

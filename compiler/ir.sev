@@ -382,6 +382,9 @@ campo baixa_expressao(expressao: Expressao, contexto: ContextoIr) -> U32 ::
       veja variante_nome e Algo e lista_tamanho(variante_nome.valor.carga) == 0 ::
         devolve emite_variante_ir(contexto, variante_nome.valor, lista<Expressao>())
       fecha
+      veja campo_executavel_existe(contexto.programas, expressao.valor.nome) ::
+        devolve emite_constante(contexto, ValorTexto(expressao.valor.nome))
+      fecha
     fecha
     devolve local_ou_constante(contexto, expressao.valor.nome)
   fecha
@@ -449,6 +452,22 @@ campo baixa_expressao(expressao: Expressao, contexto: ContextoIr) -> U32 ::
       guarda destino := novo_local(contexto, TipoDesconhecido)
       emite(contexto, IrChama(destino, nome, argumentos))
       devolve destino
+    fecha
+
+    veja expressao.valor.alvo e ExprNome ::
+      veja mapa_tem(contexto.locais, expressao.valor.alvo.valor.nome) ::
+        solta dinamicos := lista<U32>()
+        lista_coloca(dinamicos, baixa_expressao(expressao.valor.alvo, contexto))
+        lista_junta(dinamicos, argumentos)
+        devolve emite_syscall(contexto, "sys_chamada_dinamica", dinamicos)
+      fecha
+    fecha
+
+    veja expressao.valor.alvo e ExprAcesso ::
+      solta dinamicos := lista<U32>()
+      lista_coloca(dinamicos, baixa_expressao(expressao.valor.alvo, contexto))
+      lista_junta(dinamicos, argumentos)
+      devolve emite_syscall(contexto, "sys_chamada_dinamica", dinamicos)
     fecha
 
     devolve emite_syscall(contexto, nome, argumentos)

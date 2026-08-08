@@ -63,6 +63,15 @@ seven verify production
 seven release
 ```
 
+Para desenvolvimento Web no navegador:
+
+```text
+seven check examples/web_dev.sev
+seven web build examples/web_dev.sev build/web-dev
+```
+
+O guia pratico fica em `docs/web-development.md`.
+
 A cadeia oficial de bootstrap e:
 
 ```text

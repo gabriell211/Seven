@@ -60,6 +60,14 @@ seven_<nome-do-handler>() -> I32
 
 ## Exemplo interativo
 
+Para comecar um projeto de tela no navegador, use tambem o starter:
+
+```text
+seven web build examples/web_dev.sev build/web-dev
+```
+
+O guia pratico fica em `docs/web-development.md`.
+
 ```sev
 modulo app
 

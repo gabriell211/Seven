@@ -1,6 +1,9 @@
 modulo std.web.http
 
+usa std.base.convert
+usa std.base.lista
 usa std.base.resultado
+usa std.base.texto
 usa std.mem.bytes
 usa std.net.tcp
 
@@ -39,9 +42,9 @@ campo cabecalho(nome: Texto, valor: Texto) -> Cabecalho ::
   }
 fecha
 
-campo resposta(status: U32, corpo: Texto) -> Resposta ::
+campo resposta_com_tipo(status: U32, corpo: Texto, tipo: Texto) -> Resposta ::
   solta headers := lista<Cabecalho>()
-  lista_coloca(headers, cabecalho("content-type", "text/plain; charset=utf-8"))
+  lista_coloca(headers, cabecalho("content-type", tipo))
 
   devolve Resposta {
     status: status,
@@ -50,26 +53,186 @@ campo resposta(status: U32, corpo: Texto) -> Resposta ::
   }
 fecha
 
+campo resposta(status: U32, corpo: Texto) -> Resposta ::
+  devolve resposta_com_tipo(status, corpo, "text/plain; charset=utf-8")
+fecha
+
 campo html(corpo: Texto) -> Resposta ::
-  solta r := resposta(200, corpo)
-  lista_coloca(r.cabecalhos, cabecalho("content-type", "text/html; charset=utf-8"))
-  devolve r
+  devolve resposta_com_tipo(200, corpo, "text/html; charset=utf-8")
 fecha
 
 campo json(corpo: Texto) -> Resposta ::
-  solta r := resposta(200, corpo)
-  lista_coloca(r.cabecalhos, cabecalho("content-type", "application/json; charset=utf-8"))
-  devolve r
+  devolve resposta_com_tipo(200, corpo, "application/json; charset=utf-8")
 fecha
 
 campo nao_encontrado() -> Resposta ::
   devolve resposta(404, "nao encontrado")
 fecha
 
+campo metodo_de_texto(valor: Texto) -> MetodoHttp ::
+  veja valor == "POST" :: devolve POST fecha
+  veja valor == "PUT" :: devolve PUT fecha
+  veja valor == "PATCH" :: devolve PATCH fecha
+  veja valor == "DELETE" :: devolve DELETE fecha
+  veja valor == "OPTIONS" :: devolve OPTIONS fecha
+  devolve GET
+fecha
+
+campo metodo_texto(metodo: MetodoHttp) -> Texto ::
+  veja metodo == POST :: devolve "POST" fecha
+  veja metodo == PUT :: devolve "PUT" fecha
+  veja metodo == PATCH :: devolve "PATCH" fecha
+  veja metodo == DELETE :: devolve "DELETE" fecha
+  veja metodo == OPTIONS :: devolve "OPTIONS" fecha
+  devolve "GET"
+fecha
+
+campo status_texto(status: U32) -> Texto ::
+  veja status == 200 :: devolve "OK" fecha
+  veja status == 201 :: devolve "Created" fecha
+  veja status == 202 :: devolve "Accepted" fecha
+  veja status == 204 :: devolve "No Content" fecha
+  veja status == 301 :: devolve "Moved Permanently" fecha
+  veja status == 302 :: devolve "Found" fecha
+  veja status == 304 :: devolve "Not Modified" fecha
+  veja status == 400 :: devolve "Bad Request" fecha
+  veja status == 401 :: devolve "Unauthorized" fecha
+  veja status == 403 :: devolve "Forbidden" fecha
+  veja status == 404 :: devolve "Not Found" fecha
+  veja status == 405 :: devolve "Method Not Allowed" fecha
+  veja status == 409 :: devolve "Conflict" fecha
+  veja status == 415 :: devolve "Unsupported Media Type" fecha
+  veja status == 422 :: devolve "Unprocessable Entity" fecha
+  veja status == 429 :: devolve "Too Many Requests" fecha
+  veja status == 500 :: devolve "Internal Server Error" fecha
+  veja status == 503 :: devolve "Service Unavailable" fecha
+  devolve "OK"
+fecha
+
+campo texto_fatia(valor: Texto, inicio: U64, fim: U64) -> Texto ::
+  solta saida := ""
+  solta indice := inicio
+
+  gira indice < fim e indice < tamanho(valor) ::
+    vira saida := saida + sys_texto_caractere(valor, indice)
+    vira indice := indice + 1
+  fecha
+
+  devolve saida
+fecha
+
+campo texto_indice(valor: Texto, alvo: Texto) -> U64 ::
+  solta indice: U64 := 0
+  gira indice < tamanho(valor) ::
+    veja sys_texto_caractere(valor, indice) == alvo ::
+      devolve indice
+    fecha
+    vira indice := indice + 1
+  fecha
+  devolve tamanho(valor)
+fecha
+
+campo texto_trim_esquerda(valor: Texto) -> Texto ::
+  solta indice: U64 := 0
+  gira indice < tamanho(valor) e (sys_texto_caractere(valor, indice) == " " ou sys_texto_caractere(valor, indice) == "\t") ::
+    vira indice := indice + 1
+  fecha
+  devolve texto_fatia(valor, indice, tamanho(valor))
+fecha
+
+campo primeira_parte(valor: Texto) -> Texto ::
+  devolve texto_fatia(valor, 0, texto_indice(valor, " "))
+fecha
+
+campo depois_primeira_parte(valor: Texto) -> Texto ::
+  guarda indice := texto_indice(valor, " ")
+  veja indice >= tamanho(valor) ::
+    devolve ""
+  fecha
+  devolve texto_trim_esquerda(texto_fatia(valor, indice + 1, tamanho(valor)))
+fecha
+
+campo caminho_de_alvo(alvo: Texto) -> Texto ::
+  guarda indice := texto_indice(alvo, "?")
+  veja indice == 0 ::
+    devolve "/"
+  fecha
+  devolve texto_fatia(alvo, 0, indice)
+fecha
+
+campo consulta_de_alvo(alvo: Texto) -> Texto ::
+  guarda indice := texto_indice(alvo, "?")
+  veja indice >= tamanho(alvo) ::
+    devolve ""
+  fecha
+  devolve texto_fatia(alvo, indice + 1, tamanho(alvo))
+fecha
+
+campo cabecalho_de_linha(linha: Texto) -> Cabecalho ::
+  guarda indice := texto_indice(linha, ":")
+  veja indice >= tamanho(linha) ::
+    devolve cabecalho(linha, "")
+  fecha
+  devolve cabecalho(
+    texto_fatia(linha, 0, indice),
+    texto_trim_esquerda(texto_fatia(linha, indice + 1, tamanho(linha)))
+  )
+fecha
+
+campo requisicao_vazia() -> Requisicao ::
+  devolve Requisicao {
+    metodo: GET,
+    caminho: "/",
+    consulta: "",
+    cabecalhos: lista<Cabecalho>(),
+    corpo: bytes_novo()
+  }
+fecha
+
 campo http_ler_requisicao(conexao: ConexaoTcp) -> Requisicao toca rede ::
-  devolve sys_http_ler_requisicao(conexao)
+  guarda leitura := tcp_le(conexao)
+
+  veja leitura e Falha ::
+    devolve requisicao_vazia()
+  fecha
+
+  guarda bruto := bytes_texto(leitura.valor)
+  guarda itens := linhas(bruto)
+
+  veja lista_tamanho(itens) == 0 ::
+    devolve requisicao_vazia()
+  fecha
+
+  guarda linha_inicial := lista_pega(itens, 0)
+  guarda metodo_bruto := primeira_parte(linha_inicial)
+  guarda resto := depois_primeira_parte(linha_inicial)
+  guarda alvo := primeira_parte(resto)
+  solta headers := lista<Cabecalho>()
+  solta indice: U64 := 1
+
+  gira indice < lista_tamanho(itens) e lista_pega(itens, indice) != "" ::
+    lista_coloca(headers, cabecalho_de_linha(lista_pega(itens, indice)))
+    vira indice := indice + 1
+  fecha
+
+  devolve Requisicao {
+    metodo: metodo_de_texto(metodo_bruto),
+    caminho: caminho_de_alvo(alvo),
+    consulta: consulta_de_alvo(alvo),
+    cabecalhos: headers,
+    corpo: bytes_novo()
+  }
 fecha
 
 campo http_escreve_resposta(conexao: ConexaoTcp, res: Resposta) -> Nada toca rede ::
-  sys_http_escreve_resposta(conexao, res)
+  solta saida := "HTTP/1.1 " + texto_u64(U64(res.status)) + " " + status_texto(res.status) + "\r\n"
+  lista_coloca(res.cabecalhos, cabecalho("content-length", texto_u64(res.corpo.tamanho)))
+  lista_coloca(res.cabecalhos, cabecalho("connection", "close"))
+
+  para cada header em res.cabecalhos ::
+    vira saida := saida + header.nome + ": " + header.valor + "\r\n"
+  fecha
+
+  vira saida := saida + "\r\n" + bytes_texto(res.corpo)
+  tcp_escreve(conexao, texto_bytes(saida))
 fecha

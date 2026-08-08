@@ -1,0 +1,31 @@
+modulo tests.toolchain.release_cutover
+
+usa seven.compiler.toolchain.command
+usa seven.compiler.toolchain.release
+usa std.fs.file
+
+campo inicio() -> Num toca disco, ambiente ::
+  guarda release := prepara_release(contexto_padrao())
+
+  veja release e Falha ::
+    devolve 1
+  fecha
+
+  veja arquivo_existe("build/native/windows/seven.exe") == nao ::
+    devolve 2
+  fecha
+
+  veja arquivo_existe("build/native/windows/seven.exe.sha256") == nao ::
+    devolve 3
+  fecha
+
+  veja arquivo_existe("build/native/linux/seven") == nao ::
+    devolve 4
+  fecha
+
+  veja arquivo_existe("build/native/linux/seven.sha256") == nao ::
+    devolve 5
+  fecha
+
+  devolve 0
+fecha

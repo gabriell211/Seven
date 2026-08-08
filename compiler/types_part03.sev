@@ -83,6 +83,18 @@ campo tipos_compativeis(a: Tipo, b: Tipo) -> Bit ::
   fecha
   veja a e TipoCampo ::
     veja b e TipoCampo ::
+      veja lista_tamanho(a.parametros) != lista_tamanho(b.parametros) ::
+        devolve nao
+      fecha
+
+      solta indice: U64 := 0
+      gira indice < lista_tamanho(a.parametros) ::
+        veja nao tipos_compativeis(lista_pega(a.parametros, indice), lista_pega(b.parametros, indice)) ::
+          devolve nao
+        fecha
+        vira indice := indice + 1
+      fecha
+
       devolve tipos_compativeis(a.retorno, b.retorno)
     fecha
   fecha

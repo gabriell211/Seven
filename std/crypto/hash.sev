@@ -1,5 +1,6 @@
 modulo std.crypto.hash
 
+usa std.fs.file
 usa std.mem.bytes
 
 molde Hash ::
@@ -16,4 +17,14 @@ fecha
 
 campo hash_texto(hash: Hash) -> Texto ::
   devolve bytes_hex(hash.valor)
+fecha
+
+campo sha256_arquivo(caminho: Texto) -> Texto toca disco, ambiente ::
+  guarda dados := arquivo_bytes(caminho)
+
+  veja dados e Falha ::
+    devolve ""
+  fecha
+
+  devolve hash_texto(sha256(dados.valor))
 fecha
