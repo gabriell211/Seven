@@ -218,3 +218,109 @@ jobs:
             process.exit(1);
           });
           JS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-transition-image
+          path: build/seven.transition.svbc
+          if-no-files-found: error
+
+  windows:
+    name: Execute identical Seven image on Windows release host
+    needs: probe
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: seven-transition-image
+          path: build/image
+
+      - name: Build relocatable Windows release candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$GITHUB_WORKSPACE/build/release-root"
+          mkdir -p "$root/bin"
+          cp build/image/seven.transition.svbc "$root/seven.svbc"
+          cp -R std "$root/std"
+          clang -DSEVEN_RELEASE_HOST -O2 -std=c11 -Wall -Wextra -Werror \
+            bootstrap/host/v2/genesis-host.c -o "$root/bin/seven.exe"
+          "$root/bin/seven.exe" --version | tee build/windows-version.txt
+          grep -q 'Seven 0.2.0' build/windows-version.txt
+
+      - name: Execute Windows candidate outside repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$GITHUB_WORKSPACE/build/release-root/bin/seven.exe"
+          project="$GITHUB_WORKSPACE"
+          mkdir -p "$RUNNER_TEMP/build"
+          cd "$RUNNER_TEMP"
+
+          "$seven" check "$project/examples/hello.sev"
+          if "$seven" check "$project/conformance/invalid/unknown_name.sev"; then
+            echo 'invalid source was accepted by Windows release candidate'
+            exit 1
+          fi
+          "$seven" build "$project/examples/hello.sev" "$project/build/windows-release-hello.svbc"
+          test -s "$project/build/windows-release-hello.svbc"
+          "$seven" run "$project/examples/hello.sev" | tee "$project/build/windows-release-run.txt"
+          grep -q 'Seven nasceu.' "$project/build/windows-release-run.txt"
+
+      - name: Prove Windows release candidate Web build
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$GITHUB_WORKSPACE/build/release-root/bin/seven.exe"
+          project="$GITHUB_WORKSPACE"
+          rm -rf "$project/build/windows-cutover-web"
+          cd "$RUNNER_TEMP"
+
+          "$seven" web build "$project/examples/web_app.sev" "$project/build/windows-cutover-web"
+          test -s "$project/build/windows-cutover-web/app.wasm"
+          test "$(od -An -tx1 -N4 "$project/build/windows-cutover-web/app.wasm" | tr -d ' \n')" = '0061736d'
+
+          node - "$project/build/windows-cutover-web/app.wasm" <<'JS'
+          const fs = require('fs');
+          const bytes = fs.readFileSync(process.argv[2]);
+          if (!WebAssembly.validate(bytes)) throw new Error('WebAssembly invalido');
+          let memory;
+          const calls = [];
+          const decoder = new TextDecoder();
+          const decode = descriptor => {
+            if (!descriptor) return '';
+            const view = new DataView(memory.buffer);
+            const pointer = view.getUint32(descriptor, true);
+            const length = view.getUint32(descriptor + 4, true);
+            return decoder.decode(new Uint8Array(memory.buffer, pointer, length));
+          };
+          const names = [
+            'terminal_diga', 'frontend_monta', 'frontend_texto', 'frontend_atributo',
+            'frontend_classe_adiciona', 'frontend_classe_remove', 'frontend_escuta',
+            'frontend_navega', 'frontend_injeta_css', 'frontend_fetch_texto',
+            'frontend_resposta_texto', 'frontend_resposta_status', 'frontend_evento_valor',
+            'frontend_armazena', 'frontend_carrega', 'frontend_remove'
+          ];
+          const seven = {};
+          for (const name of names) seven[name] = (...args) => {
+            calls.push({ name, args: args.map(decode) });
+            return 0;
+          };
+          (async () => {
+            const { instance } = await WebAssembly.instantiate(bytes, { seven });
+            memory = instance.exports.memory;
+            if (instance.exports.seven_start() !== 0) throw new Error('seven_start falhou');
+            const called = calls.map(call => call.name);
+            for (const expected of ['frontend_injeta_css', 'frontend_monta', 'frontend_escuta']) {
+              if (!called.includes(expected)) throw new Error(`ABI nao chamada: ${expected}`);
+            }
+            console.log(`windows release-candidate frontend calls: ${calls.length}`);
+          })().catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
+          JS
