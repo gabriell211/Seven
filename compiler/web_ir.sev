@@ -29,14 +29,16 @@ campo dobra_texto_constante_web(bloco: BlocoIr) -> Nada ::
         guarda esquerda := constante_web_antes(bloco.instrucoes, indice, instrucao.esquerda)
         guarda direita := constante_web_antes(bloco.instrucoes, indice, instrucao.direita)
 
-        veja esquerda e Algo e direita e Algo ::
-          guarda dobrado := soma_texto_web(esquerda.valor, direita.valor)
-          veja dobrado e Algo ::
-            lista_define(
-              bloco.instrucoes,
-              indice,
-              IrConst(instrucao.destino, dobrado.valor)
-            )
+        veja esquerda e Algo ::
+          veja direita e Algo ::
+            guarda dobrado := soma_texto_web(esquerda.valor, direita.valor)
+            veja dobrado e Algo ::
+              lista_define(
+                bloco.instrucoes,
+                indice,
+                IrConst(instrucao.destino, dobrado.valor)
+              )
+            fecha
           fecha
         fecha
       fecha
