@@ -13,12 +13,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  windows:
-    name: Windows semantic compiler and installer
-    runs-on: windows-latest
-    timeout-minutes: 20
+  compiler:
+    name: Rebuild current Seven compiler image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+
+      - name: Rebuild deterministic source-backed compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tests/compiler/build_transition_compiler.sh
+          cmp build/seven.transition.svbc build/seven.transition.self.svbc
+          sha256sum build/seven.transition.svbc
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-current-compiler-image
+          path: build/seven.transition.svbc
+          if-no-files-found: error
+
+  windows:
+    name: Windows source-backed compiler and installer
+    needs: compiler
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: seven-current-compiler-image
+          path: build/image
 
       - name: Enforce Seven-only implementation boundary
         shell: cmd
@@ -31,7 +58,7 @@ jobs:
             )
           )
 
-      - name: Reconstruct and verify audited Windows seeds
+      - name: Reconstruct legacy Windows installer only
         shell: bash
         run: |
           set -euo pipefail
@@ -41,30 +68,36 @@ jobs:
           echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
           unzip -t build/native-seeds.zip
           unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '80f1948e83b1c58c719c2ae0579a4b03edd1ccc1bf1e4e52091e2c66478feba5  build/native-seeds/seven-windows.exe' | sha256sum --check
           echo 'e4847375d1e800425e23253d36394bc8d2a2d9a97598f8905a30986310f176ed  build/native-seeds/seven-installer-windows.exe' | sha256sum --check
 
-      - name: Exercise Windows compiler, WebAssembly and deterministic bytecode
+      - name: Build current Windows release host
         shell: bash
         run: |
           set -euo pipefail
-          seven="$PWD/build/native-seeds/seven-windows.exe"
+          root="$PWD/build/current-windows"
+          mkdir -p "$root/bin"
+          cp build/image/seven.transition.svbc "$root/seven.svbc"
+          cp -R std "$root/std"
+          clang -DSEVEN_RELEASE_HOST -O2 -std=c11 -Wall -Wextra -Werror \
+            bootstrap/host/v2/genesis-host.c -o "$root/bin/seven.exe"
+
+          seven="$root/bin/seven.exe"
           "$seven" --version
           "$seven" check examples/hello.sev
           if "$seven" check conformance/invalid/unknown_name.sev; then
             echo 'invalid source was accepted'
             exit 1
           fi
-          "$seven" run examples/hello.sev
-          "$seven" web build examples/hello.sev build/web-windows
+          "$seven" run examples/hello.sev | tee build/windows-run.txt
+          grep -q 'Seven nasceu.' build/windows-run.txt
+          "$seven" web build examples/web_app.sev build/web-windows
           test -s build/web-windows/app.wasm
           test -s build/web-windows/seven.web.json
-          "$seven" build compiler/seven.sev build/seven.svbc
-          "$seven" build compiler/seven.sev build/seven.self.svbc
+          test "$(od -An -tx1 -N4 build/web-windows/app.wasm | tr -d ' \n')" = '0061736d'
           "$seven" build runtime/host/seven.sev build/seven.host.svbc
           "$seven" build runtime/launcher/seven.sev build/seven.launcher.svbc
-          cmp build/seven.svbc build/seven.self.svbc
-          "$seven" doctor
+          "$seven" doctor | tee build/windows-doctor.txt
+          grep -q 'compiler: source-backed' build/windows-doctor.txt
 
       - name: Assemble Windows bundle
         shell: cmd
@@ -73,8 +106,8 @@ jobs:
           mkdir "%B%\payload\bin" || exit /b 1
           mkdir "%B%\payload\std" || exit /b 1
           copy /y build\native-seeds\seven-installer-windows.exe "%B%\seven-installer.exe" || exit /b 1
-          copy /y build\native-seeds\seven-windows.exe "%B%\payload\bin\seven.exe" || exit /b 1
-          copy /y build\seven.svbc "%B%\payload\seven.svbc" || exit /b 1
+          copy /y build\current-windows\bin\seven.exe "%B%\payload\bin\seven.exe" || exit /b 1
+          copy /y build\image\seven.transition.svbc "%B%\payload\seven.svbc" || exit /b 1
           copy /y build\seven.host.svbc "%B%\payload\seven.host.svbc" || exit /b 1
           copy /y build\seven.launcher.svbc "%B%\payload\seven.launcher.svbc" || exit /b 1
           copy /y brand\seven.ico "%B%\payload\seven.ico" || exit /b 1
@@ -82,7 +115,8 @@ jobs:
           copy /y LICENSE "%B%\payload\LICENSE" || exit /b 1
           copy /y NOTICE "%B%\payload\NOTICE" || exit /b 1
           xcopy std "%B%\payload\std" /E /I /Y >nul || exit /b 1
-          certutil -hashfile "%B%\seven-installer.exe" SHA256 > "%B%\seven-installer.exe.sha256" || exit /b 1
+          certutil -hashfile "%B%\payload\bin\seven.exe" SHA256 > "%B%\seven.exe.sha256" || exit /b 1
+          certutil -hashfile "%B%\payload\seven.svbc" SHA256 > "%B%\seven.svbc.sha256" || exit /b 1
 
       - name: Install, execute and uninstall on Windows
         shell: cmd
@@ -99,7 +133,11 @@ jobs:
           if errorlevel 1 exit /b 1
           "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" check examples/hello.sev
           if errorlevel 1 exit /b 1
-          "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" web build examples/hello.sev build/installed-web-windows
+          "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" run examples/hello.sev > build\installed-run-windows.txt
+          if errorlevel 1 exit /b 1
+          findstr /c:"Seven nasceu." build\installed-run-windows.txt >nul
+          if errorlevel 1 exit /b 1
+          "%LOCALAPPDATA%\Programs\Seven\bin\seven.exe" web build examples/web_app.sev build/installed-web-windows
           if errorlevel 1 exit /b 1
           if not exist build\installed-web-windows\app.wasm exit /b 1
           reg query HKCU\Software\Classes\.sev >nul
@@ -116,6 +154,12 @@ jobs:
           reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Seven.Language >nul 2>&1 && exit /b 1
           exit /b 0
 
+      - name: Reject opaque compiler payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -q 'native-seeds/seven-windows.exe' .github/workflows/foundation.yml
+
       - uses: actions/upload-artifact@v4
         with:
           name: seven-0.2.0-windows-x64
@@ -123,11 +167,17 @@ jobs:
           if-no-files-found: error
 
   linux:
-    name: Linux semantic compiler and installer
+    name: Linux source-backed compiler and installer
+    needs: compiler
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: seven-current-compiler-image
+          path: build/image
 
       - name: Enforce Seven-only implementation boundary
         shell: bash
@@ -137,7 +187,7 @@ jobs:
             exit 1
           fi
 
-      - name: Reconstruct and verify audited Linux seeds
+      - name: Reconstruct legacy Linux installer only
         shell: bash
         run: |
           set -euo pipefail
@@ -147,31 +197,38 @@ jobs:
           echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
           unzip -t build/native-seeds.zip
           unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
           echo '8d5b9c534018d8b8ccca7fcdfaa6f7d40587c8a039d63ae214c62f93d35d533e  build/native-seeds/seven-installer-linux' | sha256sum --check
-          chmod +x build/native-seeds/seven-linux build/native-seeds/seven-installer-linux
+          chmod +x build/native-seeds/seven-installer-linux
 
-      - name: Exercise Linux compiler, WebAssembly and deterministic bytecode
+      - name: Build current Linux release host
         shell: bash
         run: |
           set -euo pipefail
-          seven=build/native-seeds/seven-linux
+          root="$PWD/build/current-linux"
+          mkdir -p "$root/bin"
+          cp build/image/seven.transition.svbc "$root/seven.svbc"
+          cp -R std "$root/std"
+          gcc -DSEVEN_RELEASE_HOST -O2 -std=c11 -Wall -Wextra -Werror \
+            bootstrap/host/v2/genesis-host.c -o "$root/bin/seven"
+          chmod +x "$root/bin/seven"
+
+          seven="$root/bin/seven"
           "$seven" --version
           "$seven" check examples/hello.sev
           if "$seven" check conformance/invalid/unknown_name.sev; then
             echo 'invalid source was accepted'
             exit 1
           fi
-          "$seven" run examples/hello.sev
-          "$seven" web build examples/hello.sev build/web-linux
+          "$seven" run examples/hello.sev | tee build/linux-run.txt
+          grep -q 'Seven nasceu.' build/linux-run.txt
+          "$seven" web build examples/web_app.sev build/web-linux
           test -s build/web-linux/app.wasm
           test -s build/web-linux/seven.web.json
-          "$seven" build compiler/seven.sev build/seven.svbc
-          "$seven" build compiler/seven.sev build/seven.self.svbc
+          test "$(od -An -tx1 -N4 build/web-linux/app.wasm | tr -d ' \n')" = '0061736d'
           "$seven" build runtime/host/seven.sev build/seven.host.svbc
           "$seven" build runtime/launcher/seven.sev build/seven.launcher.svbc
-          cmp build/seven.svbc build/seven.self.svbc
-          "$seven" doctor
+          "$seven" doctor | tee build/linux-doctor.txt
+          grep -q 'compiler: source-backed' build/linux-doctor.txt
 
       - name: Assemble Linux bundle
         shell: bash
@@ -180,15 +237,16 @@ jobs:
           b='build/installers/seven-0.2.0-linux-x64'
           mkdir -p "$b/payload/bin" "$b/payload/std"
           install -m 0755 build/native-seeds/seven-installer-linux "$b/seven-installer"
-          install -m 0755 build/native-seeds/seven-linux "$b/payload/bin/seven"
-          install -m 0644 build/seven.svbc "$b/payload/seven.svbc"
+          install -m 0755 build/current-linux/bin/seven "$b/payload/bin/seven"
+          install -m 0644 build/image/seven.transition.svbc "$b/payload/seven.svbc"
           install -m 0644 build/seven.host.svbc "$b/payload/seven.host.svbc"
           install -m 0644 build/seven.launcher.svbc "$b/payload/seven.launcher.svbc"
           install -m 0644 brand/seven.ico "$b/payload/seven.ico"
           install -m 0644 brand/seven-mark.svg "$b/payload/seven-mark.svg"
           install -m 0644 LICENSE NOTICE "$b/payload/"
           cp -R std/. "$b/payload/std/"
-          sha256sum "$b/seven-installer" > "$b/seven-installer.sha256"
+          sha256sum "$b/payload/bin/seven" > "$b/seven.sha256"
+          sha256sum "$b/payload/seven.svbc" > "$b/seven.svbc.sha256"
 
       - name: Install, execute and uninstall on Linux
         shell: bash
@@ -205,13 +263,22 @@ jobs:
           test -f "$HOME/.local/share/mime/packages/seven.xml"
           test -f "$HOME/.local/share/icons/hicolor/scalable/apps/seven.svg"
           test -f "$HOME/.local/share/seven/seven.ico"
+          test -f "$HOME/.local/share/seven/seven.svbc"
           "$HOME/.local/bin/seven" --version
           "$HOME/.local/bin/seven" check "$GITHUB_WORKSPACE/examples/hello.sev"
-          "$HOME/.local/bin/seven" web build "$GITHUB_WORKSPACE/examples/hello.sev" "$GITHUB_WORKSPACE/build/installed-web-linux"
+          "$HOME/.local/bin/seven" run "$GITHUB_WORKSPACE/examples/hello.sev" | tee "$GITHUB_WORKSPACE/build/installed-run-linux.txt"
+          grep -q 'Seven nasceu.' "$GITHUB_WORKSPACE/build/installed-run-linux.txt"
+          "$HOME/.local/bin/seven" web build "$GITHUB_WORKSPACE/examples/web_app.sev" "$GITHUB_WORKSPACE/build/installed-web-linux"
           test -s "$GITHUB_WORKSPACE/build/installed-web-linux/app.wasm"
           ./seven-installer --uninstall
           test ! -e "$HOME/.local/bin/seven"
           test ! -e "$HOME/.local/share/seven"
+
+      - name: Reject opaque compiler payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -q 'native-seeds/seven-linux' .github/workflows/foundation.yml
 
       - uses: actions/upload-artifact@v4
         with:
