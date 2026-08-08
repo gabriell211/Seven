@@ -51,6 +51,7 @@ compiler/toolchain/native_host.sev
 compiler/toolchain/production_audit.sev
 compiler/toolchain/release.sev
 compiler/toolchain/test_runner.sev
+compiler/toolchain/transition_cli.sev
 compiler/toolchain/verify.sev
 compiler/toolchain/web_build.sev
 compiler/types_part00.sev
