@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Enforce Seven-only implementation outside Genesis
         shell: bash
@@ -168,7 +168,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat > build/web-e2e.sources <<'EOF'
+          cat > build/web-e2e.parts <<'EOF'
           std/base/lista.sev
           std/base/resultado.sev
           std/base/talvez.sev
@@ -176,7 +176,6 @@ jobs:
           std/base/texto.sev
           std/mem/bytes.sev
           std/fs/file.sev
-          std/io/console.sev
           compiler/ast.sev
           compiler/bytecode.sev
           compiler/diagnostic.sev
@@ -208,11 +207,31 @@ jobs:
           tests/compiler/web_source_e2e.sev
           EOF
 
+          {
+            printf 'modulo seven_web_e2e_monolith\n\n'
+            while IFS= read -r arquivo; do
+              printf '// BEGIN %s\n' "$arquivo"
+              case "$arquivo" in
+                compiler/bytecode.sev)
+                  sed '/^modulo /d; /^usa /d; s/emite_constante(/bytecode_emite_constante(/g' "$arquivo"
+                  ;;
+                compiler/emitter.sev)
+                  sed '/^modulo /d; /^usa /d; s/^campo emite(/campo emite_formato(/' "$arquivo"
+                  ;;
+                *)
+                  sed '/^modulo /d; /^usa /d' "$arquivo"
+                  ;;
+              esac
+              printf '// END %s\n\n' "$arquivo"
+            done < build/web-e2e.parts
+          } > build/web-e2e.monolith.sev
+
+          printf '%s\n' 'build/web-e2e.monolith.sev' > build/web-e2e.sources
           cat > build/web-e2e.pkg <<'EOF'
           pacote seven-web-source-e2e
           versao 0.2.0
           criador Gabriel Barcelos
-          entrada tests.compiler.web_source_e2e.inicio
+          entrada seven_web_e2e_monolith.inicio
           alvo svbc
           indice build/web-e2e.sources
           EOF
