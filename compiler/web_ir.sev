@@ -1,0 +1,100 @@
+modulo seven.compiler.web_ir
+
+usa seven.compiler.ir
+usa std.base.lista
+usa std.base.talvez
+
+campo prepara_ir_web(unidade: UnidadeIr) -> UnidadeIr ::
+  para cada campo em unidade.campos ::
+    para cada bloco em campo.blocos ::
+      dobra_texto_constante_web(bloco)
+    fecha
+  fecha
+
+  devolve unidade
+fecha
+
+campo dobra_texto_constante_web(bloco: BlocoIr) -> Nada ::
+  solta indice: U64 := 0
+
+  gira indice < lista_tamanho(bloco.instrucoes) ::
+    guarda instrucao := lista_pega(bloco.instrucoes, indice)
+
+    veja instrucao e IrBin ::
+      veja instrucao.operador == "+" ::
+        guarda esquerda := constante_web_antes(bloco.instrucoes, indice, instrucao.esquerda)
+        guarda direita := constante_web_antes(bloco.instrucoes, indice, instrucao.direita)
+
+        veja esquerda e Algo e direita e Algo ::
+          guarda dobrado := soma_texto_web(esquerda.valor, direita.valor)
+          veja dobrado e Algo ::
+            lista_define(
+              bloco.instrucoes,
+              indice,
+              IrConst(instrucao.destino, dobrado.valor)
+            )
+          fecha
+        fecha
+      fecha
+    fecha
+
+    vira indice := indice + 1
+  fecha
+fecha
+
+campo constante_web_antes(
+  instrucoes: Lista<InstrucaoIr>,
+  limite: U64,
+  local: U32
+) -> Talvez<ValorIr> ::
+  solta indice := limite
+
+  gira indice > 0 ::
+    vira indice := indice - 1
+    guarda instrucao := lista_pega(instrucoes, indice)
+
+    veja instrucao e IrConst ::
+      veja instrucao.destino == local ::
+        devolve Algo(instrucao.valor)
+      fecha
+    fecha
+
+    veja instrucao e IrMove ::
+      veja instrucao.destino == local ::
+        devolve constante_web_antes(instrucoes, indice, instrucao.origem)
+      fecha
+    fecha
+
+    veja instrucao e IrBin ::
+      veja instrucao.destino == local :: devolve Vazio fecha
+    fecha
+
+    veja instrucao e IrChama ::
+      veja instrucao.destino == local :: devolve Vazio fecha
+    fecha
+
+    veja instrucao e IrSyscall ::
+      veja instrucao.destino == local :: devolve Vazio fecha
+    fecha
+
+    veja instrucao e IrCaixa ::
+      veja instrucao.destino == local :: devolve Vazio fecha
+    fecha
+
+    veja instrucao e IrPegaByte ::
+      veja instrucao.destino == local :: devolve Vazio fecha
+    fecha
+  fecha
+
+  devolve Vazio
+fecha
+
+campo soma_texto_web(esquerda: ValorIr, direita: ValorIr) -> Talvez<ValorIr> ::
+  veja esquerda e ValorTexto ::
+    veja direita e ValorTexto ::
+      devolve Algo(ValorTexto(esquerda.valor + direita.valor))
+    fecha
+  fecha
+
+  devolve Vazio
+fecha
