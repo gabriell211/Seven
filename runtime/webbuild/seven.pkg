@@ -1,0 +1,6 @@
+pacote seven-webbuild
+versao 0.2.0
+criador Gabriel Barcelos
+entrada seven.runtime.webbuild.inicio
+alvo svbc
+indice runtime/webbuild/seven.sources

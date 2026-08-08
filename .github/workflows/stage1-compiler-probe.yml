@@ -261,6 +261,20 @@ jobs:
           grep -qi 'content-type: application/json; charset=utf-8' build/api-server.stage2.response
           test "$body" = '{"status":"ok","language":"Seven","creator":"Gabriel Barcelos"}'
 
+      - name: Compile and exercise native Web build image with Stage 2
+        shell: bash
+        run: |
+          set -euo pipefail
+          build/genesis-host build/seven.stage2.svbc runtime/webbuild/seven.pkg build/seven.webbuild.svbc
+          test -s build/seven.webbuild.svbc
+          test "$(od -An -tx1 -N4 build/seven.webbuild.svbc | tr -d ' \n')" = '53564243'
+
+          build/genesis-host web build examples/web_dev.sev build/web-stage2-native
+          test -s build/web-stage2-native/app.wasm
+          test -s build/web-stage2-native/seven.web.json
+          grep -q '"target": "webassembly"' build/web-stage2-native/seven.web.json
+          test "$(od -An -tx1 -N4 build/web-stage2-native/app.wasm | tr -d ' \n')" = '0061736d'
+
       - name: Record Stage 1 provenance
         shell: bash
         run: |
@@ -305,5 +319,8 @@ jobs:
             build/stage2-proof.svbc
             build/api-server.stage2.svbc
             build/api-server.stage2.response
+            build/seven.webbuild.svbc
+            build/web-stage2-native/seven.web.json
+            build/web-stage2-native/app.wasm
             build/stage1.provenance
           if-no-files-found: error

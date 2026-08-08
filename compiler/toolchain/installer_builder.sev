@@ -184,16 +184,18 @@ campo prepara_payload(sistema: SistemaInstalacao, payload: Texto) -> Resultado<N
   veja c3 e Falha :: devolve c3 fecha
   guarda c4 := instalador_arquivo_copia("build/seven.launcher.svbc", payload + "/seven.launcher.svbc")
   veja c4 e Falha :: devolve c4 fecha
-  guarda c5 := instalador_arquivo_copia("brand/seven.ico", payload + "/seven.ico")
+  guarda c5 := instalador_arquivo_copia("build/seven.webbuild.svbc", payload + "/seven.webbuild.svbc")
   veja c5 e Falha :: devolve c5 fecha
-  guarda c6 := instalador_arquivo_copia("brand/seven-mark.svg", payload + "/seven-mark.svg")
+  guarda c6 := instalador_arquivo_copia("brand/seven.ico", payload + "/seven.ico")
   veja c6 e Falha :: devolve c6 fecha
-  guarda c7 := diretorio_copia("std", payload + "/std")
+  guarda c7 := instalador_arquivo_copia("brand/seven-mark.svg", payload + "/seven-mark.svg")
   veja c7 e Falha :: devolve c7 fecha
-  guarda c8 := instalador_arquivo_copia("LICENSE", payload + "/LICENSE")
+  guarda c8 := diretorio_copia("std", payload + "/std")
   veja c8 e Falha :: devolve c8 fecha
-  guarda c9 := instalador_arquivo_copia("NOTICE", payload + "/NOTICE")
+  guarda c9 := instalador_arquivo_copia("LICENSE", payload + "/LICENSE")
   veja c9 e Falha :: devolve c9 fecha
+  guarda c10 := instalador_arquivo_copia("NOTICE", payload + "/NOTICE")
+  veja c10 e Falha :: devolve c10 fecha
 
   devolve Valor(nulo)
 fecha
