@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   probe:
-    name: Rebuild and execute current Seven compiler
+    name: Rebuild and execute transition Seven compiler
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -26,28 +26,107 @@ jobs:
           set -euo pipefail
           bash tests/compiler/web_source_e2e.sh
 
-      - name: Compile current Seven package with Stage 1
+      - name: Compile curated transition compiler image
         shell: bash
         run: |
           set -euo pipefail
-          build/genesis-host build/seven.stage1.svbc seven.pkg build/seven.current.svbc
-          test -s build/seven.current.svbc
-          test "$(od -An -tx1 -N4 build/seven.current.svbc | tr -d ' \n')" = '53564243'
-          sha256sum build/seven.current.svbc
 
-      - name: Execute current compiler image
+          cat > build/transition.parts <<'EOF'
+          std/base/lista.sev
+          std/base/resultado.sev
+          std/base/talvez.sev
+          std/base/mapa.sev
+          std/base/texto.sev
+          std/mem/bytes.sev
+          std/fs/file.sev
+          compiler/ast.sev
+          compiler/bytecode.sev
+          compiler/diagnostic.sev
+          compiler/driver.sev
+          compiler/effects.sev
+          compiler/emitter.sev
+          compiler/ffi.sev
+          compiler/ir.sev
+          compiler/lexer.sev
+          compiler/memory.sev
+          compiler/package.sev
+          compiler/parser_part00.sev
+          compiler/parser_part01.sev
+          compiler/parser_part02.sev
+          compiler/parser_part03.sev
+          compiler/parser_part04.sev
+          compiler/parser_part05.sev
+          compiler/parser_cursor.sev
+          compiler/semantic.sev
+          compiler/source.sev
+          compiler/symbols.sev
+          compiler/token.sev
+          compiler/types_part00.sev
+          compiler/types_part01.sev
+          compiler/types_part02.sev
+          compiler/types_part03.sev
+          compiler/wasm.sev
+          compiler/web_ir.sev
+          compiler/toolchain/transition_cli.sev
+          EOF
+
+          {
+            printf 'modulo seven_transition_monolith\n\n'
+            while IFS= read -r arquivo; do
+              printf '// BEGIN %s\n' "$arquivo"
+              case "$arquivo" in
+                compiler/bytecode.sev)
+                  sed '/^modulo /d; /^usa /d; s/emite_constante(/bytecode_emite_constante(/g' "$arquivo"
+                  ;;
+                compiler/emitter.sev)
+                  sed '/^modulo /d; /^usa /d; s/^campo emite(/campo emite_formato(/' "$arquivo"
+                  ;;
+                *)
+                  sed '/^modulo /d; /^usa /d' "$arquivo"
+                  ;;
+              esac
+              printf '// END %s\n\n' "$arquivo"
+            done < build/transition.parts
+          } > build/seven.transition.monolith.sev
+
+          printf '%s\n' 'build/seven.transition.monolith.sev' > build/transition.sources
+          cat > build/transition.pkg <<'EOF'
+          pacote seven-transition
+          versao 0.2.0
+          criador Gabriel Barcelos
+          entrada seven_transition_monolith.inicio
+          alvo svbc
+          indice build/transition.sources
+          EOF
+
+          build/genesis-host build/seven.stage1.svbc build/transition.pkg build/seven.transition.svbc
+          test -s build/seven.transition.svbc
+          test "$(od -An -tx1 -N4 build/seven.transition.svbc | tr -d ' \n')" = '53564243'
+          sha256sum build/seven.transition.svbc
+
+      - name: Execute transition compiler basics
         shell: bash
         run: |
           set -euo pipefail
-          build/genesis-host build/seven.current.svbc --version | tee build/current-version.txt
-          grep -q 'Seven 0.2.0' build/current-version.txt
+          build/genesis-host build/seven.transition.svbc --version | tee build/transition-version.txt
+          grep -q 'Seven 0.2.0' build/transition-version.txt
 
-      - name: Prove current compiler Web build
+          build/genesis-host build/seven.transition.svbc check examples/hello.sev
+          if build/genesis-host build/seven.transition.svbc check conformance/invalid/unknown_name.sev; then
+            echo 'invalid source was accepted'
+            exit 1
+          fi
+
+          build/genesis-host build/seven.transition.svbc build examples/hello.sev build/transition-hello.svbc
+          test -s build/transition-hello.svbc
+          test "$(od -An -tx1 -N4 build/transition-hello.svbc | tr -d ' \n')" = '53564243'
+
+      - name: Prove transition compiler Web build
         shell: bash
         run: |
           set -euo pipefail
           rm -rf build/cutover-web
-          build/genesis-host build/seven.current.svbc web build examples/web_app.sev build/cutover-web
+          build/genesis-host build/seven.transition.svbc web build examples/web_app.sev build/cutover-web
           test -s build/cutover-web/app.wasm
           test -s build/cutover-web/seven.web.json
           test "$(od -An -tx1 -N4 build/cutover-web/app.wasm | tr -d ' \n')" = '0061736d'
