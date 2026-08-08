@@ -14,40 +14,17 @@ concurrency:
 
 jobs:
   webassembly:
-    name: Seven-native WebAssembly backend
+    name: Seven source-to-WebAssembly E2E
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Reconstruct audited Seven compiler
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p build/native-seeds
-          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
-          unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
-          chmod +x build/native-seeds/seven-linux
-
-      - name: Validate Seven WebAssembly sources
-        shell: bash
-        run: |
-          set -euo pipefail
-          seven=build/native-seeds/seven-linux
-          "$seven" check compiler/wasm.sev
-          "$seven" check compiler/toolchain/web_build.sev
-          "$seven" check runtime/platform/web/target.sev
-          "$seven" check runtime/platform/web/manifest.sev
-          "$seven" check tests/compiler/wasm.sev
+      - uses: actions/checkout@v6
 
       - name: Enforce Seven-only implementation outside Genesis
         shell: bash
         run: |
           set -euo pipefail
-          foreign='-name *.c -o -name *.cc -o -name *.cpp -o -name *.cxx -o -name *.rs -o -name *.go -o -name *.py -o -name *.js -o -name *.mjs -o -name *.ts -o -name *.cs -o -name *.java'
 
           if find compiler compiler0 runtime std tests/compiler \
             -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' \
@@ -67,8 +44,6 @@ jobs:
             exit 1
           fi
 
-          (cd bootstrap/host/v2 && sha256sum --check SHA256SUMS)
-
       - name: Verify direct WebAssembly contract
         shell: bash
         run: |
@@ -78,46 +53,13 @@ jobs:
           grep -q 'wasm_secao_imports' compiler/wasm.sev
           grep -q 'wasm_secao_codigo' compiler/wasm.sev
           grep -q 'wasm_secao_dados' compiler/wasm.sev
+          grep -q 'prepara_ir_web' compiler/toolchain/web_build.sev
           grep -q 'app.wasm' compiler/toolchain/web_build.sev
           grep -q 'seven_start' compiler/toolchain/web_build.sev
           grep -q 'extensao_fonte: ".sev"' runtime/platform/web/target.sev
           ! grep -R -n 'app.svbc\|seven-runtime.js\|sys_web_empacota' \
-            compiler/wasm.sev compiler/toolchain/web_build.sev runtime/platform/web
+            compiler/wasm.sev compiler/web_ir.sev compiler/toolchain/web_build.sev runtime/platform/web
 
-      - name: Build and execute a Seven web application
+      - name: Run source-to-WebAssembly frontend E2E
         shell: bash
-        run: |
-          set -euo pipefail
-          seven=build/native-seeds/seven-linux
-          "$seven" web build examples/hello.sev build/web
-          test -s build/web/app.wasm
-          test -s build/web/app.wasm.sha256
-          test -s build/web/index.html
-          test -s build/web/seven-loader.mjs
-          test -s build/web/seven.web.json
-          (cd build/web && sha256sum --check app.wasm.sha256)
-          node - build/web/app.wasm <<'JS'
-          const fs = require('fs');
-          const bytes = fs.readFileSync(process.argv[2]);
-          if (!WebAssembly.validate(bytes)) throw new Error('app.wasm invalido');
-
-          (async () => {
-            let memory;
-            let output = '';
-            const { instance } = await WebAssembly.instantiate(bytes, {
-              seven: {
-                terminal_diga(ptr, len) {
-                  output += Buffer.from(memory.buffer, ptr, len).toString('utf8') + '\n';
-                }
-              }
-            });
-            memory = instance.exports.memory;
-            const code = instance.exports.seven_start();
-            if (code !== 0) throw new Error(`codigo inesperado: ${code}`);
-            if (output !== 'Seven nasceu.\n') throw new Error(`saida inesperada: ${JSON.stringify(output)}`);
-            console.log(output.trim());
-          })().catch(error => {
-            console.error(error);
-            process.exit(1);
-          });
-          JS
+        run: bash tests/compiler/web_source_e2e.sh

@@ -5,6 +5,7 @@ usa seven.compiler.lexer
 usa seven.compiler.parser
 usa seven.compiler.semantic
 usa seven.compiler.ir
+usa seven.compiler.web_ir
 usa seven.compiler.driver
 usa seven.compiler.diagnostic
 usa seven.compiler.package
@@ -43,7 +44,7 @@ campo executa_web_build(entrada: Texto, saida: Texto) -> SaidaToolchain toca ter
   fecha
 
   guarda meio := baixa_ir(sintaxe.programas, semantica.tipos, semantica.efeitos)
-  guarda otimizado := otimiza_ir(meio, "seguro")
+  guarda otimizado := prepara_ir_web(otimiza_ir(meio, "seguro"))
   guarda wasm := emite_wasm(otimizado)
   veja wasm e Falha ::
     devolve ToolchainErro(1, wasm.valor.codigo + ": " + wasm.valor.mensagem)
