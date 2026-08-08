@@ -58,6 +58,7 @@ compiler/types_part01.sev
 compiler/types_part02.sev
 compiler/types_part03.sev
 compiler/wasm.sev
+compiler/web_ir.sev
 compiler0/ast.sev
 compiler0/check.sev
 compiler0/diagnostic.sev
