@@ -12,6 +12,7 @@
 #include <windows.h>
 #else
 #include <unistd.h>
+extern ssize_t readlink(const char*,char*,size_t);
 #endif
 #endif
 
