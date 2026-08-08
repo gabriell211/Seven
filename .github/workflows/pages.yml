@@ -7,13 +7,23 @@ on:
     paths:
       - 'website/**'
       - 'brand/**'
-      - 'seed/native/final/v1/**'
+      - 'compiler/**'
+      - 'compiler0/**'
+      - 'std/**'
+      - 'bootstrap/**'
+      - 'tests/compiler/web_source_e2e.sh'
+      - 'tests/compiler/build_transition_compiler.sh'
       - '.github/workflows/pages.yml'
   pull_request:
     paths:
       - 'website/**'
       - 'brand/**'
-      - 'seed/native/final/v1/**'
+      - 'compiler/**'
+      - 'compiler0/**'
+      - 'std/**'
+      - 'bootstrap/**'
+      - 'tests/compiler/web_source_e2e.sh'
+      - 'tests/compiler/build_transition_compiler.sh'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -28,36 +38,40 @@ concurrency:
 
 jobs:
   build:
-    name: Generate official website with Seven
+    name: Generate official website with rebuilt Seven
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Reconstruct audited Seven compiler
+      - name: Rebuild current Seven compiler
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p build/native-seeds
-          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
-          unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
-          chmod +x build/native-seeds/seven-linux
+          bash tests/compiler/build_transition_compiler.sh
+
+          root="$PWD/build/pages-compiler"
+          mkdir -p "$root/bin"
+          cp build/seven.transition.svbc "$root/seven.svbc"
+          cp -R std "$root/std"
+          gcc -DSEVEN_RELEASE_HOST -O2 -std=c11 -Wall -Wextra -Werror \
+            bootstrap/host/v2/genesis-host.c -o "$root/bin/seven"
+          chmod +x "$root/bin/seven"
+          "$root/bin/seven" --version
 
       - name: Check Seven website generator
         shell: bash
         run: |
           set -euo pipefail
-          build/native-seeds/seven-linux check website/pages.sev
+          build/pages-compiler/bin/seven check website/pages.sev
 
       - name: Generate static Pages artifact with Seven
         shell: bash
         run: |
           set -euo pipefail
-          seven=build/native-seeds/seven-linux
+          seven=build/pages-compiler/bin/seven
           mkdir -p build/pages/assets
 
           "$seven" run website/pages.sev > build/pages/raw-output.txt
@@ -78,6 +92,13 @@ jobs:
           test "$(tail -n 1 build/pages/index.html)" = '</html>'
 
           echo "Seven Pages generated: $(wc -c < build/pages/index.html) bytes"
+
+      - name: Reject opaque transition compiler dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -q 'build/native-seeds/seven-linux' .github/workflows/pages.yml
+          ! grep -q 'seed/native/final/v1/part' .github/workflows/pages.yml
 
       - name: Configure GitHub Pages
         if: github.event_name != 'pull_request'
@@ -101,6 +122,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy official website
         id: deployment
         uses: actions/deploy-pages@v5

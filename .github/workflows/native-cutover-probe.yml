@@ -1,0 +1,326 @@
+name: Seven Native Compiler Cutover Probe
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seven-native-cutover-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    name: Rebuild and execute transition Seven compiler
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build audited Stage 1 chain
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tests/compiler/web_source_e2e.sh
+
+      - name: Compile curated transition compiler image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > build/transition.parts <<'EOF'
+          std/base/lista.sev
+          std/base/resultado.sev
+          std/base/talvez.sev
+          std/base/mapa.sev
+          std/base/texto.sev
+          std/mem/bytes.sev
+          std/fs/file.sev
+          compiler/ast.sev
+          compiler/bytecode.sev
+          compiler/diagnostic.sev
+          compiler/driver.sev
+          compiler/effects.sev
+          compiler/emitter.sev
+          compiler/ffi.sev
+          compiler/ir.sev
+          compiler/lexer.sev
+          compiler/memory.sev
+          compiler/package.sev
+          compiler/parser_part00.sev
+          compiler/parser_part01.sev
+          compiler/parser_part02.sev
+          compiler/parser_part03.sev
+          compiler/parser_part04.sev
+          compiler/parser_part05.sev
+          compiler/parser_cursor.sev
+          compiler/semantic.sev
+          compiler/source.sev
+          compiler/symbols.sev
+          compiler/token.sev
+          compiler/types_part00.sev
+          compiler/types_part01.sev
+          compiler/types_part02.sev
+          compiler/types_part03.sev
+          compiler/wasm.sev
+          compiler/web_ir.sev
+          compiler/toolchain/transition_cli.sev
+          EOF
+
+          {
+            printf 'modulo seven_transition_monolith\n\n'
+            while IFS= read -r arquivo; do
+              printf '// BEGIN %s\n' "$arquivo"
+              case "$arquivo" in
+                compiler/bytecode.sev)
+                  sed '/^modulo /d; /^usa /d; s/emite_constante(/bytecode_emite_constante(/g' "$arquivo"
+                  ;;
+                compiler/emitter.sev)
+                  sed '/^modulo /d; /^usa /d; s/^campo emite(/campo emite_formato(/' "$arquivo"
+                  ;;
+                *)
+                  sed '/^modulo /d; /^usa /d' "$arquivo"
+                  ;;
+              esac
+              printf '// END %s\n\n' "$arquivo"
+            done < build/transition.parts
+          } > build/seven.transition.monolith.sev
+
+          printf '%s\n' 'build/seven.transition.monolith.sev' > build/transition.sources
+          cat > build/transition.pkg <<'EOF'
+          pacote seven-transition
+          versao 0.2.0
+          criador Gabriel Barcelos
+          entrada seven_transition_monolith.inicio
+          alvo svbc
+          indice build/transition.sources
+          EOF
+
+          build/genesis-host build/seven.stage1.svbc build/transition.pkg build/seven.transition.svbc
+          test -s build/seven.transition.svbc
+          test "$(od -An -tx1 -N4 build/seven.transition.svbc | tr -d ' \n')" = '53564243'
+          sha256sum build/seven.transition.svbc
+
+      - name: Execute transition compiler basics
+        shell: bash
+        run: |
+          set -euo pipefail
+          build/genesis-host build/seven.transition.svbc --version | tee build/transition-version.txt
+          grep -q 'Seven 0.2.0' build/transition-version.txt
+
+          build/genesis-host build/seven.transition.svbc check examples/hello.sev
+          if build/genesis-host build/seven.transition.svbc check conformance/invalid/unknown_name.sev; then
+            echo 'invalid source was accepted'
+            exit 1
+          fi
+
+          build/genesis-host build/seven.transition.svbc build examples/hello.sev build/transition-hello.svbc
+          test -s build/transition-hello.svbc
+          test "$(od -An -tx1 -N4 build/transition-hello.svbc | tr -d ' \n')" = '53564243'
+
+      - name: Build relocatable Linux release candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$GITHUB_WORKSPACE/build/release-root"
+          mkdir -p "$root/bin"
+          cp build/seven.transition.svbc "$root/seven.svbc"
+          cp -R std "$root/std"
+          gcc -DSEVEN_RELEASE_HOST -O2 -std=c11 -Wall -Wextra -Werror \
+            bootstrap/host/v2/genesis-host.c -o "$root/bin/seven"
+          chmod +x "$root/bin/seven"
+          sha256sum "$root/bin/seven" "$root/seven.svbc"
+
+      - name: Execute release candidate outside repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$GITHUB_WORKSPACE/build/release-root/bin/seven"
+          project="$GITHUB_WORKSPACE"
+          mkdir -p "$RUNNER_TEMP/build"
+          cd "$RUNNER_TEMP"
+
+          "$seven" --version | tee "$project/build/release-version.txt"
+          grep -q 'Seven 0.2.0' "$project/build/release-version.txt"
+          "$seven" check "$project/examples/hello.sev"
+          if "$seven" check "$project/conformance/invalid/unknown_name.sev"; then
+            echo 'invalid source was accepted by release candidate'
+            exit 1
+          fi
+
+          "$seven" build "$project/examples/hello.sev" "$project/build/release-hello.svbc"
+          test -s "$project/build/release-hello.svbc"
+          "$seven" run "$project/examples/hello.sev" | tee "$project/build/release-run.txt"
+          grep -q 'Seven nasceu.' "$project/build/release-run.txt"
+          "$seven" doctor | tee "$project/build/release-doctor.txt"
+          grep -q 'compiler: source-backed' "$project/build/release-doctor.txt"
+
+      - name: Prove release candidate Web build outside repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$GITHUB_WORKSPACE/build/release-root/bin/seven"
+          project="$GITHUB_WORKSPACE"
+          rm -rf "$project/build/cutover-web"
+          cd "$RUNNER_TEMP"
+
+          "$seven" web build "$project/examples/web_app.sev" "$project/build/cutover-web"
+          test -s "$project/build/cutover-web/app.wasm"
+          test -s "$project/build/cutover-web/seven.web.json"
+          test "$(od -An -tx1 -N4 "$project/build/cutover-web/app.wasm" | tr -d ' \n')" = '0061736d'
+
+          node - "$project/build/cutover-web/app.wasm" <<'JS'
+          const fs = require('fs');
+          const bytes = fs.readFileSync(process.argv[2]);
+          if (!WebAssembly.validate(bytes)) throw new Error('WebAssembly invalido');
+
+          let memory;
+          const calls = [];
+          const decoder = new TextDecoder();
+          const decode = descriptor => {
+            if (!descriptor) return '';
+            const view = new DataView(memory.buffer);
+            const pointer = view.getUint32(descriptor, true);
+            const length = view.getUint32(descriptor + 4, true);
+            return decoder.decode(new Uint8Array(memory.buffer, pointer, length));
+          };
+
+          const names = [
+            'terminal_diga', 'frontend_monta', 'frontend_texto', 'frontend_atributo',
+            'frontend_classe_adiciona', 'frontend_classe_remove', 'frontend_escuta',
+            'frontend_navega', 'frontend_injeta_css', 'frontend_fetch_texto',
+            'frontend_resposta_texto', 'frontend_resposta_status', 'frontend_evento_valor',
+            'frontend_armazena', 'frontend_carrega', 'frontend_remove'
+          ];
+          const seven = {};
+          for (const name of names) {
+            seven[name] = (...args) => {
+              calls.push({ name, args: args.map(decode) });
+              return 0;
+            };
+          }
+
+          (async () => {
+            const { instance } = await WebAssembly.instantiate(bytes, { seven });
+            memory = instance.exports.memory;
+            const code = instance.exports.seven_start();
+            if (code !== 0) throw new Error(`seven_start retornou ${code}`);
+            const called = calls.map(call => call.name);
+            for (const expected of ['frontend_injeta_css', 'frontend_monta', 'frontend_escuta']) {
+              if (!called.includes(expected)) throw new Error(`ABI nao chamada: ${expected}`);
+            }
+            console.log(`release-candidate frontend calls: ${calls.length}`);
+          })().catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
+          JS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-transition-image
+          path: build/seven.transition.svbc
+          if-no-files-found: error
+
+  windows:
+    name: Execute identical Seven image on Windows release host
+    needs: probe
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: seven-transition-image
+          path: build/image
+
+      - name: Build relocatable Windows release candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$GITHUB_WORKSPACE/build/release-root"
+          mkdir -p "$root/bin"
+          cp build/image/seven.transition.svbc "$root/seven.svbc"
+          cp -R std "$root/std"
+          clang -DSEVEN_RELEASE_HOST -O2 -std=c11 -Wall -Wextra -Werror \
+            bootstrap/host/v2/genesis-host.c -o "$root/bin/seven.exe"
+          "$root/bin/seven.exe" --version | tee build/windows-version.txt
+          grep -q 'Seven 0.2.0' build/windows-version.txt
+
+      - name: Execute Windows candidate outside repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$GITHUB_WORKSPACE/build/release-root/bin/seven.exe"
+          project="$GITHUB_WORKSPACE"
+          mkdir -p "$RUNNER_TEMP/build"
+          cd "$RUNNER_TEMP"
+
+          "$seven" check "$project/examples/hello.sev"
+          if "$seven" check "$project/conformance/invalid/unknown_name.sev"; then
+            echo 'invalid source was accepted by Windows release candidate'
+            exit 1
+          fi
+          "$seven" build "$project/examples/hello.sev" "$project/build/windows-release-hello.svbc"
+          test -s "$project/build/windows-release-hello.svbc"
+          "$seven" run "$project/examples/hello.sev" | tee "$project/build/windows-release-run.txt"
+          grep -q 'Seven nasceu.' "$project/build/windows-release-run.txt"
+
+      - name: Prove Windows release candidate Web build
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$GITHUB_WORKSPACE/build/release-root/bin/seven.exe"
+          project="$GITHUB_WORKSPACE"
+          rm -rf "$project/build/windows-cutover-web"
+          cd "$RUNNER_TEMP"
+
+          "$seven" web build "$project/examples/web_app.sev" "$project/build/windows-cutover-web"
+          test -s "$project/build/windows-cutover-web/app.wasm"
+          test "$(od -An -tx1 -N4 "$project/build/windows-cutover-web/app.wasm" | tr -d ' \n')" = '0061736d'
+
+          node - "$project/build/windows-cutover-web/app.wasm" <<'JS'
+          const fs = require('fs');
+          const bytes = fs.readFileSync(process.argv[2]);
+          if (!WebAssembly.validate(bytes)) throw new Error('WebAssembly invalido');
+          let memory;
+          const calls = [];
+          const decoder = new TextDecoder();
+          const decode = descriptor => {
+            if (!descriptor) return '';
+            const view = new DataView(memory.buffer);
+            const pointer = view.getUint32(descriptor, true);
+            const length = view.getUint32(descriptor + 4, true);
+            return decoder.decode(new Uint8Array(memory.buffer, pointer, length));
+          };
+          const names = [
+            'terminal_diga', 'frontend_monta', 'frontend_texto', 'frontend_atributo',
+            'frontend_classe_adiciona', 'frontend_classe_remove', 'frontend_escuta',
+            'frontend_navega', 'frontend_injeta_css', 'frontend_fetch_texto',
+            'frontend_resposta_texto', 'frontend_resposta_status', 'frontend_evento_valor',
+            'frontend_armazena', 'frontend_carrega', 'frontend_remove'
+          ];
+          const seven = {};
+          for (const name of names) seven[name] = (...args) => {
+            calls.push({ name, args: args.map(decode) });
+            return 0;
+          };
+          (async () => {
+            const { instance } = await WebAssembly.instantiate(bytes, { seven });
+            memory = instance.exports.memory;
+            if (instance.exports.seven_start() !== 0) throw new Error('seven_start falhou');
+            const called = calls.map(call => call.name);
+            for (const expected of ['frontend_injeta_css', 'frontend_monta', 'frontend_escuta']) {
+              if (!called.includes(expected)) throw new Error(`ABI nao chamada: ${expected}`);
+            }
+            console.log(`windows release-candidate frontend calls: ${calls.length}`);
+          })().catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
+          JS

@@ -38,6 +38,104 @@ campo fonte_carrega(caminho: Texto) -> Resultado<Fonte, Diagnostico> toca disco 
   devolve Valor(fonte_carrega_obrigatoria(caminho))
 fecha
 
+campo fonte_resolve_dependencias_pacote(pacote: Pacote) -> Pacote toca disco ::
+  solta sementes := lista<Texto>()
+  guarda quantidade_inicial := lista_tamanho(pacote.fontes)
+  solta indice: U64 := 0
+
+  gira indice < quantidade_inicial ::
+    lista_coloca(sementes, lista_pega(pacote.fontes, indice))
+    vira indice := indice + 1
+  fecha
+
+  solta visitados := lista<Texto>()
+  fonte_visita_dependencia(pacote, "std/base/prelude.sev", visitados)
+
+  para cada caminho em sementes ::
+    fonte_visita_dependencia(pacote, caminho, visitados)
+  fecha
+
+  devolve pacote
+fecha
+
+campo fonte_visita_dependencia(pacote: Pacote, caminho: Texto, visitados: Lista<Texto>) -> Nada toca disco ::
+  veja fonte_lista_contem(visitados, caminho) ::
+    devolve nulo
+  fecha
+
+  lista_coloca(visitados, caminho)
+
+  veja nao sys_arquivo_existe(caminho) ::
+    devolve nulo
+  fecha
+
+  veja nao fonte_lista_contem(pacote.fontes, caminho) ::
+    lista_coloca(pacote.fontes, caminho)
+  fecha
+
+  guarda conteudo := arquivo_ler(caminho)
+  para cada linha em linhas(conteudo) ::
+    guarda limpa := texto_apara_manifesto(linha)
+    veja texto_comeca(limpa, "usa ") ::
+      guarda partes := palavras_manifesto(limpa)
+      veja lista_tamanho(partes) >= 2 ::
+        guarda dependencia := fonte_caminho_modulo(lista_pega(partes, 1))
+        veja dependencia != "" ::
+          fonte_visita_dependencia(pacote, dependencia, visitados)
+        fecha
+      fecha
+    fecha
+  fecha
+fecha
+
+campo fonte_caminho_modulo(modulo: Texto) -> Texto ::
+  solta relativo := modulo
+  veja texto_comeca(relativo, "seven.") ::
+    vira relativo := fonte_remove_prefixo(relativo, "seven.")
+  fecha
+
+  solta caminho := ""
+  solta indice: U64 := 0
+  gira indice < sys_texto_tamanho(relativo) ::
+    guarda caractere := sys_texto_caractere(relativo, indice)
+    veja caractere == "." ::
+      vira caminho := caminho + "/"
+    outro ::
+      vira caminho := caminho + caractere
+    fecha
+    vira indice := indice + 1
+  fecha
+
+  veja caminho == "" ::
+    devolve ""
+  fecha
+
+  devolve caminho + ".sev"
+fecha
+
+campo fonte_remove_prefixo(valor: Texto, prefixo: Texto) -> Texto ::
+  veja nao texto_comeca(valor, prefixo) ::
+    devolve valor
+  fecha
+
+  solta saida := ""
+  solta indice := sys_texto_tamanho(prefixo)
+  gira indice < sys_texto_tamanho(valor) ::
+    vira saida := saida + sys_texto_caractere(valor, indice)
+    vira indice := indice + 1
+  fecha
+  devolve saida
+fecha
+
+campo fonte_lista_contem(valores: Lista<Texto>, procurado: Texto) -> Bit ::
+  para cada valor em valores ::
+    veja valor == procurado ::
+      devolve sim
+    fecha
+  fecha
+  devolve nao
+fecha
+
 campo fonte_carrega_pacote(pacote: Pacote) -> UnidadeFonte toca disco ::
   veja pacote.indice_fontes != "" ::
     devolve fonte_carrega_indice(pacote.indice_fontes)
