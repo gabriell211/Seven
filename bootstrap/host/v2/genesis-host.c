@@ -1,3 +1,7 @@
+#ifdef _WIN32
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "genesis-host.part00.inc"
 #include "genesis-host.part01.inc"
 #define syscall genesis_base_syscall
