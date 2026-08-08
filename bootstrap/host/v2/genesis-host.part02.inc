@@ -36,11 +36,11 @@ static Value syscall(VM*vm,String name,Value*args,uint32_t argc){
  if(IS("sys_env")){String nome=text(args[0]);char*chave=cstr(nome);char*valor=getenv(chave);free(chave);if(!valor)return v_variant0("Vazio");return v_variant1("Algo",v_str_c(valor));}
  if(IS("sys_args"))return v_list(list_new());
  if(IS("sys_tempo_agora"))return v_int((int64_t)time(NULL)*1000);
- if(IS("sys_tempo_iso")){time_t agora=time(NULL);struct tm tmv;char buf[32];
+if(IS("sys_tempo_iso")){time_t agora=time(NULL);struct tm tmv;char buf[32];
 #ifdef _WIN32
 gmtime_s(&tmv,&agora);
 #else
-gmtime_r(&agora,&tmv);
+struct tm*tmp=gmtime(&agora);if(!tmp)return v_str_c("1970-01-01T00:00:00Z");tmv=*tmp;
 #endif
 strftime(buf,sizeof(buf),"%Y-%m-%dT%H:%M:%SZ",&tmv);return v_str_c(buf);}
  if(IS("texto")||IS("texto_u64")||IS("sys_texto_num")||IS("sys_texto_u64"))return v_str(text(argc?args[0]:v_null()));
