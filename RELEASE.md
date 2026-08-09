@@ -1,9 +1,9 @@
 # Seven Release Notes
 
-## Em desenvolvimento apos 0.1.0
+## Seven 0.2.0 Release Notes
 
-Esta linha prepara o caminho Seven Web 0.2 sem declarar self-hosting completo
-antes da prova deterministica final.
+Seven 0.2.0 promove o caminho Seven Web e a extensao VSCode oficial sem
+declarar self-hosting completo antes da prova deterministica final.
 
 ### Web e frontend
 

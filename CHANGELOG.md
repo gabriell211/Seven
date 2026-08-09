@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased 0.2.0
+## Unreleased
+
+## 0.2.0
 
 - Promotes the audited Windows 0.2.0 transition compiler to `bin/seven.exe`.
 - Records the compiler checksum and the current supported CLI surface in

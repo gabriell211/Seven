@@ -13,11 +13,12 @@ padrao e a toolchain oficial sao escritos em Seven.
 
 ## Download
 
-- [Seven 0.1.0 para Windows x64](https://github.com/gabriell211/Seven/releases/download/v0.1.0/seven-0.1.0-windows-x64.zip)
-- [SHA-256 do pacote Windows](https://github.com/gabriell211/Seven/releases/download/v0.1.0/seven-0.1.0-windows-x64.zip.sha256)
-- [Seven 0.1.0 para Linux x64](https://github.com/gabriell211/Seven/releases/download/v0.1.0/seven-0.1.0-linux-x64.tar.gz)
-- [SHA-256 do pacote Linux](https://github.com/gabriell211/Seven/releases/download/v0.1.0/seven-0.1.0-linux-x64.tar.gz.sha256)
-- [Notas da release Seven 0.1.0](https://github.com/gabriell211/Seven/releases/tag/v0.1.0)
+- [Seven 0.2.0 para Windows x64](https://github.com/gabriell211/Seven/releases/download/v0.2.0/seven-0.2.0-windows-x64.zip)
+- [SHA-256 do pacote Windows](https://github.com/gabriell211/Seven/releases/download/v0.2.0/seven-0.2.0-windows-x64.zip.sha256)
+- [Seven 0.2.0 para Linux x64](https://github.com/gabriell211/Seven/releases/download/v0.2.0/seven-0.2.0-linux-x64.tar.gz)
+- [SHA-256 do pacote Linux](https://github.com/gabriell211/Seven/releases/download/v0.2.0/seven-0.2.0-linux-x64.tar.gz.sha256)
+- [Extensao VSCode Seven 0.2.0](https://github.com/gabriell211/Seven/releases/download/v0.2.0/seven-language-0.2.0.vsix)
+- [Notas da release Seven 0.2.0](https://github.com/gabriell211/Seven/releases/tag/v0.2.0)
 
 Os pacotes sao gerados pelos runners oficiais, testados em Windows e Linux e
 publicados somente depois da verificacao dos checksums, compilacao, execucao,
@@ -127,7 +128,7 @@ seven installer linux-x64
 Artefato:
 
 ```text
-build/installers/seven-0.1.0-windows-x64/seven-installer.exe
+build/installers/seven-0.2.0-windows-x64/seven-installer.exe
 ```
 
 O instalador usa `brand/seven.ico`, instala por padrao em
@@ -140,7 +141,7 @@ Desinstalacao do Windows.
 Artefato:
 
 ```text
-build/installers/seven-0.1.0-linux-x64/seven-installer
+build/installers/seven-0.2.0-linux-x64/seven-installer
 ```
 
 O instalador coloca a distribuicao em `~/.local/share/seven`, cria o link

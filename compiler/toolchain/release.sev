@@ -9,7 +9,7 @@ usa std.base.resultado
 usa std.crypto.hash
 usa std.fs.file
 
-const ReleaseSevenVersao: Texto := "0.1.0"
+const ReleaseSevenVersao: Texto := "0.2.0"
 
 molde ArtefatoRelease ::
   caminho: Texto

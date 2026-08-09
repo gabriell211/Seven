@@ -1,0 +1,224 @@
+name: Publish Seven 0.2.0 Release
+
+on:
+  push:
+    tags:
+      - v0.2.0
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SEVEN_TAG: v0.2.0
+  SEVEN_VERSION: 0.2.0
+  SEED_ARCHIVE_SHA256: 670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7
+  WINDOWS_COMPILER_SHA256: 80f1948e83b1c58c719c2ae0579a4b03edd1ccc1bf1e4e52091e2c66478feba5
+  WINDOWS_INSTALLER_SHA256: e4847375d1e800425e23253d36394bc8d2a2d9a97598f8905a30986310f176ed
+  LINUX_COMPILER_SHA256: 156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802
+  LINUX_INSTALLER_SHA256: 8d5b9c534018d8b8ccca7fcdfaa6f7d40587c8a039d63ae214c62f93d35d533e
+
+jobs:
+  windows:
+    name: Package Windows x64
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct and verify audited Windows seeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo "$SEED_ARCHIVE_SHA256  build/native-seeds.zip" | sha256sum --check
+          unzip -t build/native-seeds.zip
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          echo "$WINDOWS_COMPILER_SHA256  build/native-seeds/seven-windows.exe" | sha256sum --check
+          echo "$WINDOWS_INSTALLER_SHA256  build/native-seeds/seven-installer-windows.exe" | sha256sum --check
+
+      - name: Exercise Windows compiler and build release payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$PWD/build/native-seeds/seven-windows.exe"
+          "$seven" --version | grep -q 'Seven 0.2.0'
+          "$seven" check examples/hello.sev
+          "$seven" run examples/hello.sev
+          "$seven" web build examples/frontend-rich/app.sev build/release-web-windows
+          test -s build/release-web-windows/app.wasm
+          "$seven" build compiler/seven.sev build/seven.svbc
+          "$seven" build compiler/seven.sev build/seven.self.svbc
+          "$seven" build runtime/host/seven.sev build/seven.host.svbc
+          "$seven" build runtime/launcher/seven.sev build/seven.launcher.svbc
+          cmp build/seven.svbc build/seven.self.svbc
+
+      - name: Assemble Windows bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="build/installers/seven-${SEVEN_VERSION}-windows-x64"
+          mkdir -p "$bundle/payload/bin" "$bundle/payload/std"
+          cp build/native-seeds/seven-installer-windows.exe "$bundle/seven-installer.exe"
+          cp build/native-seeds/seven-windows.exe "$bundle/payload/bin/seven.exe"
+          cp build/seven.svbc "$bundle/payload/seven.svbc"
+          cp build/seven.host.svbc "$bundle/payload/seven.host.svbc"
+          cp build/seven.launcher.svbc "$bundle/payload/seven.launcher.svbc"
+          cp brand/seven.ico "$bundle/payload/seven.ico"
+          cp brand/seven-mark.svg "$bundle/payload/seven-mark.svg"
+          cp LICENSE NOTICE "$bundle/payload/"
+          cp -R std/. "$bundle/payload/std/"
+          tar -a -cf "build/seven-${SEVEN_VERSION}-windows-x64.zip" -C build/installers "seven-${SEVEN_VERSION}-windows-x64"
+          (cd build && sha256sum "seven-${SEVEN_VERSION}-windows-x64.zip" > "seven-${SEVEN_VERSION}-windows-x64.zip.sha256")
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-0.2.0-windows-x64-release
+          path: |
+            build/seven-0.2.0-windows-x64.zip
+            build/seven-0.2.0-windows-x64.zip.sha256
+          if-no-files-found: error
+
+  linux:
+    name: Package Linux x64
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct and verify audited Linux seeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo "$SEED_ARCHIVE_SHA256  build/native-seeds.zip" | sha256sum --check
+          unzip -t build/native-seeds.zip
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          echo "$LINUX_COMPILER_SHA256  build/native-seeds/seven-linux" | sha256sum --check
+          echo "$LINUX_INSTALLER_SHA256  build/native-seeds/seven-installer-linux" | sha256sum --check
+          chmod +x build/native-seeds/seven-linux build/native-seeds/seven-installer-linux
+
+      - name: Exercise Linux compiler and build release payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven=build/native-seeds/seven-linux
+          "$seven" --version | grep -q 'Seven 0.2.0'
+          "$seven" check examples/hello.sev
+          "$seven" run examples/hello.sev
+          "$seven" web build examples/frontend-rich/app.sev build/release-web-linux
+          test -s build/release-web-linux/app.wasm
+          "$seven" build compiler/seven.sev build/seven.svbc
+          "$seven" build compiler/seven.sev build/seven.self.svbc
+          "$seven" build runtime/host/seven.sev build/seven.host.svbc
+          "$seven" build runtime/launcher/seven.sev build/seven.launcher.svbc
+          cmp build/seven.svbc build/seven.self.svbc
+
+      - name: Assemble Linux bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="build/installers/seven-${SEVEN_VERSION}-linux-x64"
+          mkdir -p "$bundle/payload/bin" "$bundle/payload/std"
+          install -m 0755 build/native-seeds/seven-installer-linux "$bundle/seven-installer"
+          install -m 0755 build/native-seeds/seven-linux "$bundle/payload/bin/seven"
+          install -m 0644 build/seven.svbc "$bundle/payload/seven.svbc"
+          install -m 0644 build/seven.host.svbc "$bundle/payload/seven.host.svbc"
+          install -m 0644 build/seven.launcher.svbc "$bundle/payload/seven.launcher.svbc"
+          install -m 0644 brand/seven.ico "$bundle/payload/seven.ico"
+          install -m 0644 brand/seven-mark.svg "$bundle/payload/seven-mark.svg"
+          install -m 0644 LICENSE NOTICE "$bundle/payload/"
+          cp -R std/. "$bundle/payload/std/"
+          tar -czf "build/seven-${SEVEN_VERSION}-linux-x64.tar.gz" -C build/installers "seven-${SEVEN_VERSION}-linux-x64"
+          (cd build && sha256sum "seven-${SEVEN_VERSION}-linux-x64.tar.gz" > "seven-${SEVEN_VERSION}-linux-x64.tar.gz.sha256")
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-0.2.0-linux-x64-release
+          path: |
+            build/seven-0.2.0-linux-x64.tar.gz
+            build/seven-0.2.0-linux-x64.tar.gz.sha256
+          if-no-files-found: error
+
+  vscode:
+    name: Package VSCode extension
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Package VSIX
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd editors/vscode/seven-language
+          npx --yes @vscode/vsce package --no-dependencies
+          sha256sum "seven-language-${SEVEN_VERSION}.vsix" > "seven-language-${SEVEN_VERSION}.vsix.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-language-0.2.0-vsix-release
+          path: |
+            editors/vscode/seven-language/seven-language-0.2.0.vsix
+            editors/vscode/seven-language/seven-language-0.2.0.vsix.sha256
+          if-no-files-found: error
+
+  publish:
+    name: Create GitHub release
+    runs-on: ubuntu-latest
+    needs:
+      - windows
+      - linux
+      - vscode
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: seven-0.2.0-windows-x64-release
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: seven-0.2.0-linux-x64-release
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: seven-language-0.2.0-vsix-release
+          path: dist
+
+      - name: Verify release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum --check "seven-${SEVEN_VERSION}-windows-x64.zip.sha256"
+          sha256sum --check "seven-${SEVEN_VERSION}-linux-x64.tar.gz.sha256"
+          sha256sum --check "seven-language-${SEVEN_VERSION}.vsix.sha256"
+
+      - name: Create release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$SEVEN_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $SEVEN_TAG already exists"
+            exit 1
+          fi
+          gh release create "$SEVEN_TAG" \
+            "dist/seven-${SEVEN_VERSION}-windows-x64.zip" \
+            "dist/seven-${SEVEN_VERSION}-windows-x64.zip.sha256" \
+            "dist/seven-${SEVEN_VERSION}-linux-x64.tar.gz" \
+            "dist/seven-${SEVEN_VERSION}-linux-x64.tar.gz.sha256" \
+            "dist/seven-language-${SEVEN_VERSION}.vsix" \
+            "dist/seven-language-${SEVEN_VERSION}.vsix.sha256" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Seven 0.2.0" \
+            --notes-file releases/v0.2.0.md \
+            --latest
