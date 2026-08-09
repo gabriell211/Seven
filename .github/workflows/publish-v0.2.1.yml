@@ -53,8 +53,8 @@ jobs:
           "$seven" build compiler/seven.sev build/seven.self.svbc
           "$seven" build runtime/host/seven.sev build/seven.host.svbc
           "$seven" build runtime/launcher/seven.sev build/seven.launcher.svbc
-          "$seven" build runtime/webbuild/seven.pkg build/seven.webbuild.svbc
-          "$seven" build runtime/webserve/seven.pkg build/seven.webserve.svbc
+          "$seven" build runtime/webbuild/seven.sev build/seven.webbuild.svbc
+          "$seven" build runtime/webserve/seven.sev build/seven.webserve.svbc
           cmp build/seven.svbc build/seven.self.svbc
 
       - name: Assemble MSI payload
@@ -136,8 +136,8 @@ jobs:
           "$seven" build compiler/seven.sev build/seven.self.svbc
           "$seven" build runtime/host/seven.sev build/seven.host.svbc
           "$seven" build runtime/launcher/seven.sev build/seven.launcher.svbc
-          "$seven" build runtime/webbuild/seven.pkg build/seven.webbuild.svbc
-          "$seven" build runtime/webserve/seven.pkg build/seven.webserve.svbc
+          "$seven" build runtime/webbuild/seven.sev build/seven.webbuild.svbc
+          "$seven" build runtime/webserve/seven.sev build/seven.webserve.svbc
           cmp build/seven.svbc build/seven.self.svbc
 
       - name: Assemble Linux bundle
