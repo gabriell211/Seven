@@ -83,7 +83,8 @@ seven web serve build/frontend-rich 7072
 `examples/frontend-counter/app.sev` cobre UI interativa com DOM, CSS, evento,
 `localStorage` e conversao `Texto`/`Num`, sem Node ou JavaScript manual.
 `examples/frontend-rich/app.sev` valida CSS e HTML tipados pela std com runtime
-de objetos/listas no host Web gerado. O guia pratico fica em
+de objetos/listas, `para cada`, tema, media query e keyframes no host Web
+gerado. O guia pratico fica em
 `docs/web-development.md`.
 
 A cadeia oficial de bootstrap e:

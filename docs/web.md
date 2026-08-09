@@ -63,7 +63,10 @@ A ABI fornece:
 - objetos/listas: `sys_obj_novo`, `sys_obj_pega`, `sys_obj_define`,
   `sys_lista_coloca`, `sys_lista_pega`, `sys_lista_define`,
   `sys_lista_insere`, `sys_lista_remove`, `sys_lista_pop`;
-- renderizacao tipada: `sys_css_renderiza`, `sys_html_renderiza`.
+- iteradores: `sys_iterador_novo`, `sys_iterador_tem`,
+  `sys_iterador_atual`, `sys_iterador_avanca`;
+- renderizacao tipada: `sys_css_renderiza`, `sys_html_renderiza`,
+  `sys_css_media_declaracoes`, `sys_css_animacao_declaracoes`.
 
 Exports:
 
@@ -123,16 +126,20 @@ O emissor atual suporta:
 - conversao `Texto`/`Num` pela ABI Web;
 - concatenacao de `Texto` via ABI Web;
 - objetos/listas por handle no host gerado;
-- renderizacao de `std.frontend.css` e `std.web.html`;
+- controle estruturado para os padroes de `veja`, `gira` e `para cada`;
+- iteradores do host Web;
+- renderizacao de `std.frontend.css`, `std.web.html`,
+  `std.frontend.theme`, `std.frontend.media` e `std.frontend.animation`;
 - remocao de campos nao alcancaveis antes da emissao Wasm;
 - handlers assincronos de `fetch` por callback exportado;
 - manifesto e checksum deterministicos.
 
-Saltos estruturados, lacos e alocacao dinamica linear ainda devem ser
-rejeitados com diagnostico `SV-WASM-*` quando aparecem em campos alcancaveis.
-Objetos e listas ja funcionam no Web por handles do host gerado para suportar
-CSS/HTML tipados, mas iteradores, mapas ricos e controle estruturado ainda sao
-a proxima etapa antes de declarar paridade frontend completa.
+Saltos irreduciveis, alocacao dinamica linear e operacoes de memoria crua ainda
+devem ser rejeitados com diagnostico `SV-WASM-*` quando aparecem em campos
+alcancaveis. Objetos, listas, iteradores e controle estruturado ja funcionam no
+Web para suportar CSS/HTML tipados, temas, media queries e keyframes; mapas
+ricos e reatividade de componentes ainda sao a proxima etapa antes de declarar
+paridade frontend completa.
 
 ## Servidor web
 

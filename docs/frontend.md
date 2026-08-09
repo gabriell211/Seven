@@ -68,6 +68,12 @@ O alvo `web` precisa implementar:
 - `sys_lista_pega`
 - `sys_css_renderiza`
 - `sys_html_renderiza`
+- `sys_iterador_novo`
+- `sys_iterador_tem`
+- `sys_iterador_atual`
+- `sys_iterador_avanca`
+- `sys_css_media_declaracoes`
+- `sys_css_animacao_declaracoes`
 
 ## Starter validado
 
@@ -104,7 +110,9 @@ Este caminho valida:
 - `FolhaCss`, `RegraCss` e `DeclaracaoCss`;
 - `Elemento`, `Atributo` e `NoHtml`;
 - listas e objetos por handle na ABI Web;
+- `para cada` via iteradores do host Web;
 - concatenacao de `Texto` no backend Wasm;
+- temas, media queries e keyframes;
 - poda de campos nao alcancaveis antes da emissao WebAssembly.
 
 ## Principio

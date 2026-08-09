@@ -25,8 +25,14 @@ Tambem precisa suportar conversao de valores usada por apps interativos:
 - `sys_obj_pega`
 - `sys_obj_define`
 - `sys_lista_coloca`
+- `sys_iterador_novo`
+- `sys_iterador_tem`
+- `sys_iterador_atual`
+- `sys_iterador_avanca`
 - `sys_css_renderiza`
 - `sys_html_renderiza`
+- `sys_css_media_declaracoes`
+- `sys_css_animacao_declaracoes`
 
 Saida:
 

@@ -24,8 +24,9 @@ uma UI de contador, injeta CSS Seven, registra handler de click, usa
 `localStorage` e converte `Texto`/`Num` sem Node ou JavaScript manual.
 
 `examples/frontend-rich/app.sev` valida CSS e HTML tipados: usa
-`std.frontend.css`, `std.web.html`, listas, objetos por handle e concatenacao
-de texto no Wasm.
+`std.frontend.css`, `std.web.html`, `std.frontend.theme`,
+`std.frontend.media`, `std.frontend.animation`, listas, objetos por handle,
+`para cada` e concatenacao de texto no Wasm.
 
 ## Ciclo local
 
@@ -73,7 +74,7 @@ Self-Hosting` usando `seven web serve` em cima do host nativo, TCP,
 - Use `examples/frontend-counter` quando precisar validar DOM, evento,
   armazenamento e conversao numerica no mesmo app.
 - Use `examples/frontend-rich` quando precisar validar CSS/HTML tipados pela
-  std e objetos/listas na ABI Web.
+  std, tema, media query, keyframes, objetos/listas e iteradores na ABI Web.
 - Se dois fontes Web diferentes gerarem o mesmo hash pelo binario local de
   transicao, valide pelo gate E2E ou pelo caminho self-hosted antes de tratar
   isso como prova de producao.

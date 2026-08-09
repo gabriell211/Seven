@@ -92,12 +92,13 @@ campo web_manifesto_compilacao(entrada: Texto) -> Texto toca disco ::
   guarda usa_layout := texto_contem(fontes_texto, "usa std.frontend.layout")
   guarda usa_media := texto_contem(fontes_texto, "usa std.frontend.media")
   guarda usa_theme := texto_contem(fontes_texto, "usa std.frontend.theme")
+  guarda usa_animation := texto_contem(fontes_texto, "usa std.frontend.animation")
   guarda usa_html := texto_contem(fontes_texto, "usa std.web.html")
   guarda usa_convert := texto_contem(fontes_texto, "usa std.base.convert")
-  guarda precisa_lista := usa_dom ou usa_css ou usa_layout ou usa_media ou usa_theme ou usa_html
+  guarda precisa_lista := usa_dom ou usa_css ou usa_layout ou usa_media ou usa_theme ou usa_animation ou usa_html
   guarda precisa_mapa := usa_dom
   guarda precisa_talvez := precisa_mapa
-  guarda precisa_convert := usa_convert ou usa_css ou usa_layout ou usa_media ou usa_theme
+  guarda precisa_convert := usa_convert ou usa_css ou usa_layout ou usa_media ou usa_theme ou usa_animation
   solta manifesto := "pacote seven-web-app\n" +
     "versao 0.2.0\n" +
     "criador Gabriel Barcelos\n" +
@@ -143,6 +144,10 @@ campo web_manifesto_compilacao(entrada: Texto) -> Texto toca disco ::
 
   veja usa_theme ::
     vira manifesto := manifesto + "fonte std/frontend/theme.sev\n"
+  fecha
+
+  veja usa_animation ::
+    vira manifesto := manifesto + "fonte std/frontend/animation.sev\n"
   fecha
 
   veja usa_html ::
@@ -265,8 +270,13 @@ campo web_loader_modulo() -> Texto ::
     "};\n" +
     "const cssDecls = list => asArray(list).map(item => {\n" +
     "  const decl = ref(item);\n" +
+    "  if (field(decl, 'nome') === '__raw') return String(field(decl, 'valor') || '');\n" +
     "  return `${field(decl, 'nome')}:${field(decl, 'valor')};`;\n" +
     "}).join('');\n" +
+    "const renderCssRule = regraHandle => {\n" +
+    "  const regra = ref(regraHandle);\n" +
+    "  return `${field(regra, 'seletor')}{${cssDecls(field(regra, 'declaracoes'))}}`;\n" +
+    "};\n" +
     "const renderCss = folhaHandle => {\n" +
     "  const folha = ref(folhaHandle);\n" +
     "  if (!folha) return '';\n" +
@@ -274,10 +284,29 @@ campo web_loader_modulo() -> Texto ::
     "  const variaveis = cssDecls(field(folha, 'variaveis'));\n" +
     "  if (variaveis) css += `:root{${variaveis}}`;\n" +
     "  for (const regraHandle of asArray(field(folha, 'regras'))) {\n" +
-    "    const regra = ref(regraHandle);\n" +
-    "    css += `${field(regra, 'seletor')}{${cssDecls(field(regra, 'declaracoes'))}}`;\n" +
+    "    css += renderCssRule(regraHandle);\n" +
     "  }\n" +
     "  return css;\n" +
+    "};\n" +
+    "const rawDeclList = raw => {\n" +
+    "  const lista = { type: 'Lista', fields: { tamanho: 1 }, items: [] };\n" +
+    "  const decl = { type: 'DeclaracaoCss', fields: { nome: '__raw', valor: raw }, items: [] };\n" +
+    "  lista.items.push(storeHandle(decl));\n" +
+    "  return storeHandle(lista);\n" +
+    "};\n" +
+    "const renderMediaDecls = mediaHandle => {\n" +
+    "  const media = ref(mediaHandle);\n" +
+    "  if (!media) return rawDeclList('');\n" +
+    "  return rawDeclList(asArray(field(media, 'regras')).map(renderCssRule).join(''));\n" +
+    "};\n" +
+    "const renderAnimationDecls = animHandle => {\n" +
+    "  const anim = ref(animHandle);\n" +
+    "  if (!anim) return rawDeclList('');\n" +
+    "  const raw = asArray(field(anim, 'quadros')).map(quadroHandle => {\n" +
+    "    const quadro = ref(quadroHandle);\n" +
+    "    return `${field(quadro, 'ponto')}{${cssDecls(field(quadro, 'declaracoes'))}}`;\n" +
+    "  }).join('');\n" +
+    "  return rawDeclList(raw);\n" +
     "};\n" +
     "const renderHtmlNode = nodeHandle => {\n" +
     "  if (!isHandle(nodeHandle)) return escapeHtml(nodeHandle);\n" +
@@ -389,8 +418,14 @@ campo web_loader_modulo() -> Texto ::
     "  sys_lista_insere(lista, indice, valor) { const alvo = ref(lista); if (alvo) { alvo.items.splice(indice >>> 0, 0, fromSeven(valor)); alvo.fields.tamanho = alvo.items.length; } return lista; },\n" +
     "  sys_lista_remove(lista, indice) { const alvo = ref(lista); if (!alvo) return 0; const [removido] = alvo.items.splice(indice >>> 0, 1); alvo.fields.tamanho = alvo.items.length; return toSeven(removido ?? 0); },\n" +
     "  sys_lista_pop(lista) { const alvo = ref(lista); if (!alvo) return 0; const removido = alvo.items.pop(); alvo.fields.tamanho = alvo.items.length; return toSeven(removido ?? 0); },\n" +
+    "  sys_iterador_novo(alvo) { return storeHandle({ type: 'Iterador', fields: { indice: 0 }, items: asArray(alvo).slice() }); },\n" +
+    "  sys_iterador_tem(iterador) { const alvo = ref(iterador); return alvo && alvo.fields.indice < alvo.items.length ? 1 : 0; },\n" +
+    "  sys_iterador_atual(iterador) { const alvo = ref(iterador); return toSeven(alvo?.items?.[alvo.fields.indice] ?? 0); },\n" +
+    "  sys_iterador_avanca(iterador) { const alvo = ref(iterador); if (alvo) alvo.fields.indice = (alvo.fields.indice | 0) + 1; return iterador; },\n" +
     "  sys_css_renderiza(folha) { return writeInbox(renderCss(folha)); },\n" +
-    "  sys_html_renderiza(elemento) { return writeInbox(renderElement(elemento)); }\n" +
+    "  sys_html_renderiza(elemento) { return writeInbox(renderElement(elemento)); },\n" +
+    "  sys_css_media_declaracoes(media) { return renderMediaDecls(media); },\n" +
+    "  sys_css_animacao_declaracoes(animacao) { return renderAnimationDecls(animacao); }\n" +
     "} };\n" +
     "const resposta = await fetch('./app.wasm', { cache: 'no-store' });\n" +
     "if (!resposta.ok) throw new Error('Falha ao carregar app.wasm: ' + resposta.status);\n" +
@@ -415,7 +450,7 @@ campo web_manifesto_json(entrada: Texto, checksum: Texto) -> Texto ::
     "  \"handlerPrefix\": \"seven_\",\n" +
     "  \"hostAbi\": \"seven-web-2\",\n" +
     "  \"inboxOffset\": 32768,\n" +
-    "  \"capabilities\": [\"dom\", \"events\", \"navigation\", \"fetch\", \"storage\", \"number-format\", \"host-objects\", \"typed-css\", \"typed-html\"],\n" +
+    "  \"capabilities\": [\"dom\", \"events\", \"navigation\", \"fetch\", \"storage\", \"number-format\", \"host-objects\", \"typed-css\", \"typed-html\", \"control-flow\", \"iterators\", \"responsive-css\", \"keyframes\"],\n" +
     "  \"applicationLanguageDependency\": false,\n" +
     "  \"sha256\": \"" + checksum + "\"\n" +
     "}\n"

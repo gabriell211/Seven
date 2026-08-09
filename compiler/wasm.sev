@@ -4,6 +4,7 @@ usa seven.compiler.ir
 usa seven.compiler.types
 usa std.base.lista
 usa std.base.resultado
+usa std.base.talvez
 usa std.mem.bytes
 
 const WasmPagina: U64 := 65536
@@ -153,8 +154,14 @@ campo wasm_imports() -> Lista<ImportWasm> ::
   lista_coloca(imports, ImportWasm { nome: "sys_lista_insere", aridade: 3 })
   lista_coloca(imports, ImportWasm { nome: "sys_lista_remove", aridade: 2 })
   lista_coloca(imports, ImportWasm { nome: "sys_lista_pop", aridade: 1 })
+  lista_coloca(imports, ImportWasm { nome: "sys_iterador_novo", aridade: 1 })
+  lista_coloca(imports, ImportWasm { nome: "sys_iterador_tem", aridade: 1 })
+  lista_coloca(imports, ImportWasm { nome: "sys_iterador_atual", aridade: 1 })
+  lista_coloca(imports, ImportWasm { nome: "sys_iterador_avanca", aridade: 1 })
   lista_coloca(imports, ImportWasm { nome: "sys_css_renderiza", aridade: 1 })
   lista_coloca(imports, ImportWasm { nome: "sys_html_renderiza", aridade: 1 })
+  lista_coloca(imports, ImportWasm { nome: "sys_css_media_declaracoes", aridade: 1 })
+  lista_coloca(imports, ImportWasm { nome: "sys_css_animacao_declaracoes", aridade: 1 })
   devolve imports
 fecha
 
@@ -303,17 +310,228 @@ campo wasm_emite_campo(plano: PlanoWasm, campo: CampoIr) -> Resultado<Bytes, Fal
     bytes_coloca_byte(corpo, 127)
   fecha
 
-  para cada bloco em campo.blocos ::
-    para cada instrucao em bloco.instrucoes ::
-      guarda resultado := wasm_emite_instrucao(corpo, plano, campo, instrucao)
-      veja resultado e Falha :: devolve Falha(resultado.valor) fecha
-    fecha
-  fecha
+  guarda fluxo := wasm_emite_fluxo(corpo, plano, campo)
+  veja fluxo e Falha :: devolve Falha(fluxo.valor) fecha
 
   bytes_coloca_byte(corpo, 65)
   wasm_sleb_positivo(corpo, 0)
   bytes_coloca_byte(corpo, 11)
   devolve Valor(corpo)
+fecha
+
+campo wasm_emite_fluxo(corpo: Bytes, plano: PlanoWasm, campo: CampoIr) -> Resultado<Nada, Falha> ::
+  solta indice: U64 := 0
+
+  gira indice < lista_tamanho(campo.blocos) ::
+    guarda loop := wasm_tenta_loop(corpo, plano, campo, indice)
+    veja loop e Falha :: devolve Falha(loop.valor) fecha
+    veja loop.valor != indice ::
+      vira indice := loop.valor
+    outro ::
+      guarda condicional := wasm_tenta_if(corpo, plano, campo, indice)
+      veja condicional e Falha :: devolve Falha(condicional.valor) fecha
+      veja condicional.valor != indice ::
+        vira indice := condicional.valor
+      outro ::
+        guarda bloco := lista_pega(campo.blocos, indice)
+        guarda emitido := wasm_emite_bloco_limite(corpo, plano, campo, bloco, lista_tamanho(bloco.instrucoes))
+        veja emitido e Falha :: devolve Falha(emitido.valor) fecha
+        vira indice := indice + 1
+      fecha
+    fecha
+  fecha
+
+  devolve Valor(nulo)
+fecha
+
+campo wasm_tenta_loop(corpo: Bytes, plano: PlanoWasm, campo: CampoIr, indice: U64) -> Resultado<U64, Falha> ::
+  guarda bloco := lista_pega(campo.blocos, indice)
+  guarda salto_condicao := wasm_salto_final(bloco)
+  veja salto_condicao e Vazio ::
+    devolve Valor(indice)
+  fecha
+
+  guarda indice_condicao := wasm_indice_bloco(campo, salto_condicao.valor)
+  veja indice_condicao < 0 ::
+    devolve Valor(indice)
+  fecha
+
+  guarda bloco_condicao := lista_pega(campo.blocos, U64(indice_condicao))
+  guarda total_condicao := lista_tamanho(bloco_condicao.instrucoes)
+  veja total_condicao < 2 ::
+    devolve Valor(indice)
+  fecha
+
+  guarda penultima := lista_pega(bloco_condicao.instrucoes, total_condicao - 2)
+  guarda ultima := lista_pega(bloco_condicao.instrucoes, total_condicao - 1)
+
+  veja penultima e IrSaltaSeNao ::
+    veja ultima e IrSalta ::
+      guarda indice_corpo := wasm_indice_bloco(campo, ultima.bloco)
+      guarda indice_fim := wasm_indice_bloco(campo, penultima.bloco)
+      veja indice_corpo < 0 ou indice_fim < 0 ::
+        devolve Valor(indice)
+      fecha
+
+      guarda emitido_setup := wasm_emite_bloco_limite(corpo, plano, campo, bloco, wasm_limite_sem_salto_final(bloco, salto_condicao.valor))
+      veja emitido_setup e Falha :: devolve Falha(emitido_setup.valor) fecha
+
+      bytes_coloca_byte(corpo, 2)
+      bytes_coloca_byte(corpo, 64)
+      bytes_coloca_byte(corpo, 3)
+      bytes_coloca_byte(corpo, 64)
+
+      guarda emitida_condicao := wasm_emite_bloco_limite(corpo, plano, campo, bloco_condicao, total_condicao - 2)
+      veja emitida_condicao e Falha :: devolve Falha(emitida_condicao.valor) fecha
+      wasm_local_pega(corpo, penultima.condicao)
+      bytes_coloca_byte(corpo, 69)
+      bytes_coloca_byte(corpo, 13)
+      wasm_uleb(corpo, 1)
+
+      guarda bloco_corpo := lista_pega(campo.blocos, U64(indice_corpo))
+      guarda limite_corpo := wasm_limite_sem_salto_final(bloco_corpo, salto_condicao.valor)
+      guarda emitido_corpo := wasm_emite_bloco_limite(corpo, plano, campo, bloco_corpo, limite_corpo)
+      veja emitido_corpo e Falha :: devolve Falha(emitido_corpo.valor) fecha
+      bytes_coloca_byte(corpo, 12)
+      wasm_uleb(corpo, 0)
+
+      bytes_coloca_byte(corpo, 11)
+      bytes_coloca_byte(corpo, 11)
+
+      devolve Valor(U64(indice_fim))
+    fecha
+  fecha
+
+  devolve Valor(indice)
+fecha
+
+campo wasm_tenta_if(corpo: Bytes, plano: PlanoWasm, campo: CampoIr, indice: U64) -> Resultado<U64, Falha> ::
+  guarda bloco := lista_pega(campo.blocos, indice)
+  guarda total := lista_tamanho(bloco.instrucoes)
+  veja total < 2 ::
+    devolve Valor(indice)
+  fecha
+
+  guarda penultima := lista_pega(bloco.instrucoes, total - 2)
+  guarda ultima := lista_pega(bloco.instrucoes, total - 1)
+
+  veja penultima e IrSaltaSeNao ::
+    veja ultima e IrSalta ::
+      guarda indice_entao := wasm_indice_bloco(campo, ultima.bloco)
+      guarda indice_senao := wasm_indice_bloco(campo, penultima.bloco)
+      veja indice_entao < 0 ou indice_senao < 0 ::
+        devolve Valor(indice)
+      fecha
+
+      guarda bloco_entao := lista_pega(campo.blocos, U64(indice_entao))
+      guarda bloco_senao := lista_pega(campo.blocos, U64(indice_senao))
+      guarda junta_entao := wasm_salto_final(bloco_entao)
+      guarda junta_senao := wasm_salto_final(bloco_senao)
+      solta junta := ""
+      veja junta_entao e Algo :: vira junta := junta_entao.valor fecha
+      veja junta == "" ::
+        veja junta_senao e Algo :: vira junta := junta_senao.valor fecha
+      fecha
+      veja junta == "" ::
+        devolve Valor(indice)
+      fecha
+      veja junta_entao e Algo ::
+        veja junta_entao.valor != junta :: devolve Valor(indice) fecha
+      fecha
+      veja junta_senao e Algo ::
+        veja junta_senao.valor != junta :: devolve Valor(indice) fecha
+      fecha
+
+      guarda indice_junta := wasm_indice_bloco(campo, junta)
+      veja indice_junta < 0 ::
+        devolve Valor(indice)
+      fecha
+
+      guarda emitido_prefixo := wasm_emite_bloco_limite(corpo, plano, campo, bloco, total - 2)
+      veja emitido_prefixo e Falha :: devolve Falha(emitido_prefixo.valor) fecha
+      wasm_local_pega(corpo, penultima.condicao)
+      bytes_coloca_byte(corpo, 4)
+      bytes_coloca_byte(corpo, 64)
+
+      guarda emitido_entao := wasm_emite_bloco_limite(corpo, plano, campo, bloco_entao, wasm_limite_sem_salto_final(bloco_entao, junta))
+      veja emitido_entao e Falha :: devolve Falha(emitido_entao.valor) fecha
+      bytes_coloca_byte(corpo, 5)
+      guarda emitido_senao := wasm_emite_bloco_limite(corpo, plano, campo, bloco_senao, wasm_limite_sem_salto_final(bloco_senao, junta))
+      veja emitido_senao e Falha :: devolve Falha(emitido_senao.valor) fecha
+      bytes_coloca_byte(corpo, 11)
+
+      devolve Valor(U64(indice_junta))
+    fecha
+  fecha
+
+  devolve Valor(indice)
+fecha
+
+campo wasm_emite_bloco_limite(
+  corpo: Bytes,
+  plano: PlanoWasm,
+  campo: CampoIr,
+  bloco: BlocoIr,
+  limite: U64
+) -> Resultado<Nada, Falha> ::
+  solta indice: U64 := 0
+
+  gira indice < limite ::
+    guarda resultado := wasm_emite_instrucao(corpo, plano, campo, lista_pega(bloco.instrucoes, indice))
+    veja resultado e Falha :: devolve Falha(resultado.valor) fecha
+    vira indice := indice + 1
+  fecha
+
+  devolve Valor(nulo)
+fecha
+
+campo wasm_salto_unico(bloco: BlocoIr) -> Talvez<Texto> ::
+  veja lista_tamanho(bloco.instrucoes) != 1 ::
+    devolve Vazio
+  fecha
+
+  guarda instrucao := lista_pega(bloco.instrucoes, 0)
+  veja instrucao e IrSalta ::
+    devolve Algo(instrucao.bloco)
+  fecha
+
+  devolve Vazio
+fecha
+
+campo wasm_salto_final(bloco: BlocoIr) -> Talvez<Texto> ::
+  veja lista_tamanho(bloco.instrucoes) == 0 ::
+    devolve Vazio
+  fecha
+
+  guarda instrucao := lista_pega(bloco.instrucoes, lista_tamanho(bloco.instrucoes) - 1)
+  veja instrucao e IrSalta ::
+    devolve Algo(instrucao.bloco)
+  fecha
+
+  devolve Vazio
+fecha
+
+campo wasm_limite_sem_salto_final(bloco: BlocoIr, destino: Texto) -> U64 ::
+  guarda salto := wasm_salto_final(bloco)
+  veja salto e Algo ::
+    veja salto.valor == destino ::
+      devolve lista_tamanho(bloco.instrucoes) - 1
+    fecha
+  fecha
+
+  devolve lista_tamanho(bloco.instrucoes)
+fecha
+
+campo wasm_indice_bloco(campo: CampoIr, nome: Texto) -> Num ::
+  solta indice: U64 := 0
+  gira indice < lista_tamanho(campo.blocos) ::
+    veja lista_pega(campo.blocos, indice).nome == nome ::
+      devolve Num(indice)
+    fecha
+    vira indice := indice + 1
+  fecha
+
+  devolve -1
 fecha
 
 campo wasm_emite_instrucao(
