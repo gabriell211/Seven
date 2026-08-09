@@ -7,7 +7,7 @@ usa std.frontend.intrinsics
 campo inicio() -> Num toca frontend ::
   frontend_injeta_css(counter_styles())
   frontend_armazena("contador", "0")
-  render_counter("0")
+  render_counter()
   frontend_escuta("#incrementa", "click", "incrementa")
   devolve 0
 fecha
@@ -20,16 +20,16 @@ campo incrementa() -> Num toca frontend ::
   devolve 0
 fecha
 
-campo render_counter(valor: Texto) -> Nada toca frontend ::
-  frontend_monta("#seven-app", counter_view(valor))
+campo render_counter() -> Nada toca frontend ::
+  frontend_monta("#seven-app", counter_view())
 fecha
 
-campo counter_view(valor: Texto) -> Texto ::
+campo counter_view() -> Texto ::
   devolve "<main id='app' class='counter-shell'>" +
     "<section class='counter-panel'>" +
     "<p class='eyebrow'>Seven UI</p>" +
     "<h1>Frontend com CSS nativo</h1>" +
-    "<p class='counter-value'>" + valor + "</p>" +
+    "<p class='counter-value'>0</p>" +
     "<button id='incrementa' class='primary-button'>+1</button>" +
     "</section>" +
     "</main>"

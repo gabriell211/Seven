@@ -207,7 +207,10 @@ const importNames = [
   'frontend_evento_valor',
   'frontend_armazena',
   'frontend_carrega',
-  'frontend_remove'
+  'frontend_remove',
+  'sys_numero',
+  'sys_texto_num',
+  'sys_texto_u64'
 ];
 
 async function execute(path) {
@@ -216,6 +219,7 @@ async function execute(path) {
 
   let memory;
   const calls = [];
+  const encoder = new TextEncoder();
   const decoder = new TextDecoder();
   const decode = descriptor => {
     if (!descriptor) return '';
@@ -224,10 +228,27 @@ async function execute(path) {
     const length = view.getUint32(descriptor + 4, true);
     return decoder.decode(new Uint8Array(memory.buffer, pointer, length));
   };
+  const writeInbox = value => {
+    const bytes = encoder.encode(String(value));
+    const pointer = 32776;
+    new Uint8Array(memory.buffer, pointer, bytes.length).set(bytes);
+    const view = new DataView(memory.buffer);
+    view.setUint32(32768, pointer, true);
+    view.setUint32(32772, bytes.length, true);
+    return 32768;
+  };
 
   const seven = {};
   for (const name of importNames) {
     seven[name] = (...args) => {
+      if (name === 'sys_numero') {
+        calls.push({ name, args: args.map(decode) });
+        return Number.parseInt(decode(args[0]), 10) || 0;
+      }
+      if (name === 'sys_texto_num' || name === 'sys_texto_u64') {
+        calls.push({ name, args: args.map(String) });
+        return writeInbox(args[0] >>> 0);
+      }
       calls.push({ name, args: args.map(decode) });
       return 0;
     };
