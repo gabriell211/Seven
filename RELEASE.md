@@ -1,5 +1,40 @@
 # Seven Release Notes
 
+## Seven 0.2.1 Release Notes
+
+Seven 0.2.1 substitui o instalador Windows de transicao do 0.2.0 por um MSI
+WiX profissional e validado. O compilador auditado permanece na linha 0.2.0;
+este patch corrige a distribuicao e o layout dos artefatos.
+
+### Instalador Windows
+
+- `seven-0.2.1-windows-x64.msi` instala por maquina em
+  `%ProgramFiles%\Seven`;
+- registra `bin\seven.exe` no PATH da maquina;
+- associa arquivos `.sev`;
+- cria atalho no Menu Iniciar;
+- aparece em Apps & Features e possui desinstalacao limpa;
+- embute o payload em cabinet MSI;
+- passa pela validacao do Windows Installer no workflow de release.
+
+### Payload de release
+
+- o Windows deixa de publicar o zip com `seven-installer.exe` e passa a
+  publicar MSI;
+- o payload Windows inclui `seven.svbc`, `seven.host.svbc`,
+  `seven.launcher.svbc`, `seven.webbuild.svbc`, `seven.webserve.svbc`,
+  biblioteca padrao, licenca, aviso e assets oficiais;
+- o pacote Linux preserva o instalador nativo e corrige o layout esperado pelo
+  instalador;
+- a extensao VSCode passa a ser publicada como `seven-language-0.2.1.vsix`.
+
+### Correção do 0.2.0
+
+O pacote Windows 0.2.0 era um bundle de transicao e nao era o instalador final
+da linguagem. Ele colocava o compilador em `payload/bin/seven.exe`, enquanto o
+instalador antigo esperava `payload/seven.exe`, alem de nao incluir os
+bytecodes Web exigidos pela toolchain. O 0.2.1 substitui esse caminho por MSI.
+
 ## Seven 0.2.0 Release Notes
 
 Seven 0.2.0 promove o caminho Seven Web e a extensao VSCode oficial sem

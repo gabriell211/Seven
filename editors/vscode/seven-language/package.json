@@ -2,7 +2,7 @@
   "name": "seven-language",
   "displayName": "Seven Language",
   "description": "Syntax highlighting and editor configuration for Seven .sev source files.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "gabriell211",
   "license": "MIT",
   "repository": {

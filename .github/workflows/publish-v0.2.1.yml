@@ -1,17 +1,18 @@
-name: Publish Seven 0.2.0 Release
+name: Publish Seven 0.2.1 Release
 
 on:
   push:
     tags:
-      - v0.2.0
+      - v0.2.1
   workflow_dispatch:
 
 permissions:
   contents: write
 
 env:
-  SEVEN_TAG: v0.2.0
-  SEVEN_VERSION: 0.2.0
+  SEVEN_TAG: v0.2.1
+  SEVEN_VERSION: 0.2.1
+  SEVEN_COMPILER_VERSION: 0.2.0
   SEED_ARCHIVE_SHA256: 670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7
   WINDOWS_COMPILER_SHA256: 80f1948e83b1c58c719c2ae0579a4b03edd1ccc1bf1e4e52091e2c66478feba5
   WINDOWS_INSTALLER_SHA256: e4847375d1e800425e23253d36394bc8d2a2d9a97598f8905a30986310f176ed
@@ -20,9 +21,9 @@ env:
 
 jobs:
   windows:
-    name: Package Windows x64
+    name: Package Windows x64 MSI
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -43,7 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           seven="$PWD/build/native-seeds/seven-windows.exe"
-          "$seven" --version | grep -q 'Seven 0.2.0'
+          "$seven" --version | grep -q "Seven $SEVEN_COMPILER_VERSION"
           "$seven" check examples/hello.sev
           "$seven" run examples/hello.sev
           "$seven" web build examples/frontend-rich/app.sev build/release-web-windows
@@ -52,32 +53,53 @@ jobs:
           "$seven" build compiler/seven.sev build/seven.self.svbc
           "$seven" build runtime/host/seven.sev build/seven.host.svbc
           "$seven" build runtime/launcher/seven.sev build/seven.launcher.svbc
+          "$seven" build runtime/webbuild/seven.pkg build/seven.webbuild.svbc
+          "$seven" build runtime/webserve/seven.pkg build/seven.webserve.svbc
           cmp build/seven.svbc build/seven.self.svbc
 
-      - name: Assemble Windows bundle
+      - name: Assemble MSI payload
         shell: bash
         run: |
           set -euo pipefail
-          bundle="build/installers/seven-${SEVEN_VERSION}-windows-x64"
-          mkdir -p "$bundle/payload/bin" "$bundle/payload/std"
-          cp build/native-seeds/seven-installer-windows.exe "$bundle/seven-installer.exe"
-          cp build/native-seeds/seven-windows.exe "$bundle/payload/bin/seven.exe"
-          cp build/seven.svbc "$bundle/payload/seven.svbc"
-          cp build/seven.host.svbc "$bundle/payload/seven.host.svbc"
-          cp build/seven.launcher.svbc "$bundle/payload/seven.launcher.svbc"
-          cp brand/seven.ico "$bundle/payload/seven.ico"
-          cp brand/seven-mark.svg "$bundle/payload/seven-mark.svg"
-          cp LICENSE NOTICE "$bundle/payload/"
-          cp -R std/. "$bundle/payload/std/"
-          tar -a -cf "build/seven-${SEVEN_VERSION}-windows-x64.zip" -C build/installers "seven-${SEVEN_VERSION}-windows-x64"
-          (cd build && sha256sum "seven-${SEVEN_VERSION}-windows-x64.zip" > "seven-${SEVEN_VERSION}-windows-x64.zip.sha256")
+          payload="build/wix-payload"
+          mkdir -p "$payload/bin" "$payload/share" "$payload/std"
+          cp build/native-seeds/seven-windows.exe "$payload/bin/seven.exe"
+          cp build/seven.svbc "$payload/bin/seven.svbc"
+          cp build/seven.host.svbc "$payload/bin/seven.host.svbc"
+          cp build/seven.launcher.svbc "$payload/bin/seven.launcher.svbc"
+          cp build/seven.webbuild.svbc "$payload/bin/seven.webbuild.svbc"
+          cp build/seven.webserve.svbc "$payload/bin/seven.webserve.svbc"
+          cp brand/seven.ico "$payload/share/seven.ico"
+          cp brand/seven-mark.svg "$payload/share/seven-mark.svg"
+          cp LICENSE NOTICE "$payload/"
+          cp -R std/. "$payload/std/"
+
+      - name: Build and validate Windows MSI
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          dotnet tool install wix --tool-path build/wix-tool --version 7.0.0
+          $wix = Join-Path $PWD 'build/wix-tool/wix.exe'
+          $payload = Join-Path $PWD 'build/wix-payload'
+          $icon = Join-Path $PWD 'brand/seven.ico'
+          $msi = Join-Path $PWD "build/seven-$env:SEVEN_VERSION-windows-x64.msi"
+          & $wix build -acceptEula wix7 -arch x64 packaging/windows/wix/seven-product.wxs -d "SevenVersion=$env:SEVEN_VERSION" -d "PayloadRoot=$payload" -d "SevenIcon=$icon" -out $msi
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $wix msi validate -acceptEula wix7 $msi -intermediateFolder build/wix-validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Checksum Windows MSI
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd build && sha256sum "seven-${SEVEN_VERSION}-windows-x64.msi" > "seven-${SEVEN_VERSION}-windows-x64.msi.sha256")
 
       - uses: actions/upload-artifact@v4
         with:
-          name: seven-0.2.0-windows-x64-release
+          name: seven-0.2.1-windows-x64-msi-release
           path: |
-            build/seven-0.2.0-windows-x64.zip
-            build/seven-0.2.0-windows-x64.zip.sha256
+            build/seven-0.2.1-windows-x64.msi
+            build/seven-0.2.1-windows-x64.msi.sha256
           if-no-files-found: error
 
   linux:
@@ -105,7 +127,7 @@ jobs:
         run: |
           set -euo pipefail
           seven=build/native-seeds/seven-linux
-          "$seven" --version | grep -q 'Seven 0.2.0'
+          "$seven" --version | grep -q "Seven $SEVEN_COMPILER_VERSION"
           "$seven" check examples/hello.sev
           "$seven" run examples/hello.sev
           "$seven" web build examples/frontend-rich/app.sev build/release-web-linux
@@ -114,6 +136,8 @@ jobs:
           "$seven" build compiler/seven.sev build/seven.self.svbc
           "$seven" build runtime/host/seven.sev build/seven.host.svbc
           "$seven" build runtime/launcher/seven.sev build/seven.launcher.svbc
+          "$seven" build runtime/webbuild/seven.pkg build/seven.webbuild.svbc
+          "$seven" build runtime/webserve/seven.pkg build/seven.webserve.svbc
           cmp build/seven.svbc build/seven.self.svbc
 
       - name: Assemble Linux bundle
@@ -121,12 +145,14 @@ jobs:
         run: |
           set -euo pipefail
           bundle="build/installers/seven-${SEVEN_VERSION}-linux-x64"
-          mkdir -p "$bundle/payload/bin" "$bundle/payload/std"
+          mkdir -p "$bundle/payload" "$bundle/payload/std"
           install -m 0755 build/native-seeds/seven-installer-linux "$bundle/seven-installer"
-          install -m 0755 build/native-seeds/seven-linux "$bundle/payload/bin/seven"
+          install -m 0755 build/native-seeds/seven-linux "$bundle/payload/seven"
           install -m 0644 build/seven.svbc "$bundle/payload/seven.svbc"
           install -m 0644 build/seven.host.svbc "$bundle/payload/seven.host.svbc"
           install -m 0644 build/seven.launcher.svbc "$bundle/payload/seven.launcher.svbc"
+          install -m 0644 build/seven.webbuild.svbc "$bundle/payload/seven.webbuild.svbc"
+          install -m 0644 build/seven.webserve.svbc "$bundle/payload/seven.webserve.svbc"
           install -m 0644 brand/seven.ico "$bundle/payload/seven.ico"
           install -m 0644 brand/seven-mark.svg "$bundle/payload/seven-mark.svg"
           install -m 0644 LICENSE NOTICE "$bundle/payload/"
@@ -136,10 +162,10 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: seven-0.2.0-linux-x64-release
+          name: seven-0.2.1-linux-x64-release
           path: |
-            build/seven-0.2.0-linux-x64.tar.gz
-            build/seven-0.2.0-linux-x64.tar.gz.sha256
+            build/seven-0.2.1-linux-x64.tar.gz
+            build/seven-0.2.1-linux-x64.tar.gz.sha256
           if-no-files-found: error
 
   vscode:
@@ -159,10 +185,10 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: seven-language-0.2.0-vsix-release
+          name: seven-language-0.2.1-vsix-release
           path: |
-            editors/vscode/seven-language/seven-language-0.2.0.vsix
-            editors/vscode/seven-language/seven-language-0.2.0.vsix.sha256
+            editors/vscode/seven-language/seven-language-0.2.1.vsix
+            editors/vscode/seven-language/seven-language-0.2.1.vsix.sha256
           if-no-files-found: error
 
   publish:
@@ -178,17 +204,17 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: seven-0.2.0-windows-x64-release
+          name: seven-0.2.1-windows-x64-msi-release
           path: dist
 
       - uses: actions/download-artifact@v4
         with:
-          name: seven-0.2.0-linux-x64-release
+          name: seven-0.2.1-linux-x64-release
           path: dist
 
       - uses: actions/download-artifact@v4
         with:
-          name: seven-language-0.2.0-vsix-release
+          name: seven-language-0.2.1-vsix-release
           path: dist
 
       - name: Verify release assets
@@ -196,7 +222,7 @@ jobs:
         run: |
           set -euo pipefail
           cd dist
-          sha256sum --check "seven-${SEVEN_VERSION}-windows-x64.zip.sha256"
+          sha256sum --check "seven-${SEVEN_VERSION}-windows-x64.msi.sha256"
           sha256sum --check "seven-${SEVEN_VERSION}-linux-x64.tar.gz.sha256"
           sha256sum --check "seven-language-${SEVEN_VERSION}.vsix.sha256"
 
@@ -211,14 +237,14 @@ jobs:
             exit 1
           fi
           gh release create "$SEVEN_TAG" \
-            "dist/seven-${SEVEN_VERSION}-windows-x64.zip" \
-            "dist/seven-${SEVEN_VERSION}-windows-x64.zip.sha256" \
+            "dist/seven-${SEVEN_VERSION}-windows-x64.msi" \
+            "dist/seven-${SEVEN_VERSION}-windows-x64.msi.sha256" \
             "dist/seven-${SEVEN_VERSION}-linux-x64.tar.gz" \
             "dist/seven-${SEVEN_VERSION}-linux-x64.tar.gz.sha256" \
             "dist/seven-language-${SEVEN_VERSION}.vsix" \
             "dist/seven-language-${SEVEN_VERSION}.vsix.sha256" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Seven 0.2.0" \
-            --notes-file releases/v0.2.0.md \
+            --title "Seven 0.2.1" \
+            --notes-file releases/v0.2.1.md \
             --latest

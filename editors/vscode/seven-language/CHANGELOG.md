@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+- Bumps the VSIX package version for the Seven 0.2.1 distribution release.
+- Keeps the extension syntax/configuration-only while the Windows language
+  installer moves to the separate Seven MSI.
+
 ## 0.2.0
 
 - Adds a complete VSCode extension manifest for `.sev` files.

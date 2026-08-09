@@ -13,16 +13,16 @@ padrao e a toolchain oficial sao escritos em Seven.
 
 ## Download
 
-- [Seven 0.2.0 para Windows x64](https://github.com/gabriell211/Seven/releases/download/v0.2.0/seven-0.2.0-windows-x64.zip)
-- [SHA-256 do pacote Windows](https://github.com/gabriell211/Seven/releases/download/v0.2.0/seven-0.2.0-windows-x64.zip.sha256)
-- [Seven 0.2.0 para Linux x64](https://github.com/gabriell211/Seven/releases/download/v0.2.0/seven-0.2.0-linux-x64.tar.gz)
-- [SHA-256 do pacote Linux](https://github.com/gabriell211/Seven/releases/download/v0.2.0/seven-0.2.0-linux-x64.tar.gz.sha256)
-- [Extensao VSCode Seven 0.2.0](https://github.com/gabriell211/Seven/releases/download/v0.2.0/seven-language-0.2.0.vsix)
-- [Notas da release Seven 0.2.0](https://github.com/gabriell211/Seven/releases/tag/v0.2.0)
+- [Seven 0.2.1 para Windows x64 MSI](https://github.com/gabriell211/Seven/releases/download/v0.2.1/seven-0.2.1-windows-x64.msi)
+- [SHA-256 do MSI Windows](https://github.com/gabriell211/Seven/releases/download/v0.2.1/seven-0.2.1-windows-x64.msi.sha256)
+- [Seven 0.2.1 para Linux x64](https://github.com/gabriell211/Seven/releases/download/v0.2.1/seven-0.2.1-linux-x64.tar.gz)
+- [SHA-256 do pacote Linux](https://github.com/gabriell211/Seven/releases/download/v0.2.1/seven-0.2.1-linux-x64.tar.gz.sha256)
+- [Extensao VSCode Seven 0.2.1](https://github.com/gabriell211/Seven/releases/download/v0.2.1/seven-language-0.2.1.vsix)
+- [Notas da release Seven 0.2.1](https://github.com/gabriell211/Seven/releases/tag/v0.2.1)
 
 Os pacotes sao gerados pelos runners oficiais, testados em Windows e Linux e
 publicados somente depois da verificacao dos checksums, compilacao, execucao,
-instalacao e desinstalacao.
+empacotamento e validacao do instalador.
 
 ## Principios
 
@@ -115,7 +115,8 @@ seed -> seven0 -> seven -> seven.self
 
 ## Instalacao
 
-A toolchain gera instaladores nativos sem scripts PowerShell:
+A toolchain gera os artefatos nativos e o payload oficial sem scripts
+PowerShell:
 
 ```text
 seven build seven.pkg build/seven.installer.svbc
@@ -123,25 +124,32 @@ seven installer windows-x64
 seven installer linux-x64
 ```
 
+No Windows, o release publico empacota esse payload como MSI profissional via
+WiX para oferecer instalacao por maquina, integracao com Apps & Features e
+desinstalacao limpa.
+
 ### Windows x64
 
 Artefato:
 
 ```text
-build/installers/seven-0.2.0-windows-x64/seven-installer.exe
+build/seven-0.2.1-windows-x64.msi
 ```
 
-O instalador usa `brand/seven.ico`, instala por padrao em
-`%LOCALAPPDATA%\Programs\Seven`, registra o compilador no PATH do usuario,
-cria atalho no Menu Iniciar, associa arquivos `.sev` e registra a
-Desinstalacao do Windows.
+O instalador Windows oficial e um MSI WiX por maquina. Ele usa
+`brand/seven.ico`, instala por padrao em `%ProgramFiles%\Seven`, registra
+`bin\seven.exe` no PATH da maquina, cria atalho no Menu Iniciar, associa
+arquivos `.sev`, aparece em Apps & Features e possui desinstalacao limpa.
+
+O arquivo `seven-language-*.vsix` e somente a extensao do Visual Studio Code.
+Para instala-la use o VS Code, nao o instalador de extensoes do Visual Studio.
 
 ### Linux x64
 
 Artefato:
 
 ```text
-build/installers/seven-0.2.0-linux-x64/seven-installer
+build/installers/seven-0.2.1-linux-x64/seven-installer
 ```
 
 O instalador coloca a distribuicao em `~/.local/share/seven`, cria o link

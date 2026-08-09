@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.2.1
+
+- Replaces the transitional Windows zip installer with a professional WiX MSI.
+- Installs Seven per machine into `%ProgramFiles%\Seven` with Apps & Features
+  registration, clean uninstall, Start Menu shortcut, `.sev` association and
+  machine `PATH` integration.
+- Fixes the release payload layout that made the 0.2.0 Windows installer miss
+  the expected compiler and Web command bytecode files.
+- Adds `seven.webbuild.svbc` and `seven.webserve.svbc` to release payloads.
+- Bumps the VSCode extension package to `0.2.1` for release consistency.
+
 ## 0.2.0
 
 - Promotes the audited Windows 0.2.0 transition compiler to `bin/seven.exe`.
