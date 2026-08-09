@@ -221,8 +221,14 @@ const importNames = [
   'sys_lista_insere',
   'sys_lista_remove',
   'sys_lista_pop',
+  'sys_iterador_novo',
+  'sys_iterador_tem',
+  'sys_iterador_atual',
+  'sys_iterador_avanca',
   'sys_css_renderiza',
-  'sys_html_renderiza'
+  'sys_html_renderiza',
+  'sys_css_media_declaracoes',
+  'sys_css_animacao_declaracoes'
 ];
 
 async function execute(path) {
@@ -294,8 +300,13 @@ async function execute(path) {
   };
   const cssDecls = list => asArray(list).map(item => {
     const decl = ref(item);
+    if (field(decl, 'nome') === '__raw') return String(field(decl, 'valor') || '');
     return `${field(decl, 'nome')}:${field(decl, 'valor')};`;
   }).join('');
+  const renderCssRule = regraHandle => {
+    const regra = ref(regraHandle);
+    return `${field(regra, 'seletor')}{${cssDecls(field(regra, 'declaracoes'))}}`;
+  };
   const renderCss = folhaHandle => {
     const folha = ref(folhaHandle);
     if (!folha) return '';
@@ -303,10 +314,29 @@ async function execute(path) {
     const variaveis = cssDecls(field(folha, 'variaveis'));
     if (variaveis) css += `:root{${variaveis}}`;
     for (const regraHandle of asArray(field(folha, 'regras'))) {
-      const regra = ref(regraHandle);
-      css += `${field(regra, 'seletor')}{${cssDecls(field(regra, 'declaracoes'))}}`;
+      css += renderCssRule(regraHandle);
     }
     return css;
+  };
+  const rawDeclList = raw => {
+    const list = { type: 'Lista', fields: { tamanho: 1 }, items: [] };
+    const decl = { type: 'DeclaracaoCss', fields: { nome: '__raw', valor: raw }, items: [] };
+    list.items.push(storeHandle(decl));
+    return storeHandle(list);
+  };
+  const renderMediaDecls = mediaHandle => {
+    const media = ref(mediaHandle);
+    if (!media) return rawDeclList('');
+    return rawDeclList(asArray(field(media, 'regras')).map(renderCssRule).join(''));
+  };
+  const renderAnimationDecls = animationHandle => {
+    const animation = ref(animationHandle);
+    if (!animation) return rawDeclList('');
+    const raw = asArray(field(animation, 'quadros')).map(frameHandle => {
+      const frame = ref(frameHandle);
+      return `${field(frame, 'ponto')}{${cssDecls(field(frame, 'declaracoes'))}}`;
+    }).join('');
+    return rawDeclList(raw);
   };
   const renderHtmlNode = nodeHandle => {
     if (!isHandle(nodeHandle)) return escapeHtml(nodeHandle);
@@ -353,6 +383,29 @@ async function execute(path) {
       if (name === 'sys_obj_novo') {
         calls.push({ name, args: args.map(value => value > 0 ? String(value) : '0') });
         return createObject(args);
+      }
+      if (name.startsWith('sys_iterador_')) {
+        calls.push({ name, args: args.map(String) });
+        if (name === 'sys_iterador_novo') return storeHandle({ type: 'Iterador', fields: { indice: 0 }, items: asArray(args[0]).slice() });
+        if (name === 'sys_iterador_tem') {
+          const target = ref(args[0]);
+          return target && target.fields.indice < target.items.length ? 1 : 0;
+        }
+        if (name === 'sys_iterador_atual') {
+          const target = ref(args[0]);
+          return toSeven(target?.items?.[target.fields.indice] ?? 0);
+        }
+        if (name === 'sys_iterador_avanca') {
+          const target = ref(args[0]);
+          if (target) target.fields.indice = (target.fields.indice | 0) + 1;
+          return args[0] || 0;
+        }
+      }
+      if (name === 'sys_css_media_declaracoes' || name === 'sys_css_animacao_declaracoes') {
+        calls.push({ name, args: args.map(String) });
+        return name === 'sys_css_media_declaracoes'
+          ? renderMediaDecls(args[0])
+          : renderAnimationDecls(args[0]);
       }
       if (name.startsWith('sys_obj_') || name.startsWith('sys_lista_')) {
         calls.push({ name, args: args.map(String) });
