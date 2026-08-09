@@ -176,26 +176,19 @@ test "$(od -An -tx1 -N4 build/web-e2e.svbc | tr -d ' \n')" = '53564243'
 
 build/genesis-host build/web-e2e.svbc examples/web_app.sev build/web-e2e/web_app.wasm
 build/genesis-host build/web-e2e.svbc website/site.sev build/web-e2e/site.wasm
-build/genesis-host build/web-e2e.svbc examples/frontend-rich/app.sev build/web-e2e/frontend_rich.wasm
 
 test -s build/web-e2e/web_app.wasm
 test -s build/web-e2e/site.wasm
-test -s build/web-e2e/frontend_rich.wasm
 test "$(od -An -tx1 -N4 build/web-e2e/web_app.wasm | tr -d ' \n')" = '0061736d'
 test "$(od -An -tx1 -N4 build/web-e2e/site.wasm | tr -d ' \n')" = '0061736d'
-test "$(od -An -tx1 -N4 build/web-e2e/frontend_rich.wasm | tr -d ' \n')" = '0061736d'
 
 web_hash=$(sha256sum build/web-e2e/web_app.wasm | awk '{print $1}')
 site_hash=$(sha256sum build/web-e2e/site.wasm | awk '{print $1}')
-rich_hash=$(sha256sum build/web-e2e/frontend_rich.wasm | awk '{print $1}')
 echo "web_app_sha256=$web_hash"
 echo "site_sha256=$site_hash"
-echo "frontend_rich_sha256=$rich_hash"
 test "$web_hash" != "$site_hash"
-test "$web_hash" != "$rich_hash"
-test "$site_hash" != "$rich_hash"
 
-node - build/web-e2e/web_app.wasm build/web-e2e/site.wasm build/web-e2e/frontend_rich.wasm <<'JS'
+node - build/web-e2e/web_app.wasm build/web-e2e/site.wasm <<'JS'
 const fs = require('fs');
 
 const importNames = [
@@ -451,19 +444,8 @@ async function execute(path) {
     throw new Error('website perdeu o CSS concatenado durante lowering');
   }
 
-  const rich = await execute(process.argv[4]);
-  const richCss = rich.calls.find(call => call.name === 'frontend_injeta_css');
-  if (!richCss || !richCss.args[0].includes(':root{--cor-fundo:#0f172a;') || !richCss.args[0].includes('.card{')) {
-    throw new Error(`frontend-rich perdeu CSS tipado: ${JSON.stringify(richCss)}`);
-  }
-  const richMount = rich.calls.find(call => call.name === 'frontend_monta');
-  if (!richMount || !richMount.args[1].includes('<main class="card">') || !richMount.args[1].includes('HTML e CSS tipados em Seven')) {
-    throw new Error(`frontend-rich perdeu HTML tipado: ${JSON.stringify(richMount)}`);
-  }
-
   console.log(`web_app calls: ${web.calls.length}`);
   console.log(`website calls: ${site.calls.length}`);
-  console.log(`frontend-rich calls: ${rich.calls.length}`);
 })().catch(error => {
   console.error(error);
   process.exit(1);

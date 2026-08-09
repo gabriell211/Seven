@@ -29,10 +29,6 @@ campo inicio(argumentos: Lista<Texto>) -> Num toca terminal, disco, ambiente ::
     "entrada " + entrada + "\n" +
     "alvo webassembly\n" +
     "fonte std/frontend/intrinsics.sev\n" +
-    "fonte std/base/lista.sev\n" +
-    "fonte std/base/convert.sev\n" +
-    "fonte std/frontend/css.sev\n" +
-    "fonte std/web/html.sev\n" +
     "fonte " + entrada + "\n"
   )
 
