@@ -21,10 +21,12 @@ Seven trata frontend como parte oficial da linguagem, nao como uma camada improv
 ```sv
 solta folha := css("app")
 vira folha := css_var(folha, "cor-acao", "#22c55e")
-vira folha := css_regra(folha, ".botao", lista_de(
-  decl("background", var_css("cor-acao")),
-  decl("border-radius", "8px")
-))
+
+solta declaracoes := lista<DeclaracaoCss>()
+lista_coloca(declaracoes, decl("background", var_css("cor-acao")))
+lista_coloca(declaracoes, decl("border-radius", "8px"))
+
+vira folha := css_regra(folha, ".botao", declaracoes)
 
 css_injeta(folha)
 ```
@@ -40,9 +42,10 @@ vira t := token(t, "cor-texto", "#f8fafc")
 ## Responsividade
 
 ```sv
-vira folha := css_media(folha, media_regra(media(breakpoint_max(640)), ".grid", lista_de(
-  decl("grid-template-columns", "1fr")
-)))
+solta mobile := lista<DeclaracaoCss>()
+lista_coloca(mobile, decl("grid-template-columns", "1fr"))
+
+vira folha := css_media(folha, media_regra(media(breakpoint_max(640)), ".grid", mobile))
 ```
 
 ## Alvo web
@@ -54,7 +57,27 @@ O alvo `web` precisa implementar:
 - `frontend_navega`
 - `frontend_fetch_texto`
 - `frontend_injeta_css`
-- `sys_frontend_empacota`
+- `sys_numero`
+- `sys_texto_num`
+- `sys_texto_u64`
+
+## Starter validado
+
+O exemplo `examples/frontend-counter/app.sev` e o starter mais direto para
+testar UI interativa hoje. Ele usa somente fonte Seven para:
+
+- montar HTML no DOM;
+- injetar CSS;
+- registrar evento de click por handler exportado;
+- persistir estado em `localStorage`;
+- converter `Texto`/`Num` pelo contrato Web.
+
+```text
+seven web build examples/frontend-counter/app.sev build/frontend-counter
+seven web serve build/frontend-counter 7070
+```
+
+O caminho acima e validado no gate `Seven Stage 1 Self-Hosting`.
 
 ## Principio
 

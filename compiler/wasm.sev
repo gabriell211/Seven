@@ -8,7 +8,7 @@ usa std.mem.bytes
 const WasmPagina: U64 := 65536
 const WasmDadosInicio: U32 := 1024
 const WasmInboxInicio: U32 := 32768
-const WasmQuantidadeImports: U32 := 16
+const WasmQuantidadeImports: U32 := 19
 
 molde TextoWasm ::
   campo: Texto
@@ -139,6 +139,9 @@ campo wasm_imports() -> Lista<ImportWasm> ::
   lista_coloca(imports, ImportWasm { nome: "frontend_armazena", aridade: 2 })
   lista_coloca(imports, ImportWasm { nome: "frontend_carrega", aridade: 1 })
   lista_coloca(imports, ImportWasm { nome: "frontend_remove", aridade: 1 })
+  lista_coloca(imports, ImportWasm { nome: "sys_numero", aridade: 1 })
+  lista_coloca(imports, ImportWasm { nome: "sys_texto_num", aridade: 1 })
+  lista_coloca(imports, ImportWasm { nome: "sys_texto_u64", aridade: 1 })
   devolve imports
 fecha
 

@@ -87,6 +87,16 @@ campo web_manifesto_compilacao(entrada: Texto) -> Texto toca disco ::
   fecha
 
   guarda fontes_texto := entrada_texto + "\n" + estilos_texto
+  guarda usa_dom := texto_contem(fontes_texto, "usa std.frontend.dom")
+  guarda usa_css := texto_contem(fontes_texto, "usa std.frontend.css")
+  guarda usa_layout := texto_contem(fontes_texto, "usa std.frontend.layout")
+  guarda usa_media := texto_contem(fontes_texto, "usa std.frontend.media")
+  guarda usa_theme := texto_contem(fontes_texto, "usa std.frontend.theme")
+  guarda usa_html := texto_contem(fontes_texto, "usa std.web.html")
+  guarda usa_convert := texto_contem(fontes_texto, "usa std.base.convert")
+  guarda precisa_lista := usa_dom ou usa_css ou usa_layout ou usa_media ou usa_theme ou usa_html
+  guarda precisa_mapa := usa_dom
+  guarda precisa_talvez := precisa_mapa
   solta manifesto := "pacote seven-web-app\n" +
     "versao 0.2.0\n" +
     "criador Gabriel Barcelos\n" +
@@ -94,14 +104,27 @@ campo web_manifesto_compilacao(entrada: Texto) -> Texto toca disco ::
     "alvo webassembly\n" +
     "fonte std/frontend/intrinsics.sev\n"
 
-  veja texto_contem(fontes_texto, "usa std.frontend.dom") ::
+  veja precisa_lista ::
     vira manifesto := manifesto + "fonte std/base/lista.sev\n"
+  fecha
+
+  veja precisa_talvez ::
+    vira manifesto := manifesto + "fonte std/base/talvez.sev\n"
+  fecha
+
+  veja precisa_mapa ::
     vira manifesto := manifesto + "fonte std/base/mapa.sev\n"
+  fecha
+
+  veja usa_convert ::
+    vira manifesto := manifesto + "fonte std/base/convert.sev\n"
+  fecha
+
+  veja usa_dom ::
     vira manifesto := manifesto + "fonte std/frontend/dom.sev\n"
   fecha
 
-  veja texto_contem(fontes_texto, "usa std.frontend.css") ::
-    vira manifesto := manifesto + "fonte std/base/lista.sev\n"
+  veja usa_css ::
     vira manifesto := manifesto + "fonte std/frontend/css.sev\n"
   fecha
 
@@ -109,20 +132,19 @@ campo web_manifesto_compilacao(entrada: Texto) -> Texto toca disco ::
     vira manifesto := manifesto + "fonte std/frontend/state.sev\n"
   fecha
 
-  veja texto_contem(fontes_texto, "usa std.frontend.layout") ::
+  veja usa_layout ::
     vira manifesto := manifesto + "fonte std/frontend/layout.sev\n"
   fecha
 
-  veja texto_contem(fontes_texto, "usa std.frontend.media") ::
+  veja usa_media ::
     vira manifesto := manifesto + "fonte std/frontend/media.sev\n"
   fecha
 
-  veja texto_contem(fontes_texto, "usa std.frontend.theme") ::
+  veja usa_theme ::
     vira manifesto := manifesto + "fonte std/frontend/theme.sev\n"
   fecha
 
-  veja texto_contem(fontes_texto, "usa std.web.html") ::
-    vira manifesto := manifesto + "fonte std/base/lista.sev\n"
+  veja usa_html ::
     vira manifesto := manifesto + "fonte std/base/texto.sev\n"
     vira manifesto := manifesto + "fonte std/web/html.sev\n"
   fecha
@@ -273,7 +295,10 @@ campo web_loader_modulo() -> Texto ::
     "  frontend_evento_valor() { return writeInbox(lastEventValue); },\n" +
     "  frontend_armazena(chave, valor) { localStorage.setItem(decode(chave), decode(valor)); return 0; },\n" +
     "  frontend_carrega(chave) { return writeInbox(localStorage.getItem(decode(chave)) ?? ''); },\n" +
-    "  frontend_remove(chave) { localStorage.removeItem(decode(chave)); return 0; }\n" +
+    "  frontend_remove(chave) { localStorage.removeItem(decode(chave)); return 0; },\n" +
+    "  sys_numero(valor) { return Number.parseInt(decode(valor), 10) || 0; },\n" +
+    "  sys_texto_num(valor) { return writeInbox(String(valor | 0)); },\n" +
+    "  sys_texto_u64(valor) { return writeInbox(String(valor >>> 0)); }\n" +
     "} };\n" +
     "const resposta = await fetch('./app.wasm', { cache: 'no-store' });\n" +
     "if (!resposta.ok) throw new Error('Falha ao carregar app.wasm: ' + resposta.status);\n" +
@@ -286,10 +311,11 @@ campo web_loader_modulo() -> Texto ::
 fecha
 
 campo web_manifesto_json(entrada: Texto, checksum: Texto) -> Texto ::
+  guarda fonte := web_manifesto_caminho(entrada)
   devolve "{\n" +
     "  \"format\": \"seven-web-2\",\n" +
     "  \"language\": \"Seven\",\n" +
-    "  \"source\": \"" + entrada + "\",\n" +
+    "  \"source\": \"" + fonte + "\",\n" +
     "  \"sourceExtension\": \".sev\",\n" +
     "  \"target\": \"webassembly\",\n" +
     "  \"executable\": \"app.wasm\",\n" +
@@ -297,8 +323,25 @@ campo web_manifesto_json(entrada: Texto, checksum: Texto) -> Texto ::
     "  \"handlerPrefix\": \"seven_\",\n" +
     "  \"hostAbi\": \"seven-web-2\",\n" +
     "  \"inboxOffset\": 32768,\n" +
-    "  \"capabilities\": [\"dom\", \"events\", \"navigation\", \"fetch\", \"storage\"],\n" +
+    "  \"capabilities\": [\"dom\", \"events\", \"navigation\", \"fetch\", \"storage\", \"number-format\"],\n" +
     "  \"applicationLanguageDependency\": false,\n" +
     "  \"sha256\": \"" + checksum + "\"\n" +
     "}\n"
+fecha
+
+campo web_manifesto_caminho(entrada: Texto) -> Texto ::
+  solta saida := ""
+  solta indice: U64 := 0
+
+  gira indice < tamanho(entrada) ::
+    guarda caractere := sys_texto_caractere(entrada, indice)
+    veja caractere == "\\" ::
+      vira saida := saida + "/"
+    outro ::
+      vira saida := saida + caractere
+    fecha
+    vira indice := indice + 1
+  fecha
+
+  devolve saida
 fecha

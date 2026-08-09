@@ -11,17 +11,24 @@ Modos:
 
 ## `web`
 
-Alvo de frontend. Usa contratos `frontend_*` para DOM, eventos, navegacao e requisicoes.
+Alvo oficial de frontend. Compila `.sev` para WebAssembly e usa contratos
+`frontend_*` para DOM, eventos, navegacao, requisicoes, armazenamento e CSS.
 
-Tambem precisa suportar CSS:
+Tambem precisa suportar conversao de valores usada por apps interativos:
 
 - `frontend_injeta_css`
-- `sys_frontend_empacota`
+- `sys_numero`
+- `sys_texto_num`
+- `sys_texto_u64`
 
-Saida planejada:
+Saida:
 
 ```text
-pacote-web
+app.wasm
+app.wasm.sha256
+index.html
+seven-loader.mjs
+seven.web.json
 ```
 
 ## `native`

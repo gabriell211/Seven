@@ -1,36 +1,36 @@
 modulo examples.frontend_counter.app
 
 usa examples.frontend_counter.styles
-usa std.frontend.css
-usa std.frontend.dom
-usa std.frontend.state
-usa std.web.html
+usa std.base.convert
+usa std.frontend.intrinsics
 
-campo render_counter(app: Componente) -> Texto ::
-  guarda atual := app.estado["contador"]
-
-  devolve pagina("Seven Counter", lista_de(
-    elem("main", lista_de(attr("id", "app"), attr("class", "counter-shell")), lista_de(
-      elem("section", lista_de(attr("class", "counter-panel")), lista_de(
-        elem("p", lista_de(attr("class", "eyebrow")), lista_de(texto_no("Seven UI"))),
-        elem("h1", lista<Atributo>(), lista_de(texto_no("Frontend com CSS nativo"))),
-        elem("p", lista_de(attr("class", "counter-value")), lista_de(texto_no(atual))),
-        elem("button", lista_de(attr("id", "incrementa"), attr("class", "primary-button")), lista_de(texto_no("+1")))
-      ))
-    ))
-  ))
+campo inicio() -> Num toca frontend ::
+  frontend_injeta_css(counter_styles())
+  frontend_armazena("contador", "0")
+  render_counter("0")
+  frontend_escuta("#incrementa", "click", "incrementa")
+  devolve 0
 fecha
 
-campo inicio() -> Nada toca frontend ::
-  solta app := componente("Counter", render_counter)
-  mapa_coloca(app.estado, "contador", "0")
+campo incrementa() -> Num toca frontend ::
+  guarda atual := numero(frontend_carrega("contador"))
+  guarda proximo := texto(atual + 1)
+  frontend_armazena("contador", proximo)
+  frontend_texto(".counter-value", proximo)
+  devolve 0
+fecha
 
-  css_injeta(counter_styles())
-  monta("#root", app)
+campo render_counter(valor: Texto) -> Nada toca frontend ::
+  frontend_monta("#seven-app", counter_view(valor))
+fecha
 
-  escuta("#incrementa", "click", campo(evento: Evento) -> Nada toca frontend ::
-    guarda atual := numero(app.estado["contador"])
-    mapa_coloca(app.estado, "contador", texto(atual + 1))
-    monta("#root", app)
-  fecha)
+campo counter_view(valor: Texto) -> Texto ::
+  devolve "<main id='app' class='counter-shell'>" +
+    "<section class='counter-panel'>" +
+    "<p class='eyebrow'>Seven UI</p>" +
+    "<h1>Frontend com CSS nativo</h1>" +
+    "<p class='counter-value'>" + valor + "</p>" +
+    "<button id='incrementa' class='primary-button'>+1</button>" +
+    "</section>" +
+    "</main>"
 fecha

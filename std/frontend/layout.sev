@@ -3,31 +3,31 @@ modulo std.frontend.layout
 usa std.frontend.css
 
 campo flex_linha() -> Lista<DeclaracaoCss> ::
-  devolve lista_de(
-    decl("display", "flex"),
-    decl("flex-direction", "row")
-  )
+  solta declaracoes := lista<DeclaracaoCss>()
+  lista_coloca(declaracoes, decl("display", "flex"))
+  lista_coloca(declaracoes, decl("flex-direction", "row"))
+  devolve declaracoes
 fecha
 
 campo flex_coluna() -> Lista<DeclaracaoCss> ::
-  devolve lista_de(
-    decl("display", "flex"),
-    decl("flex-direction", "column")
-  )
+  solta declaracoes := lista<DeclaracaoCss>()
+  lista_coloca(declaracoes, decl("display", "flex"))
+  lista_coloca(declaracoes, decl("flex-direction", "column"))
+  devolve declaracoes
 fecha
 
 campo grid_colunas(colunas: Texto) -> Lista<DeclaracaoCss> ::
-  devolve lista_de(
-    decl("display", "grid"),
-    decl("grid-template-columns", colunas)
-  )
+  solta declaracoes := lista<DeclaracaoCss>()
+  lista_coloca(declaracoes, decl("display", "grid"))
+  lista_coloca(declaracoes, decl("grid-template-columns", colunas))
+  devolve declaracoes
 fecha
 
 campo centraliza() -> Lista<DeclaracaoCss> ::
-  devolve lista_de(
-    decl("display", "grid"),
-    decl("place-items", "center")
-  )
+  solta declaracoes := lista<DeclaracaoCss>()
+  lista_coloca(declaracoes, decl("display", "grid"))
+  lista_coloca(declaracoes, decl("place-items", "center"))
+  devolve declaracoes
 fecha
 
 campo espacamento(valor: Texto) -> DeclaracaoCss ::
@@ -35,8 +35,8 @@ campo espacamento(valor: Texto) -> DeclaracaoCss ::
 fecha
 
 campo tamanho_total() -> Lista<DeclaracaoCss> ::
-  devolve lista_de(
-    decl("width", "100%"),
-    decl("min-height", "100vh")
-  )
+  solta declaracoes := lista<DeclaracaoCss>()
+  lista_coloca(declaracoes, decl("width", "100%"))
+  lista_coloca(declaracoes, decl("min-height", "100vh"))
+  devolve declaracoes
 fecha

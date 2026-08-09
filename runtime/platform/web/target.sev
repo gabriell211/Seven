@@ -32,6 +32,9 @@ campo alvo_web() -> AlvoWeb ::
   lista_coloca(imports, contrato_intrinseco("seven.frontend_armazena", CapFrontend, "(chave: DescritorTexto, valor: DescritorTexto) -> I32"))
   lista_coloca(imports, contrato_intrinseco("seven.frontend_carrega", CapFrontend, "(chave: DescritorTexto) -> DescritorTexto"))
   lista_coloca(imports, contrato_intrinseco("seven.frontend_remove", CapFrontend, "(chave: DescritorTexto) -> I32"))
+  lista_coloca(imports, contrato_intrinseco("sys_numero", CapPura, "(valor: DescritorTexto) -> I32"))
+  lista_coloca(imports, contrato_intrinseco("sys_texto_num", CapPura, "(valor: I32) -> DescritorTexto"))
+  lista_coloca(imports, contrato_intrinseco("sys_texto_u64", CapPura, "(valor: U64) -> DescritorTexto"))
 
   lista_coloca(exports, "memory")
   lista_coloca(exports, "seven_start")

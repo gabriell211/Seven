@@ -57,7 +57,8 @@ A ABI fornece:
 - estilos: `frontend_injeta_css`;
 - HTTP: `frontend_fetch_texto`, `frontend_resposta_texto`,
   `frontend_resposta_status`;
-- armazenamento: `frontend_armazena`, `frontend_carrega`, `frontend_remove`.
+- armazenamento: `frontend_armazena`, `frontend_carrega`, `frontend_remove`;
+- conversao: `sys_numero`, `sys_texto_num`, `sys_texto_u64`.
 
 Exports:
 
@@ -74,6 +75,9 @@ Para comecar um projeto de tela no navegador, use o starter:
 ```text
 seven web build examples/web_dev.sev build/web-dev
 seven web serve build/web-dev 7070
+
+seven web build examples/frontend-counter/app.sev build/frontend-counter
+seven web serve build/frontend-counter 7071
 ```
 
 Depois abra `http://127.0.0.1:7070/`. O guia pratico fica em
@@ -108,6 +112,7 @@ O emissor atual suporta:
 - chamadas internas;
 - chamadas a ABI do navegador;
 - aritmetica e comparacoes inteiras;
+- conversao `Texto`/`Num` pela ABI Web;
 - handlers assincronos de `fetch` por callback exportado;
 - manifesto e checksum deterministicos.
 

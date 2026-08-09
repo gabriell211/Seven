@@ -27,8 +27,8 @@ campo atualiza(seletor: Texto, html: Texto) -> Nada toca frontend ::
   frontend_monta(seletor, html)
 fecha
 
-campo escuta(seletor: Texto, evento: Texto, acao: Campo<Evento, Nada>) -> Nada toca frontend ::
-  frontend_escuta(seletor, evento, acao)
+campo escuta(seletor: Texto, evento: Texto, handler: Texto) -> Nada toca frontend ::
+  frontend_escuta(seletor, evento, handler)
 fecha
 
 campo classe(condicao: Bit, nome: Texto) -> Texto ::

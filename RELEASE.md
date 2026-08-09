@@ -1,3 +1,30 @@
+# Seven Release Notes
+
+## Em desenvolvimento apos 0.1.0
+
+Esta linha prepara o caminho Seven Web 0.2 sem declarar self-hosting completo
+antes da prova deterministica final.
+
+### Web e frontend
+
+- `seven web build` gera pacote WebAssembly com `app.wasm`,
+  `app.wasm.sha256`, `index.html`, `seven-loader.mjs` e `seven.web.json`;
+- `seven web serve <diretorio> [porta]` executa o servidor estatico de
+  desenvolvimento pelo host nativo, TCP e leitura segura de arquivos;
+- `examples/frontend-counter/app.sev` valida UI interativa em Seven com DOM,
+  CSS, evento de click, `localStorage` e conversao `Texto`/`Num`;
+- a ABI Web inclui `sys_numero`, `sys_texto_num` e `sys_texto_u64`;
+- o gate `Seven Stage 1 Self-Hosting` compila `seven.webbuild.svbc`,
+  `seven.webserve.svbc`, gera apps Web e testa o servidor por HTTP.
+
+### Limite honesto
+
+React, Tailwind e APIs MDN reais continuam sendo ecossistemas JavaScript/Node.
+O objetivo da Seven e oferecer equivalentes nativos da linguagem: componentes,
+estado, CSS utilitario/tipado e bindings Web escritos/consumidos em `.sev`. O
+runtime completo de colecoes/objetos no backend Wasm ainda deve ser promovido
+antes de declarar uma camada frontend equivalente a React/Tailwind.
+
 # Seven 0.1.0 Release Notes
 
 Seven 0.1.0 estabelece a fundacao publica da linguagem, do compilador, do

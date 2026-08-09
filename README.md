@@ -68,9 +68,17 @@ Para desenvolvimento Web no navegador:
 ```text
 seven check examples/web_dev.sev
 seven web build examples/web_dev.sev build/web-dev
+seven web serve build/web-dev 7070
+
+seven check examples/frontend-counter/app.sev
+seven web build examples/frontend-counter/app.sev build/frontend-counter
+seven web serve build/frontend-counter 7071
 ```
 
-O guia pratico fica em `docs/web-development.md`.
+`examples/web_dev.sev` cobre a pagina Web basica. O starter
+`examples/frontend-counter/app.sev` cobre UI interativa com DOM, CSS, evento,
+`localStorage` e conversao `Texto`/`Num`, sem Node ou JavaScript manual. O guia
+pratico fica em `docs/web-development.md`.
 
 A cadeia oficial de bootstrap e:
 
