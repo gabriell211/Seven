@@ -1,0 +1,53 @@
+{
+  "name": "seven-language",
+  "displayName": "Seven Language",
+  "description": "Syntax highlighting and editor configuration for Seven .sev source files.",
+  "version": "0.2.0",
+  "publisher": "gabriell211",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gabriell211/Seven.git",
+    "directory": "editors/vscode/seven-language"
+  },
+  "bugs": {
+    "url": "https://github.com/gabriell211/Seven/issues"
+  },
+  "homepage": "https://github.com/gabriell211/Seven#readme",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "seven",
+    "sev",
+    "language",
+    "syntax",
+    "webassembly",
+    "systems"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "seven",
+        "aliases": [
+          "Seven",
+          "seven"
+        ],
+        "extensions": [
+          ".sev"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "seven",
+        "scopeName": "source.seven",
+        "path": "./syntaxes/seven.tmLanguage.json"
+      }
+    ]
+  }
+}

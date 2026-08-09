@@ -5,6 +5,10 @@
 - Promotes the audited Windows 0.2.0 transition compiler to `bin/seven.exe`.
 - Records the compiler checksum and the current supported CLI surface in
   `bin/README.md`.
+- Adds the official VSCode language extension package under
+  `editors/vscode/seven-language`.
+- Documents the VSCode Extension Development Host and VSIX packaging flow in
+  `docs/vscode-extension.md`.
 
 ## 0.1.0
 

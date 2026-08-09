@@ -28,6 +28,16 @@ antes da prova deterministica final.
 - o gate `Seven Stage 1 Self-Hosting` compila `seven.webbuild.svbc`,
   `seven.webserve.svbc`, gera apps Web e testa o servidor por HTTP.
 
+### Editor
+
+- a extensao oficial VSCode em `editors/vscode/seven-language` agora possui
+  manifesto `package.json`, README, changelog, licenca e `.vscodeignore`;
+- a extensao registra `.sev`, contribui a gramatica TextMate Seven e fornece
+  configuracao de comentarios, pares automaticos e folding para blocos da
+  linguagem;
+- `docs/vscode-extension.md` documenta desenvolvimento local com Extension
+  Development Host e empacotamento VSIX via `@vscode/vsce`.
+
 ### Limite honesto
 
 React, Tailwind e APIs MDN reais continuam sendo ecossistemas JavaScript/Node.

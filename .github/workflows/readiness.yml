@@ -29,6 +29,29 @@ jobs:
           grep -q '"fileTypes": \["sev"\]' syntax/seven.tmLanguage.json
           grep -q '"scopeName": "source.seven"' syntax/seven.tmLanguage.json
 
+      - name: Verify VSCode extension package metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'JS'
+          const fs = require('fs');
+          const base = 'editors/vscode/seven-language';
+          const readJson = file => JSON.parse(fs.readFileSync(`${base}/${file}`, 'utf8'));
+          const pkg = readJson('package.json');
+          readJson('language-configuration.json');
+          readJson('syntaxes/seven.tmLanguage.json');
+          if (pkg.name !== 'seven-language') throw new Error('unexpected extension name');
+          if (pkg.publisher !== 'gabriell211') throw new Error('unexpected extension publisher');
+          const language = pkg.contributes?.languages?.[0];
+          if (language?.id !== 'seven') throw new Error('missing Seven language contribution');
+          if (!language.extensions?.includes('.sev')) throw new Error('missing .sev extension contribution');
+          const grammar = pkg.contributes?.grammars?.[0];
+          if (grammar?.scopeName !== 'source.seven') throw new Error('missing Seven grammar contribution');
+          for (const file of ['README.md', 'CHANGELOG.md', 'LICENSE.md', '.vscodeignore']) {
+            if (!fs.existsSync(`${base}/${file}`)) throw new Error(`missing ${file}`);
+          }
+          JS
+
       - name: Verify deterministic source index
         shell: bash
         run: |

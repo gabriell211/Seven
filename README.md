@@ -87,6 +87,25 @@ de objetos/listas, `para cada`, tema, media query e keyframes no host Web
 gerado. O guia pratico fica em
 `docs/web-development.md`.
 
+## Extensao VSCode
+
+A extensao oficial de linguagem fica em:
+
+```text
+editors/vscode/seven-language
+```
+
+Ela registra arquivos `.sev`, inclui gramática TextMate, configuracao de
+comentarios, pares, folding e manifesto VSCode pronto para desenvolvimento
+local ou empacotamento VSIX:
+
+```text
+cd editors/vscode/seven-language
+npx @vscode/vsce package --no-dependencies
+```
+
+O guia fica em `docs/vscode-extension.md`.
+
 A cadeia oficial de bootstrap e:
 
 ```text
@@ -139,6 +158,7 @@ registra `seven.desktop` e o MIME `text/x-seven`. O pacote tambem inclui
 - `std/`: biblioteca padrao.
 - `conformance/`: testes de conformidade validos e invalidos.
 - `tests/`: testes da toolchain e do runtime.
+- `editors/`: integracoes de editor, incluindo a extensao VSCode.
 - `seed/`: seed minimo auditavel.
 - `brand/`: logo, marca SVG e icone ICO oficial.
 - `docs/`: especificacao e arquitetura.
@@ -211,6 +231,7 @@ seven verify production
 - `docs/bytecode.md`: formato SVBC.
 - `docs/toolchain.md`: comandos e ferramentas.
 - `docs/targets.md`: alvos de compilacao.
+- `docs/vscode-extension.md`: extensao VSCode oficial.
 - `docs/bridge-retirement.md`: aposentadoria da ponte PowerShell.
 - `docs/production-gate.md`: criterios de producao.
 - `docs/enterprise-readiness.md`: prontidao corporativa.

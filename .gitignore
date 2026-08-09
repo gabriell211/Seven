@@ -6,6 +6,7 @@ tmp/
 *.svbc
 *.svb0
 *.svlog
+*.vsix
 
 # Local machine files
 .DS_Store
