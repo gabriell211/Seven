@@ -13,7 +13,13 @@ antes da prova deterministica final.
   desenvolvimento pelo host nativo, TCP e leitura segura de arquivos;
 - `examples/frontend-counter/app.sev` valida UI interativa em Seven com DOM,
   CSS, evento de click, `localStorage` e conversao `Texto`/`Num`;
-- a ABI Web inclui `sys_numero`, `sys_texto_num` e `sys_texto_u64`;
+- `examples/frontend-rich/app.sev` valida `std.frontend.css` e `std.web.html`
+  com CSS/HTML tipados renderizados pelo host WebAssembly gerado;
+- a ABI Web inclui `sys_numero`, `sys_texto_num`, `sys_texto_u64`,
+  `sys_texto_concat`, objetos/listas por handle, `sys_css_renderiza` e
+  `sys_html_renderiza`;
+- o lowering Web remove campos nao alcancaveis antes da emissao Wasm, evitando
+  que helpers mortos da std bloqueiem apps de navegador;
 - o gate `Seven Stage 1 Self-Hosting` compila `seven.webbuild.svbc`,
   `seven.webserve.svbc`, gera apps Web e testa o servidor por HTTP.
 
@@ -22,8 +28,10 @@ antes da prova deterministica final.
 React, Tailwind e APIs MDN reais continuam sendo ecossistemas JavaScript/Node.
 O objetivo da Seven e oferecer equivalentes nativos da linguagem: componentes,
 estado, CSS utilitario/tipado e bindings Web escritos/consumidos em `.sev`. O
-runtime completo de colecoes/objetos no backend Wasm ainda deve ser promovido
-antes de declarar uma camada frontend equivalente a React/Tailwind.
+runtime Web ja possui objetos/listas por handle para CSS/HTML tipados, mas
+controle estruturado, iteradores, mapas ricos, media/theme/animation completos
+e ergonomia de componentes ainda devem ser promovidos antes de declarar uma
+camada frontend equivalente a React/Tailwind.
 
 # Seven 0.1.0 Release Notes
 

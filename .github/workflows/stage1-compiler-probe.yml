@@ -285,6 +285,14 @@ jobs:
           grep -q '"applicationLanguageDependency": false' build/frontend-counter-stage2/seven.web.json
           test "$(od -An -tx1 -N4 build/frontend-counter-stage2/app.wasm | tr -d ' \n')" = '0061736d'
 
+          build/genesis-host web build examples/frontend-rich/app.sev build/frontend-rich-stage2
+          test -s build/frontend-rich-stage2/app.wasm
+          test -s build/frontend-rich-stage2/seven.web.json
+          grep -q '"typed-css"' build/frontend-rich-stage2/seven.web.json
+          grep -q '"typed-html"' build/frontend-rich-stage2/seven.web.json
+          grep -q '"host-objects"' build/frontend-rich-stage2/seven.web.json
+          test "$(od -An -tx1 -N4 build/frontend-rich-stage2/app.wasm | tr -d ' \n')" = '0061736d'
+
           build/genesis-host web serve build/web-stage2-native 18081 > build/web-stage2-serve.stdout 2> build/web-stage2-serve.stderr &
           serve_pid=$!
           cleanup_serve() {
@@ -362,6 +370,8 @@ jobs:
             build/seven.webserve.svbc
             build/web-stage2-native/seven.web.json
             build/web-stage2-native/app.wasm
+            build/frontend-rich-stage2/seven.web.json
+            build/frontend-rich-stage2/app.wasm
             build/web-stage2-serve.headers
             build/web-stage2-serve.index
             build/stage1.provenance

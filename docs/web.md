@@ -58,7 +58,12 @@ A ABI fornece:
 - HTTP: `frontend_fetch_texto`, `frontend_resposta_texto`,
   `frontend_resposta_status`;
 - armazenamento: `frontend_armazena`, `frontend_carrega`, `frontend_remove`;
-- conversao: `sys_numero`, `sys_texto_num`, `sys_texto_u64`.
+- conversao: `sys_numero`, `sys_texto_num`, `sys_texto_u64`,
+  `sys_texto_concat`;
+- objetos/listas: `sys_obj_novo`, `sys_obj_pega`, `sys_obj_define`,
+  `sys_lista_coloca`, `sys_lista_pega`, `sys_lista_define`,
+  `sys_lista_insere`, `sys_lista_remove`, `sys_lista_pop`;
+- renderizacao tipada: `sys_css_renderiza`, `sys_html_renderiza`.
 
 Exports:
 
@@ -78,6 +83,9 @@ seven web serve build/web-dev 7070
 
 seven web build examples/frontend-counter/app.sev build/frontend-counter
 seven web serve build/frontend-counter 7071
+
+seven web build examples/frontend-rich/app.sev build/frontend-rich
+seven web serve build/frontend-rich 7072
 ```
 
 Depois abra `http://127.0.0.1:7070/`. O guia pratico fica em
@@ -113,12 +121,18 @@ O emissor atual suporta:
 - chamadas a ABI do navegador;
 - aritmetica e comparacoes inteiras;
 - conversao `Texto`/`Num` pela ABI Web;
+- concatenacao de `Texto` via ABI Web;
+- objetos/listas por handle no host gerado;
+- renderizacao de `std.frontend.css` e `std.web.html`;
+- remocao de campos nao alcancaveis antes da emissao Wasm;
 - handlers assincronos de `fetch` por callback exportado;
 - manifesto e checksum deterministicos.
 
-Saltos estruturados, lacos, alocacao dinamica e o runtime completo de colecoes
-ainda devem ser rejeitados com diagnostico `SV-WASM-*`; nao existe fallback
-silencioso.
+Saltos estruturados, lacos e alocacao dinamica linear ainda devem ser
+rejeitados com diagnostico `SV-WASM-*` quando aparecem em campos alcancaveis.
+Objetos e listas ja funcionam no Web por handles do host gerado para suportar
+CSS/HTML tipados, mas iteradores, mapas ricos e controle estruturado ainda sao
+a proxima etapa antes de declarar paridade frontend completa.
 
 ## Servidor web
 

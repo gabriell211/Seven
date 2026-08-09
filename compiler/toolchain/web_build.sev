@@ -97,6 +97,7 @@ campo web_manifesto_compilacao(entrada: Texto) -> Texto toca disco ::
   guarda precisa_lista := usa_dom ou usa_css ou usa_layout ou usa_media ou usa_theme ou usa_html
   guarda precisa_mapa := usa_dom
   guarda precisa_talvez := precisa_mapa
+  guarda precisa_convert := usa_convert ou usa_css ou usa_layout ou usa_media ou usa_theme
   solta manifesto := "pacote seven-web-app\n" +
     "versao 0.2.0\n" +
     "criador Gabriel Barcelos\n" +
@@ -116,7 +117,7 @@ campo web_manifesto_compilacao(entrada: Texto) -> Texto toca disco ::
     vira manifesto := manifesto + "fonte std/base/mapa.sev\n"
   fecha
 
-  veja usa_convert ::
+  veja precisa_convert ::
     vira manifesto := manifesto + "fonte std/base/convert.sev\n"
   fecha
 
@@ -145,7 +146,6 @@ campo web_manifesto_compilacao(entrada: Texto) -> Texto toca disco ::
   fecha
 
   veja usa_html ::
-    vira manifesto := manifesto + "fonte std/base/texto.sev\n"
     vira manifesto := manifesto + "fonte std/web/html.sev\n"
   fecha
 
@@ -218,6 +218,86 @@ campo web_loader_modulo() -> Texto ::
     "  view.setUint32(INBOX + 4, bytes.length, true);\n" +
     "  new Uint8Array(memory.buffer, INBOX + 8, bytes.length).set(bytes);\n" +
     "  return INBOX;\n" +
+    "};\n" +
+    "const HANDLE_BASE = 1048576;\n" +
+    "let nextHandle = HANDLE_BASE;\n" +
+    "const handles = new Map();\n" +
+    "const storeHandle = value => {\n" +
+    "  const id = nextHandle++;\n" +
+    "  handles.set(id, value);\n" +
+    "  return id;\n" +
+    "};\n" +
+    "const isHandle = value => handles.has(value);\n" +
+    "const ref = value => handles.get(value);\n" +
+    "const looksText = value => {\n" +
+    "  if (!value || isHandle(value) || value < 0 || value + 8 > memory.buffer.byteLength) return false;\n" +
+    "  const view = dataView();\n" +
+    "  const pointer = view.getUint32(value, true);\n" +
+    "  const length = view.getUint32(value + 4, true);\n" +
+    "  return pointer >= 8 && pointer + length <= memory.buffer.byteLength;\n" +
+    "};\n" +
+    "const fromSeven = value => isHandle(value) ? value : (looksText(value) ? decode(value) : (value | 0));\n" +
+    "const toSeven = value => typeof value === 'string' ? writeInbox(value) : (value || 0);\n" +
+    "const textFields = new Set(['__tipo', 'tag', 'nome', 'valor', 'seletor', 'consulta', 'ponto', 'alvo']);\n" +
+    "const fieldFromSeven = (key, value) => isHandle(value) ? value : (textFields.has(key) ? decode(value) : fromSeven(value));\n" +
+    "const escapeHtml = value => String(value ?? '').replace(/[&<>\\\"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;'}[ch]));\n" +
+    "const createObject = args => {\n" +
+    "  const object = { type: 'objeto', fields: Object.create(null), items: [] };\n" +
+    "  for (let i = 0; i + 1 < args.length; i += 2) {\n" +
+    "    const key = decode(args[i]);\n" +
+    "    const value = fieldFromSeven(key, args[i + 1]);\n" +
+    "    object.fields[key] = value;\n" +
+    "    if (key === '__tipo') object.type = String(value);\n" +
+    "  }\n" +
+    "  if (object.type === 'Lista') object.items = [];\n" +
+    "  if (object.fields.tamanho === undefined && object.items) object.fields.tamanho = object.items.length;\n" +
+    "  return storeHandle(object);\n" +
+    "};\n" +
+    "const field = (object, name) => {\n" +
+    "  const target = isHandle(object) ? ref(object) : object;\n" +
+    "  if (!target) return 0;\n" +
+    "  if (name === 'tamanho' && target.items) return target.items.length;\n" +
+    "  return target.fields?.[name] ?? 0;\n" +
+    "};\n" +
+    "const asArray = value => {\n" +
+    "  const target = isHandle(value) ? ref(value) : value;\n" +
+    "  return target?.items ?? [];\n" +
+    "};\n" +
+    "const cssDecls = list => asArray(list).map(item => {\n" +
+    "  const decl = ref(item);\n" +
+    "  return `${field(decl, 'nome')}:${field(decl, 'valor')};`;\n" +
+    "}).join('');\n" +
+    "const renderCss = folhaHandle => {\n" +
+    "  const folha = ref(folhaHandle);\n" +
+    "  if (!folha) return '';\n" +
+    "  let css = '';\n" +
+    "  const variaveis = cssDecls(field(folha, 'variaveis'));\n" +
+    "  if (variaveis) css += `:root{${variaveis}}`;\n" +
+    "  for (const regraHandle of asArray(field(folha, 'regras'))) {\n" +
+    "    const regra = ref(regraHandle);\n" +
+    "    css += `${field(regra, 'seletor')}{${cssDecls(field(regra, 'declaracoes'))}}`;\n" +
+    "  }\n" +
+    "  return css;\n" +
+    "};\n" +
+    "const renderHtmlNode = nodeHandle => {\n" +
+    "  if (!isHandle(nodeHandle)) return escapeHtml(nodeHandle);\n" +
+    "  const node = ref(nodeHandle);\n" +
+    "  if (!node) return '';\n" +
+    "  if (node.type === 'TextoNo') return escapeHtml(field(node, 'valor'));\n" +
+    "  if (node.type === 'ElementoNo') return renderElement(field(node, 'valor'));\n" +
+    "  if (node.type === 'Elemento') return renderElement(nodeHandle);\n" +
+    "  return '';\n" +
+    "};\n" +
+    "const renderElement = elementHandle => {\n" +
+    "  const element = isHandle(elementHandle) ? ref(elementHandle) : elementHandle;\n" +
+    "  if (!element) return '';\n" +
+    "  const name = String(field(element, 'nome') || 'div');\n" +
+    "  const attrs = asArray(field(element, 'atributos')).map(attrHandle => {\n" +
+    "    const attr = ref(attrHandle);\n" +
+    "    return ` ${field(attr, 'nome')}=\\\"${escapeHtml(field(attr, 'valor'))}\\\"`;\n" +
+    "  }).join('');\n" +
+    "  const children = asArray(field(element, 'filhos')).map(renderHtmlNode).join('');\n" +
+    "  return `<${name}${attrs}>${children}</${name}>`;\n" +
     "};\n" +
     "const invoke = name => {\n" +
     "  const handler = instance.exports['seven_' + name];\n" +
@@ -298,7 +378,19 @@ campo web_loader_modulo() -> Texto ::
     "  frontend_remove(chave) { localStorage.removeItem(decode(chave)); return 0; },\n" +
     "  sys_numero(valor) { return Number.parseInt(decode(valor), 10) || 0; },\n" +
     "  sys_texto_num(valor) { return writeInbox(String(valor | 0)); },\n" +
-    "  sys_texto_u64(valor) { return writeInbox(String(valor >>> 0)); }\n" +
+    "  sys_texto_u64(valor) { return writeInbox(String(valor >>> 0)); },\n" +
+    "  sys_texto_concat(esquerda, direita) { return writeInbox(decode(esquerda) + decode(direita)); },\n" +
+    "  sys_obj_novo(...args) { return createObject(args); },\n" +
+    "  sys_obj_pega(objeto, chave) { return toSeven(field(objeto, decode(chave))); },\n" +
+    "  sys_obj_define(objeto, chave, valor) { const alvo = ref(objeto); const nome = decode(chave); if (alvo) alvo.fields[nome] = fieldFromSeven(nome, valor); return objeto; },\n" +
+    "  sys_lista_coloca(lista, valor) { const alvo = ref(lista); if (alvo) { alvo.items.push(fromSeven(valor)); alvo.fields.tamanho = alvo.items.length; } return lista; },\n" +
+    "  sys_lista_pega(lista, indice) { const alvo = ref(lista); return toSeven(alvo?.items?.[indice >>> 0] ?? 0); },\n" +
+    "  sys_lista_define(lista, indice, valor) { const alvo = ref(lista); if (alvo) alvo.items[indice >>> 0] = fromSeven(valor); return lista; },\n" +
+    "  sys_lista_insere(lista, indice, valor) { const alvo = ref(lista); if (alvo) { alvo.items.splice(indice >>> 0, 0, fromSeven(valor)); alvo.fields.tamanho = alvo.items.length; } return lista; },\n" +
+    "  sys_lista_remove(lista, indice) { const alvo = ref(lista); if (!alvo) return 0; const [removido] = alvo.items.splice(indice >>> 0, 1); alvo.fields.tamanho = alvo.items.length; return toSeven(removido ?? 0); },\n" +
+    "  sys_lista_pop(lista) { const alvo = ref(lista); if (!alvo) return 0; const removido = alvo.items.pop(); alvo.fields.tamanho = alvo.items.length; return toSeven(removido ?? 0); },\n" +
+    "  sys_css_renderiza(folha) { return writeInbox(renderCss(folha)); },\n" +
+    "  sys_html_renderiza(elemento) { return writeInbox(renderElement(elemento)); }\n" +
     "} };\n" +
     "const resposta = await fetch('./app.wasm', { cache: 'no-store' });\n" +
     "if (!resposta.ok) throw new Error('Falha ao carregar app.wasm: ' + resposta.status);\n" +
@@ -323,7 +415,7 @@ campo web_manifesto_json(entrada: Texto, checksum: Texto) -> Texto ::
     "  \"handlerPrefix\": \"seven_\",\n" +
     "  \"hostAbi\": \"seven-web-2\",\n" +
     "  \"inboxOffset\": 32768,\n" +
-    "  \"capabilities\": [\"dom\", \"events\", \"navigation\", \"fetch\", \"storage\", \"number-format\"],\n" +
+    "  \"capabilities\": [\"dom\", \"events\", \"navigation\", \"fetch\", \"storage\", \"number-format\", \"host-objects\", \"typed-css\", \"typed-html\"],\n" +
     "  \"applicationLanguageDependency\": false,\n" +
     "  \"sha256\": \"" + checksum + "\"\n" +
     "}\n"

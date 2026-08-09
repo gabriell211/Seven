@@ -20,6 +20,13 @@ Tambem precisa suportar conversao de valores usada por apps interativos:
 - `sys_numero`
 - `sys_texto_num`
 - `sys_texto_u64`
+- `sys_texto_concat`
+- `sys_obj_novo`
+- `sys_obj_pega`
+- `sys_obj_define`
+- `sys_lista_coloca`
+- `sys_css_renderiza`
+- `sys_html_renderiza`
 
 Saida:
 

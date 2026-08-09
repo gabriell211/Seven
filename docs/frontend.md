@@ -60,6 +60,14 @@ O alvo `web` precisa implementar:
 - `sys_numero`
 - `sys_texto_num`
 - `sys_texto_u64`
+- `sys_texto_concat`
+- `sys_obj_novo`
+- `sys_obj_pega`
+- `sys_obj_define`
+- `sys_lista_coloca`
+- `sys_lista_pega`
+- `sys_css_renderiza`
+- `sys_html_renderiza`
 
 ## Starter validado
 
@@ -78,6 +86,26 @@ seven web serve build/frontend-counter 7070
 ```
 
 O caminho acima e validado no gate `Seven Stage 1 Self-Hosting`.
+
+## CSS e HTML tipados
+
+O exemplo `examples/frontend-rich/app.sev` cobre a camada mais rica: estruturas
+Seven de `std.frontend.css` e `std.web.html` sao passadas como handles para o
+host Web gerado, que renderiza CSS e HTML sem exigir Node ou JavaScript manual
+da aplicacao.
+
+```text
+seven web build examples/frontend-rich/app.sev build/frontend-rich
+seven web serve build/frontend-rich 7072
+```
+
+Este caminho valida:
+
+- `FolhaCss`, `RegraCss` e `DeclaracaoCss`;
+- `Elemento`, `Atributo` e `NoHtml`;
+- listas e objetos por handle na ABI Web;
+- concatenacao de `Texto` no backend Wasm;
+- poda de campos nao alcancaveis antes da emissao WebAssembly.
 
 ## Principio
 

@@ -176,19 +176,26 @@ test "$(od -An -tx1 -N4 build/web-e2e.svbc | tr -d ' \n')" = '53564243'
 
 build/genesis-host build/web-e2e.svbc examples/web_app.sev build/web-e2e/web_app.wasm
 build/genesis-host build/web-e2e.svbc website/site.sev build/web-e2e/site.wasm
+build/genesis-host build/web-e2e.svbc examples/frontend-rich/app.sev build/web-e2e/frontend_rich.wasm
 
 test -s build/web-e2e/web_app.wasm
 test -s build/web-e2e/site.wasm
+test -s build/web-e2e/frontend_rich.wasm
 test "$(od -An -tx1 -N4 build/web-e2e/web_app.wasm | tr -d ' \n')" = '0061736d'
 test "$(od -An -tx1 -N4 build/web-e2e/site.wasm | tr -d ' \n')" = '0061736d'
+test "$(od -An -tx1 -N4 build/web-e2e/frontend_rich.wasm | tr -d ' \n')" = '0061736d'
 
 web_hash=$(sha256sum build/web-e2e/web_app.wasm | awk '{print $1}')
 site_hash=$(sha256sum build/web-e2e/site.wasm | awk '{print $1}')
+rich_hash=$(sha256sum build/web-e2e/frontend_rich.wasm | awk '{print $1}')
 echo "web_app_sha256=$web_hash"
 echo "site_sha256=$site_hash"
+echo "frontend_rich_sha256=$rich_hash"
 test "$web_hash" != "$site_hash"
+test "$web_hash" != "$rich_hash"
+test "$site_hash" != "$rich_hash"
 
-node - build/web-e2e/web_app.wasm build/web-e2e/site.wasm <<'JS'
+node - build/web-e2e/web_app.wasm build/web-e2e/site.wasm build/web-e2e/frontend_rich.wasm <<'JS'
 const fs = require('fs');
 
 const importNames = [
@@ -210,7 +217,19 @@ const importNames = [
   'frontend_remove',
   'sys_numero',
   'sys_texto_num',
-  'sys_texto_u64'
+  'sys_texto_u64',
+  'sys_texto_concat',
+  'sys_obj_novo',
+  'sys_obj_pega',
+  'sys_obj_define',
+  'sys_lista_coloca',
+  'sys_lista_pega',
+  'sys_lista_define',
+  'sys_lista_insere',
+  'sys_lista_remove',
+  'sys_lista_pop',
+  'sys_css_renderiza',
+  'sys_html_renderiza'
 ];
 
 async function execute(path) {
@@ -237,6 +256,85 @@ async function execute(path) {
     view.setUint32(32772, bytes.length, true);
     return 32768;
   };
+  const handles = new Map();
+  let nextHandle = 1048576;
+  const storeHandle = value => {
+    const handle = nextHandle++;
+    handles.set(handle, value);
+    return handle;
+  };
+  const isHandle = value => handles.has(value);
+  const ref = value => handles.get(value);
+  const looksText = value => {
+    if (!value || isHandle(value) || value < 0 || value + 8 > memory.buffer.byteLength) return false;
+    const view = new DataView(memory.buffer);
+    const pointer = view.getUint32(value, true);
+    const length = view.getUint32(value + 4, true);
+    return pointer >= 8 && pointer + length <= memory.buffer.byteLength;
+  };
+  const fromSeven = value => isHandle(value) ? value : (looksText(value) ? decode(value) : (value | 0));
+  const toSeven = value => typeof value === 'string' ? writeInbox(value) : (value || 0);
+  const textFields = new Set(['__tipo', 'tag', 'nome', 'valor', 'seletor', 'consulta', 'ponto', 'alvo']);
+  const fieldFromSeven = (key, value) => isHandle(value) ? value : (textFields.has(key) ? decode(value) : fromSeven(value));
+  const escapeHtml = value => String(value ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const createObject = args => {
+    const object = { type: 'objeto', fields: Object.create(null), items: [] };
+    for (let i = 0; i + 1 < args.length; i += 2) {
+      const key = decode(args[i]);
+      const value = fieldFromSeven(key, args[i + 1]);
+      object.fields[key] = value;
+      if (key === '__tipo') object.type = String(value);
+    }
+    if (object.type === 'Lista') object.items = [];
+    if (object.fields.tamanho === undefined && object.items) object.fields.tamanho = object.items.length;
+    return storeHandle(object);
+  };
+  const field = (object, name) => {
+    const target = isHandle(object) ? ref(object) : object;
+    if (!target) return 0;
+    if (name === 'tamanho' && target.items) return target.items.length;
+    return target.fields?.[name] ?? 0;
+  };
+  const asArray = value => {
+    const target = isHandle(value) ? ref(value) : value;
+    return target?.items ?? [];
+  };
+  const cssDecls = list => asArray(list).map(item => {
+    const decl = ref(item);
+    return `${field(decl, 'nome')}:${field(decl, 'valor')};`;
+  }).join('');
+  const renderCss = folhaHandle => {
+    const folha = ref(folhaHandle);
+    if (!folha) return '';
+    let css = '';
+    const variaveis = cssDecls(field(folha, 'variaveis'));
+    if (variaveis) css += `:root{${variaveis}}`;
+    for (const regraHandle of asArray(field(folha, 'regras'))) {
+      const regra = ref(regraHandle);
+      css += `${field(regra, 'seletor')}{${cssDecls(field(regra, 'declaracoes'))}}`;
+    }
+    return css;
+  };
+  const renderHtmlNode = nodeHandle => {
+    if (!isHandle(nodeHandle)) return escapeHtml(nodeHandle);
+    const node = ref(nodeHandle);
+    if (!node) return '';
+    if (node.type === 'TextoNo') return escapeHtml(field(node, 'valor'));
+    if (node.type === 'ElementoNo') return renderElement(field(node, 'valor'));
+    if (node.type === 'Elemento') return renderElement(nodeHandle);
+    return '';
+  };
+  const renderElement = elementHandle => {
+    const element = isHandle(elementHandle) ? ref(elementHandle) : elementHandle;
+    if (!element) return '';
+    const name = String(field(element, 'nome') || 'div');
+    const attrs = asArray(field(element, 'atributos')).map(attrHandle => {
+      const attr = ref(attrHandle);
+      return ` ${field(attr, 'nome')}="${escapeHtml(field(attr, 'valor'))}"`;
+    }).join('');
+    const children = asArray(field(element, 'filhos')).map(renderHtmlNode).join('');
+    return `<${name}${attrs}>${children}</${name}>`;
+  };
 
   const seven = {};
   for (const name of importNames) {
@@ -248,6 +346,67 @@ async function execute(path) {
       if (name === 'sys_texto_num' || name === 'sys_texto_u64') {
         calls.push({ name, args: args.map(String) });
         return writeInbox(args[0] >>> 0);
+      }
+      if (name === 'sys_texto_concat') {
+        calls.push({ name, args: args.map(decode) });
+        return writeInbox(decode(args[0]) + decode(args[1]));
+      }
+      if (name === 'sys_css_renderiza' || name === 'sys_html_renderiza') {
+        calls.push({ name, args: args.map(String) });
+        return name === 'sys_css_renderiza'
+          ? writeInbox(renderCss(args[0]))
+          : writeInbox(renderElement(args[0]));
+      }
+      if (name === 'sys_obj_novo') {
+        calls.push({ name, args: args.map(value => value > 0 ? String(value) : '0') });
+        return createObject(args);
+      }
+      if (name.startsWith('sys_obj_') || name.startsWith('sys_lista_')) {
+        calls.push({ name, args: args.map(String) });
+        if (name === 'sys_obj_pega') return toSeven(field(args[0], decode(args[1])));
+        if (name === 'sys_obj_define') {
+          const target = ref(args[0]);
+          const key = decode(args[1]);
+          if (target) target.fields[key] = fieldFromSeven(key, args[2]);
+          return args[0] || 0;
+        }
+        if (name === 'sys_lista_coloca') {
+          const target = ref(args[0]);
+          if (target) {
+            target.items.push(fromSeven(args[1]));
+            target.fields.tamanho = target.items.length;
+          }
+          return args[0] || 0;
+        }
+        if (name === 'sys_lista_pega') return toSeven(ref(args[0])?.items?.[args[1] >>> 0] ?? 0);
+        if (name === 'sys_lista_define') {
+          const target = ref(args[0]);
+          if (target) target.items[args[1] >>> 0] = fromSeven(args[2]);
+          return args[0] || 0;
+        }
+        if (name === 'sys_lista_insere') {
+          const target = ref(args[0]);
+          if (target) {
+            target.items.splice(args[1] >>> 0, 0, fromSeven(args[2]));
+            target.fields.tamanho = target.items.length;
+          }
+          return args[0] || 0;
+        }
+        if (name === 'sys_lista_remove') {
+          const target = ref(args[0]);
+          if (!target) return 0;
+          const [removed] = target.items.splice(args[1] >>> 0, 1);
+          target.fields.tamanho = target.items.length;
+          return toSeven(removed ?? 0);
+        }
+        if (name === 'sys_lista_pop') {
+          const target = ref(args[0]);
+          if (!target) return 0;
+          const removed = target.items.pop();
+          target.fields.tamanho = target.items.length;
+          return toSeven(removed ?? 0);
+        }
+        return args[0] || 0;
       }
       calls.push({ name, args: args.map(decode) });
       return 0;
@@ -292,8 +451,19 @@ async function execute(path) {
     throw new Error('website perdeu o CSS concatenado durante lowering');
   }
 
+  const rich = await execute(process.argv[4]);
+  const richCss = rich.calls.find(call => call.name === 'frontend_injeta_css');
+  if (!richCss || !richCss.args[0].includes(':root{--cor-fundo:#0f172a;') || !richCss.args[0].includes('.card{')) {
+    throw new Error(`frontend-rich perdeu CSS tipado: ${JSON.stringify(richCss)}`);
+  }
+  const richMount = rich.calls.find(call => call.name === 'frontend_monta');
+  if (!richMount || !richMount.args[1].includes('<main class="card">') || !richMount.args[1].includes('HTML e CSS tipados em Seven')) {
+    throw new Error(`frontend-rich perdeu HTML tipado: ${JSON.stringify(richMount)}`);
+  }
+
   console.log(`web_app calls: ${web.calls.length}`);
   console.log(`website calls: ${site.calls.length}`);
+  console.log(`frontend-rich calls: ${rich.calls.length}`);
 })().catch(error => {
   console.error(error);
   process.exit(1);

@@ -1,0 +1,73 @@
+modulo examples.frontend_rich.app
+
+usa std.base.lista
+usa std.frontend.css
+usa std.frontend.intrinsics
+usa std.web.html
+
+campo inicio() -> Num toca frontend ::
+  css_injeta(app_styles())
+  frontend_monta("#seven-app", app_html())
+  devolve 0
+fecha
+
+campo app_styles() -> FolhaCss ::
+  solta folha := css("frontend-rich")
+  vira folha := css_var(folha, "cor-fundo", "#0f172a")
+  vira folha := css_var(folha, "cor-painel", "#111827")
+  vira folha := css_var(folha, "cor-texto", "#f8fafc")
+  vira folha := css_var(folha, "cor-acao", "#22c55e")
+
+  solta body := lista<DeclaracaoCss>()
+  lista_coloca(body, decl("margin", "0"))
+  lista_coloca(body, decl("min-height", "100vh"))
+  lista_coloca(body, decl("display", "grid"))
+  lista_coloca(body, decl("place-items", "center"))
+  lista_coloca(body, decl("background", var_css("cor-fundo")))
+  lista_coloca(body, decl("color", var_css("cor-texto")))
+  lista_coloca(body, decl("font-family", "Inter,system-ui,sans-serif"))
+  vira folha := css_regra(folha, "body", body)
+
+  solta card := lista<DeclaracaoCss>()
+  lista_coloca(card, decl("width", "min(520px,calc(100% - 32px))"))
+  lista_coloca(card, decl("padding", "28px"))
+  lista_coloca(card, decl("border-radius", "18px"))
+  lista_coloca(card, decl("background", "var(--cor-painel)"))
+  lista_coloca(card, decl("border", "1px solid rgba(148,163,184,.24)"))
+  lista_coloca(card, decl("box-shadow", "0 24px 80px rgba(0,0,0,.35)"))
+  vira folha := css_regra(folha, ".card", card)
+
+  solta badge := lista<DeclaracaoCss>()
+  lista_coloca(badge, decl("color", "var(--cor-acao)"))
+  lista_coloca(badge, decl("font-size", "12px"))
+  lista_coloca(badge, decl("text-transform", "uppercase"))
+  lista_coloca(badge, decl("letter-spacing", ".14em"))
+  vira folha := css_regra(folha, ".badge", badge)
+
+  devolve folha
+fecha
+
+campo app_html() -> Texto ::
+  solta atributos := lista<Atributo>()
+  lista_coloca(atributos, attr("class", "card"))
+
+  solta badge_filhos := lista<NoHtml>()
+  lista_coloca(badge_filhos, texto_no("Seven UI"))
+
+  solta titulo_filhos := lista<NoHtml>()
+  lista_coloca(titulo_filhos, texto_no("HTML e CSS tipados em Seven"))
+
+  solta texto_filhos := lista<NoHtml>()
+  lista_coloca(texto_filhos, texto_no("Este app usa std.web.html e std.frontend.css, renderizados pelo host WebAssembly gerado pela toolchain Seven."))
+
+  solta filhos := lista<NoHtml>()
+  lista_coloca(filhos, elem("p", lista_de(attr("class", "badge")), badge_filhos))
+  lista_coloca(filhos, elem("h1", lista<Atributo>(), titulo_filhos))
+  lista_coloca(filhos, elem("p", lista<Atributo>(), texto_filhos))
+
+  devolve renderiza_elemento(Elemento {
+    nome: "main",
+    atributos: atributos,
+    filhos: filhos
+  })
+fecha

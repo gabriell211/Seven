@@ -1,6 +1,7 @@
 modulo seven.compiler.wasm
 
 usa seven.compiler.ir
+usa seven.compiler.types
 usa std.base.lista
 usa std.base.resultado
 usa std.mem.bytes
@@ -8,7 +9,7 @@ usa std.mem.bytes
 const WasmPagina: U64 := 65536
 const WasmDadosInicio: U32 := 1024
 const WasmInboxInicio: U32 := 32768
-const WasmQuantidadeImports: U32 := 19
+const WasmAridadeMaximaTipo: U32 := 12
 
 molde TextoWasm ::
   campo: Texto
@@ -142,7 +143,31 @@ campo wasm_imports() -> Lista<ImportWasm> ::
   lista_coloca(imports, ImportWasm { nome: "sys_numero", aridade: 1 })
   lista_coloca(imports, ImportWasm { nome: "sys_texto_num", aridade: 1 })
   lista_coloca(imports, ImportWasm { nome: "sys_texto_u64", aridade: 1 })
+  lista_coloca(imports, ImportWasm { nome: "sys_texto_concat", aridade: 2 })
+  wasm_imports_variadico(imports, "sys_obj_novo", WasmAridadeMaximaTipo)
+  lista_coloca(imports, ImportWasm { nome: "sys_obj_pega", aridade: 2 })
+  lista_coloca(imports, ImportWasm { nome: "sys_obj_define", aridade: 3 })
+  lista_coloca(imports, ImportWasm { nome: "sys_lista_coloca", aridade: 2 })
+  lista_coloca(imports, ImportWasm { nome: "sys_lista_pega", aridade: 2 })
+  lista_coloca(imports, ImportWasm { nome: "sys_lista_define", aridade: 3 })
+  lista_coloca(imports, ImportWasm { nome: "sys_lista_insere", aridade: 3 })
+  lista_coloca(imports, ImportWasm { nome: "sys_lista_remove", aridade: 2 })
+  lista_coloca(imports, ImportWasm { nome: "sys_lista_pop", aridade: 1 })
+  lista_coloca(imports, ImportWasm { nome: "sys_css_renderiza", aridade: 1 })
+  lista_coloca(imports, ImportWasm { nome: "sys_html_renderiza", aridade: 1 })
   devolve imports
+fecha
+
+campo wasm_imports_variadico(imports: Lista<ImportWasm>, nome: Texto, aridade_maxima: U32) -> Nada ::
+  solta aridade: U32 := 0
+  gira aridade <= aridade_maxima ::
+    lista_coloca(imports, ImportWasm { nome: nome, aridade: aridade })
+    vira aridade := aridade + 1
+  fecha
+fecha
+
+campo wasm_quantidade_imports() -> U32 ::
+  devolve U32(lista_tamanho(wasm_imports()))
 fecha
 
 campo wasm_intrinseco(nome: Texto) -> Bit ::
@@ -152,10 +177,10 @@ campo wasm_intrinseco(nome: Texto) -> Bit ::
   devolve nao
 fecha
 
-campo indice_import_wasm(nome: Texto) -> Resultado<U32, Falha> ::
+campo indice_import_wasm(nome: Texto, aridade: U32) -> Resultado<U32, Falha> ::
   solta indice: U32 := 0
   para cada item em wasm_imports() ::
-    veja item.nome == nome :: devolve Valor(indice) fecha
+    veja item.nome == nome e item.aridade == aridade :: devolve Valor(indice) fecha
     vira indice := indice + 1
   fecha
   devolve Falha(nova_falha("SV-WASM-SYSCALL", "intrinseco web nao suportado: " + nome))
@@ -164,7 +189,7 @@ fecha
 campo indice_campo_wasm(plano: PlanoWasm, nome: Texto) -> Resultado<U32, Falha> ::
   solta indice: U32 := 0
   para cada campo em plano.campos ::
-    veja campo.nome == nome :: devolve Valor(WasmQuantidadeImports + indice) fecha
+    veja campo.nome == nome :: devolve Valor(wasm_quantidade_imports() + indice) fecha
     vira indice := indice + 1
   fecha
   devolve Falha(nova_falha("SV-WASM-CAMPO", "campo chamado nao foi encontrado: " + nome))
@@ -181,9 +206,9 @@ fecha
 
 campo wasm_secao_tipos() -> Bytes ::
   solta secao := bytes_novo()
-  wasm_uleb(secao, 5)
+  wasm_uleb(secao, WasmAridadeMaximaTipo + 1)
   solta aridade: U32 := 0
-  gira aridade <= 4 ::
+  gira aridade <= WasmAridadeMaximaTipo ::
     bytes_coloca_byte(secao, 96)
     wasm_uleb(secao, aridade)
     solta indice: U32 := 0
@@ -242,7 +267,7 @@ campo wasm_secao_exports(plano: PlanoWasm) -> Bytes ::
     veja campo.nome == "inicio" :: vira nome := "seven_start" fecha
     wasm_texto(secao, nome)
     bytes_coloca_byte(secao, 0)
-    wasm_uleb(secao, WasmQuantidadeImports + indice)
+    wasm_uleb(secao, wasm_quantidade_imports() + indice)
     vira indice := indice + 1
   fecha
   devolve secao
@@ -320,6 +345,17 @@ campo wasm_emite_instrucao(
   fecha
 
   veja instrucao e IrBin ::
+    veja instrucao.operador == "+" e wasm_operacao_texto(campo, instrucao.esquerda, instrucao.direita) ::
+      wasm_local_pega(corpo, instrucao.esquerda)
+      wasm_local_pega(corpo, instrucao.direita)
+      guarda importado_texto := indice_import_wasm("sys_texto_concat", 2)
+      veja importado_texto e Falha :: devolve Falha(importado_texto.valor) fecha
+      bytes_coloca_byte(corpo, 16)
+      wasm_uleb(corpo, importado_texto.valor)
+      wasm_local_define(corpo, instrucao.destino)
+      devolve Valor(nulo)
+    fecha
+
     guarda opcode := wasm_opcode_binario(instrucao.operador)
     veja opcode == 0 ::
       devolve Falha(nova_falha("SV-WASM-OPERADOR", "operador nao suportado: " + instrucao.operador))
@@ -335,7 +371,7 @@ campo wasm_emite_instrucao(
     para cada argumento em instrucao.argumentos :: wasm_local_pega(corpo, argumento) fecha
     solta indice: U32 := 0
     veja wasm_intrinseco(instrucao.campo) ::
-      guarda importado := indice_import_wasm(instrucao.campo)
+      guarda importado := indice_import_wasm(instrucao.campo, U32(lista_tamanho(instrucao.argumentos)))
       veja importado e Falha :: devolve Falha(importado.valor) fecha
       vira indice := importado.valor
     outro ::
@@ -350,13 +386,6 @@ campo wasm_emite_instrucao(
   fecha
 
   veja instrucao e IrSyscall ::
-    veja instrucao.nome == "sys_obj_novo" ou instrucao.nome == "sys_lista_nova" ::
-      bytes_coloca_byte(corpo, 65)
-      wasm_sleb_positivo(corpo, 0)
-      wasm_local_define(corpo, instrucao.destino)
-      devolve Valor(nulo)
-    fecha
-
     veja instrucao.nome == "sys_num_mod" ::
       veja lista_tamanho(instrucao.argumentos) != 2 ::
         devolve Falha(nova_falha("SV-WASM-ARIDADE", "mod exige dois argumentos"))
@@ -381,7 +410,7 @@ campo wasm_emite_instrucao(
       devolve Valor(nulo)
     fecha
 
-    guarda importado := indice_import_wasm(instrucao.nome)
+    guarda importado := indice_import_wasm(instrucao.nome, U32(lista_tamanho(instrucao.argumentos)))
     veja importado e Falha :: devolve Falha(importado.valor) fecha
     para cada argumento em instrucao.argumentos :: wasm_local_pega(corpo, argumento) fecha
     bytes_coloca_byte(corpo, 16)
@@ -420,6 +449,23 @@ campo wasm_emite_instrucao(
   fecha
 
   devolve Falha(nova_falha("SV-WASM-INSTRUCAO", "instrucao IR nao suportada pelo alvo web"))
+fecha
+
+campo wasm_operacao_texto(campo: CampoIr, esquerda: U32, direita: U32) -> Bit ::
+  devolve wasm_local_texto(campo, esquerda) ou wasm_local_texto(campo, direita)
+fecha
+
+campo wasm_local_texto(campo: CampoIr, local: U32) -> Bit ::
+  veja U64(local) >= lista_tamanho(campo.locais) ::
+    devolve nao
+  fecha
+
+  guarda tipo := lista_pega(campo.locais, U64(local))
+  veja tipo e TipoBase ::
+    devolve tipo.nome == "Texto"
+  fecha
+
+  devolve nao
 fecha
 
 campo wasm_opcode_binario(operador: Texto) -> Byte ::

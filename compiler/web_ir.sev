@@ -9,13 +9,103 @@ campo prepara_ir_web(unidade: UnidadeIr) -> UnidadeIr ::
     para cada bloco em campo.blocos ::
       dobra_texto_constante_web(bloco)
     fecha
+  fecha
 
+  filtra_campos_web_alcancaveis(unidade)
+
+  para cada campo em unidade.campos ::
     veja lista_tamanho(campo.blocos) == 1 ::
       elimina_constantes_web_mortas(lista_pega(campo.blocos, 0))
     fecha
   fecha
 
   devolve unidade
+fecha
+
+campo filtra_campos_web_alcancaveis(unidade: UnidadeIr) -> Nada ::
+  solta alcancaveis := lista<Texto>()
+  marca_campo_web(unidade, alcancaveis, "inicio")
+
+  solta filtrados := lista<CampoIr>()
+  para cada campo em unidade.campos ::
+    veja texto_em_lista(alcancaveis, campo.nome) ::
+      lista_coloca(filtrados, campo)
+    fecha
+  fecha
+
+  vira unidade.campos := filtrados
+fecha
+
+campo marca_campo_web(unidade: UnidadeIr, alcancaveis: Lista<Texto>, nome: Texto) -> Nada ::
+  veja texto_em_lista(alcancaveis, nome) ::
+    devolve nulo
+  fecha
+
+  guarda campo := campo_web_por_nome(unidade, nome)
+  veja campo e Vazio ::
+    devolve nulo
+  fecha
+
+  lista_coloca(alcancaveis, nome)
+
+  para cada bloco em campo.valor.blocos ::
+    solta indice: U64 := 0
+    gira indice < lista_tamanho(bloco.instrucoes) ::
+      guarda instrucao := lista_pega(bloco.instrucoes, indice)
+
+      veja instrucao e IrChama ::
+        marca_campo_web(unidade, alcancaveis, instrucao.campo)
+        veja instrucao.campo == "frontend_escuta" ou instrucao.campo == "frontend_fetch_texto" ::
+          guarda handler := handler_web_constante(bloco.instrucoes, indice, instrucao.argumentos)
+          veja handler != "" ::
+            marca_campo_web(unidade, alcancaveis, handler)
+          fecha
+        fecha
+      fecha
+
+      vira indice := indice + 1
+    fecha
+  fecha
+fecha
+
+campo campo_web_por_nome(unidade: UnidadeIr, nome: Texto) -> Talvez<CampoIr> ::
+  para cada campo em unidade.campos ::
+    veja campo.nome == nome ::
+      devolve Algo(campo)
+    fecha
+  fecha
+
+  devolve Vazio
+fecha
+
+campo handler_web_constante(
+  instrucoes: Lista<InstrucaoIr>,
+  indice: U64,
+  argumentos: Lista<U32>
+) -> Texto ::
+  veja lista_tamanho(argumentos) < 2 ::
+    devolve ""
+  fecha
+
+  guarda local := lista_pega(argumentos, lista_tamanho(argumentos) - 1)
+  guarda valor := constante_web_antes(instrucoes, indice, local)
+  veja valor e Algo ::
+    veja valor.valor e ValorTexto ::
+      devolve valor.valor.valor
+    fecha
+  fecha
+
+  devolve ""
+fecha
+
+campo texto_em_lista(itens: Lista<Texto>, procurado: Texto) -> Bit ::
+  para cada item em itens ::
+    veja item == procurado ::
+      devolve sim
+    fecha
+  fecha
+
+  devolve nao
 fecha
 
 campo dobra_texto_constante_web(bloco: BlocoIr) -> Nada ::

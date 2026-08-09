@@ -40,15 +40,15 @@ campo pagina(titulo: Texto, corpo: Lista<NoHtml>) -> Texto ::
   lista_coloca(filhos, elem("head", lista<Atributo>(), lista_de(elem("title", lista<Atributo>(), lista_de(texto_no(titulo))))))
   lista_coloca(filhos, elem("body", lista<Atributo>(), corpo))
 
-  devolve "<!doctype html>" + renderiza(elem("html", lista<Atributo>(), filhos))
+  devolve "<!doctype html>" + renderiza_elemento(Elemento {
+    nome: "html",
+    atributos: lista<Atributo>(),
+    filhos: filhos
+  })
 fecha
 
 campo renderiza(no: NoHtml) -> Texto ::
-  veja no e TextoNo ::
-    devolve html_escape(no.valor)
-  outro ::
-    devolve renderiza_elemento(no.valor)
-  fecha
+  devolve sys_html_renderiza(no)
 fecha
 
 campo renderiza_elemento(elemento: Elemento) -> Texto ::
