@@ -116,7 +116,7 @@ jobs:
           reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Seven.Language >nul 2>&1 && exit /b 1
           exit /b 0
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: seven-0.2.0-windows-x64
           path: build/installers/seven-0.2.0-windows-x64/
@@ -213,7 +213,7 @@ jobs:
           test ! -e "$HOME/.local/bin/seven"
           test ! -e "$HOME/.local/share/seven"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: seven-0.2.0-linux-x64
           path: build/installers/seven-0.2.0-linux-x64/
