@@ -80,7 +80,7 @@ jobs:
           EOF
           cat build/genesis-audit.txt
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: seven-genesis-audit-${{ matrix.os }}
           path: |

@@ -360,7 +360,7 @@ jobs:
           EOF
           cat build/stage1.provenance
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: seven-stage1-self-hosting
           path: |

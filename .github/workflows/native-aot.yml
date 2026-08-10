@@ -175,7 +175,7 @@ jobs:
           set -euo pipefail
           ! grep -R -n 'sys_native_baixa' runtime compiler std
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: seven-native-aot-proof
           path: |
