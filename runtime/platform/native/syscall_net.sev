@@ -418,7 +418,13 @@ campo x64_tcp_linux_escreve(
 ) -> Nada ::
   bytes_coloca_byte(codigo, 65)
   bytes_coloca_byte(codigo, 94)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 86)
+  bytes_coloca_byte(codigo, 80)
   x64_runtime_objeto_id_para_r15(codigo, virtual_alloc_patches, alvo)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
 
   bytes_coloca_byte(codigo, 73)
   bytes_coloca_byte(codigo, 131)
@@ -766,7 +772,13 @@ campo x64_tcp_windows_escreve(
 ) -> Nada ::
   bytes_coloca_byte(codigo, 65)
   bytes_coloca_byte(codigo, 94)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 86)
+  bytes_coloca_byte(codigo, 80)
   x64_runtime_objeto_id_para_r15(codigo, virtual_alloc_patches, alvo)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
 
   bytes_coloca_byte(codigo, 73)
   bytes_coloca_byte(codigo, 131)
