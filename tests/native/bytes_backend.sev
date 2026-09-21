@@ -8,6 +8,12 @@ usa seven.runtime.svbc.value
 usa std.base.lista
 usa std.base.resultado
 
+campo corrige_instrucao_a(codigo: Lista<Instrucao>, indice: U64, valor: U32) -> Nada ::
+  guarda instrucao := lista_pega(codigo, indice)
+  vira instrucao.a := valor
+  lista_define(codigo, indice, instrucao)
+fecha
+
 campo imagem_prova_bytes() -> ImagemSvbc ::
   solta constantes := lista<ValorVm>()
   lista_coloca(constantes, VmNum(1))
@@ -126,8 +132,8 @@ campo imagem_prova_bytes() -> ImagemSvbc ::
   vira ip := ip + 1
   lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: ip })
 
-  vira lista_pega(codigo, falha_primeiro).a := U32(falha_ip)
-  vira lista_pega(codigo, falha_tamanho).a := U32(falha_ip)
+  corrige_instrucao_a(codigo, falha_primeiro, U32(falha_ip))
+  corrige_instrucao_a(codigo, falha_tamanho, U32(falha_ip))
 
   devolve ImagemSvbc {
     versao: 1,
