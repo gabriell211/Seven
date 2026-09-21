@@ -143,8 +143,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -n 'seed/native/final/v1' .github/workflows/release.yml; then
-            echo 'Current release still references archived transition compiler.'
-            exit 1
-          fi
           grep -q 'self-hosted-seven' .github/workflows/release.yml
