@@ -5,24 +5,28 @@ usa seven.runtime.platform.native.target
 usa seven.runtime.svbc.decoder
 usa std.base.resultado
 
-campo inicio() -> Num toca disco ::
+campo inicio() -> Num toca disco, terminal ::
   guarda carga := sys_arquivo_ler_bytes("build/native-tcp-app.svbc")
   veja carga e Falha ::
+    diga carga.valor.codigo + ": " + carga.valor.mensagem
     devolve 20
   fecha
 
   guarda imagem := svbc_decodifica(carga.valor)
   veja imagem e Falha ::
+    diga imagem.valor.codigo + ": " + imagem.valor.mensagem
     devolve 21
   fecha
 
   guarda linux := baixa_nativo(imagem.valor, alvo_linux_x64())
   veja linux e Falha ::
+    diga linux.valor.codigo + ": " + linux.valor.mensagem
     devolve 22
   fecha
 
   guarda windows := baixa_nativo(imagem.valor, alvo_win_x64())
   veja windows e Falha ::
+    diga windows.valor.codigo + ": " + windows.valor.mensagem
     devolve 23
   fecha
 
