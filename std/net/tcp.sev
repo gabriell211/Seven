@@ -30,3 +30,8 @@ fecha
 campo tcp_fecha(conexao: ConexaoTcp) -> Nada toca rede ::
   sys_tcp_fecha(conexao)
 fecha
+
+
+campo tcp_listener_fecha(listener: ListenerTcp) -> Nada toca rede ::
+  sys_tcp_fecha(listener)
+fecha
