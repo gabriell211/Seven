@@ -9,6 +9,7 @@ usa std.base.lista
 usa std.mem.bytes
 
 const TcpBufferNativo: U64 := 65536
+const TcpTimeoutMsNativo: U64 := 5000
 const TipoBytesTcp: U64 := 4
 
 campo x64_syscall_net_emite(
@@ -234,9 +235,31 @@ campo x64_tcp_linux_aceita(
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 199)
 
+  guarda timeout_le := x64_tcp_linux_timeout_opcao(codigo, 20)
+  guarda timeout_escreve := x64_tcp_linux_timeout_opcao(codigo, 21)
+
   x64_runtime_push_objeto_id_r15(codigo, virtual_alloc_patches, alvo, "ConexaoTcp")
   x64_runtime_push_resultado_valor_da_pilha(codigo, virtual_alloc_patches, alvo)
   guarda fim := x64_runtime_jmp(codigo)
+
+  guarda falha_timeout_fecha := codigo.tamanho
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 3)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+
+  guarda falha_timeout := codigo.tamanho
+  x64_runtime_push_resultado_falha(
+    codigo,
+    virtual_alloc_patches,
+    alvo,
+    "SV-NATIVE-TCP-TIMEOUT",
+    "nao foi possivel configurar timeout da conexao TCP nativa"
+  )
+  guarda pula_falha_accept := x64_runtime_jmp(codigo)
 
   guarda falha := codigo.tamanho
   x64_runtime_push_resultado_falha(
@@ -246,9 +269,60 @@ campo x64_tcp_linux_aceita(
     "SV-NATIVE-TCP-ACCEPT",
     "falha ao aceitar conexao TCP nativa"
   )
+
   guarda fim_real := codigo.tamanho
   x64_runtime_patch(codigo, falhou, falha)
+  x64_runtime_patch(codigo, timeout_le, falha_timeout_fecha)
+  x64_runtime_patch(codigo, timeout_escreve, falha_timeout_fecha)
+  x64_runtime_patch(codigo, pula_falha_accept, fim_real)
   x64_runtime_patch(codigo, fim, fim_real)
+fecha
+
+campo x64_tcp_linux_timeout_opcao(codigo: Bytes, opcao: U32) -> U64 ::
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 236)
+  bytes_coloca_byte(codigo, 16)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 4)
+  bytes_coloca_byte(codigo, 36)
+  nativo_u32_le(codigo, TcpTimeoutMsNativo / 1000)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+  nativo_u32_le(codigo, 0)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 190)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, opcao)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 226)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 16)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 54)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 196)
+  bytes_coloca_byte(codigo, 16)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  devolve x64_runtime_jcc(codigo, 136)
 fecha
 
 campo x64_tcp_monta_bytes_r13_r14(
@@ -549,9 +623,28 @@ campo x64_tcp_windows_aceita(
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 199)
 
+  guarda timeout_le := x64_tcp_windows_timeout_opcao(codigo, imports_windows, 4102)
+  guarda timeout_escreve := x64_tcp_windows_timeout_opcao(codigo, imports_windows, 4101)
+
   x64_runtime_push_objeto_id_r15(codigo, virtual_alloc_patches, alvo, "ConexaoTcp")
   x64_runtime_push_resultado_valor_da_pilha(codigo, virtual_alloc_patches, alvo)
   guarda fim := x64_runtime_jmp(codigo)
+
+  guarda falha_timeout_fecha := codigo.tamanho
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 249)
+  x64_windows_import_chama_dll(codigo, imports_windows, "WS2_32.dll", "closesocket", 32)
+
+  guarda falha_timeout := codigo.tamanho
+  x64_runtime_push_resultado_falha(
+    codigo,
+    virtual_alloc_patches,
+    alvo,
+    "SV-NATIVE-TCP-TIMEOUT",
+    "nao foi possivel configurar timeout da conexao TCP nativa"
+  )
+  guarda pula_falha_accept := x64_runtime_jmp(codigo)
 
   guarda falha := codigo.tamanho
   x64_runtime_push_resultado_falha(
@@ -561,9 +654,58 @@ campo x64_tcp_windows_aceita(
     "SV-NATIVE-TCP-ACCEPT",
     "falha ao aceitar conexao TCP nativa"
   )
+
   guarda fim_real := codigo.tamanho
   x64_runtime_patch(codigo, falhou, falha)
+  x64_runtime_patch(codigo, timeout_le, falha_timeout_fecha)
+  x64_runtime_patch(codigo, timeout_escreve, falha_timeout_fecha)
+  x64_runtime_patch(codigo, pula_falha_accept, fim_real)
   x64_runtime_patch(codigo, fim, fim_real)
+fecha
+
+campo x64_tcp_windows_timeout_opcao(
+  codigo: Bytes,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  opcao: U32
+) -> U64 ::
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 236)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 4)
+  bytes_coloca_byte(codigo, 36)
+  nativo_u32_le(codigo, TcpTimeoutMsNativo)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 249)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, 65535)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, opcao)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 225)
+
+  x64_windows_import_chama_dll_arg5_u32(
+    codigo,
+    imports_windows,
+    "WS2_32.dll",
+    "setsockopt",
+    4
+  )
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 196)
+  bytes_coloca_byte(codigo, 16)
+
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 255)
+  devolve x64_runtime_jcc(codigo, 132)
 fecha
 
 campo x64_tcp_windows_le(
