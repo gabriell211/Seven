@@ -33,21 +33,21 @@ campo seven_launcher(argumentos: Lista<Texto>) -> Num toca disco, terminal, rede
     solta args_check := lista<Texto>()
     lista_coloca(args_check, arg_ou(argumentos, 1, "seven.pkg"))
     lista_coloca(args_check, "build/seven.check.svbc")
-    devolve roda_svbc_com_args("build/seven.stage2.svbc", args_check)
+    devolve roda_svbc_com_args(imagem_irma("seven.stage2.svbc"), args_check)
   fecha
 
   veja comando == "build" ::
     solta args_compilador := lista<Texto>()
     lista_coloca(args_compilador, arg_ou(argumentos, 1, "seven.pkg"))
     lista_coloca(args_compilador, arg_ou(argumentos, 2, "build/out.svbc"))
-    devolve roda_svbc_com_args("build/seven.stage2.svbc", args_compilador)
+    devolve roda_svbc_com_args(imagem_irma("seven.stage2.svbc"), args_compilador)
   fecha
 
   veja comando == "run" ::
     solta args_run := lista<Texto>()
     lista_coloca(args_run, arg_ou(argumentos, 1, "seven.pkg"))
     lista_coloca(args_run, "build/seven.run.svbc")
-    guarda compilacao := roda_svbc_com_args("build/seven.stage2.svbc", args_run)
+    guarda compilacao := roda_svbc_com_args(imagem_irma("seven.stage2.svbc"), args_run)
     veja compilacao != 0 ::
       devolve compilacao
     fecha
@@ -58,21 +58,21 @@ campo seven_launcher(argumentos: Lista<Texto>) -> Num toca disco, terminal, rede
     solta args_web := lista<Texto>()
     lista_coloca(args_web, arg_ou(argumentos, 2, "examples/web_dev.sev"))
     lista_coloca(args_web, arg_ou(argumentos, 3, "build/web"))
-    devolve roda_svbc_com_args("build/seven.webbuild.svbc", args_web)
+    devolve roda_svbc_com_args(imagem_irma("seven.webbuild.svbc"), args_web)
   fecha
 
   veja comando == "web" e lista_tamanho(argumentos) > 1 e lista_pega(argumentos, 1) == "serve" ::
     solta args_serve := lista<Texto>()
     lista_coloca(args_serve, arg_ou(argumentos, 2, "build/web"))
     lista_coloca(args_serve, arg_ou(argumentos, 3, "7070"))
-    devolve roda_svbc_com_args("build/seven.webserve.svbc", args_serve)
+    devolve roda_svbc_com_args(imagem_irma("seven.webserve.svbc"), args_serve)
   fecha
 
   veja comando == "serve" ::
     solta args_serve := lista<Texto>()
     lista_coloca(args_serve, arg_ou(argumentos, 1, "build/web"))
     lista_coloca(args_serve, arg_ou(argumentos, 2, "7070"))
-    devolve roda_svbc_com_args("build/seven.webserve.svbc", args_serve)
+    devolve roda_svbc_com_args(imagem_irma("seven.webserve.svbc"), args_serve)
   fecha
 
   diga "comando fora da superficie stable do launcher: " + comando
@@ -90,4 +90,10 @@ campo arg_ou(argumentos: Lista<Texto>, indice: U64, padrao: Texto) -> Texto ::
   fecha
 
   devolve lista_pega(argumentos, indice)
+fecha
+
+
+campo imagem_irma(nome: Texto) -> Texto toca ambiente ::
+  guarda raiz := sys_executavel_diretorio()
+  devolve raiz + "/" + nome
 fecha
