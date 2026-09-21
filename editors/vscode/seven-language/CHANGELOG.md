@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+- Aligns the VSIX package with the Seven 0.2.2 runtime hardening release.
+- Keeps syntax and editor configuration compatible with the current .sev surface.
+
+
 ## 0.2.1
 
 - Bumps the VSIX package version for the Seven 0.2.1 distribution release.

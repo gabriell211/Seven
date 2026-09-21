@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.2.2
+
+- Adds the Seven 1.0 readiness audit and formal hardening gates.
+- Implements native x64 text contains, prefix and slice operations.
+- Fixes native text character index preservation across allocation calls.
+- Fixes remaining Linux mmap fd/offset register encodings.
+- Implements native binary file reads on Linux x64 and Windows x64.
+- Adds binary/NUL/0xFF and missing-path filesystem execution proofs.
+- Bounds current native binary reads to 0x7ffff000 bytes to avoid silent
+  truncation before chunked large-file IO is promoted.
+
+
 ## 0.2.1
 
 - Replaces the transitional Windows zip installer with a professional WiX MSI.

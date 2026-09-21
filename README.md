@@ -13,12 +13,12 @@ padrao e a toolchain oficial sao escritos em Seven.
 
 ## Download
 
-- [Seven 0.2.1 para Windows x64 MSI](https://github.com/gabriell211/Seven/releases/download/v0.2.1/seven-0.2.1-windows-x64.msi)
-- [SHA-256 do MSI Windows](https://github.com/gabriell211/Seven/releases/download/v0.2.1/seven-0.2.1-windows-x64.msi.sha256)
-- [Seven 0.2.1 para Linux x64](https://github.com/gabriell211/Seven/releases/download/v0.2.1/seven-0.2.1-linux-x64.tar.gz)
-- [SHA-256 do pacote Linux](https://github.com/gabriell211/Seven/releases/download/v0.2.1/seven-0.2.1-linux-x64.tar.gz.sha256)
-- [Extensao VSCode Seven 0.2.1](https://github.com/gabriell211/Seven/releases/download/v0.2.1/seven-language-0.2.1.vsix)
-- [Notas da release Seven 0.2.1](https://github.com/gabriell211/Seven/releases/tag/v0.2.1)
+- [Seven 0.2.2 para Windows x64 MSI](https://github.com/gabriell211/Seven/releases/download/v0.2.2/seven-0.2.2-windows-x64.msi)
+- [SHA-256 do MSI Windows](https://github.com/gabriell211/Seven/releases/download/v0.2.2/seven-0.2.2-windows-x64.msi.sha256)
+- [Seven 0.2.2 para Linux x64](https://github.com/gabriell211/Seven/releases/download/v0.2.2/seven-0.2.2-linux-x64.tar.gz)
+- [SHA-256 do pacote Linux](https://github.com/gabriell211/Seven/releases/download/v0.2.2/seven-0.2.2-linux-x64.tar.gz.sha256)
+- [Extensao VSCode Seven 0.2.2](https://github.com/gabriell211/Seven/releases/download/v0.2.2/seven-language-0.2.2.vsix)
+- [Notas da release Seven 0.2.2](https://github.com/gabriell211/Seven/releases/tag/v0.2.2)
 
 Os pacotes sao gerados pelos runners oficiais, testados em Windows e Linux e
 publicados somente depois da verificacao dos checksums, compilacao, execucao,
@@ -133,7 +133,7 @@ desinstalacao limpa.
 Artefato:
 
 ```text
-build/seven-0.2.1-windows-x64.msi
+build/seven-0.2.2-windows-x64.msi
 ```
 
 O instalador Windows oficial e um MSI WiX por maquina. Ele usa
@@ -149,7 +149,7 @@ Para instala-la use o VS Code, nao o instalador de extensoes do Visual Studio.
 Artefato:
 
 ```text
-build/installers/seven-0.2.1-linux-x64/seven-installer
+build/installers/seven-0.2.2-linux-x64/seven-installer
 ```
 
 O instalador coloca a distribuicao em `~/.local/share/seven`, cria o link
