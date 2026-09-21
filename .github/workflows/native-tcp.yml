@@ -146,6 +146,32 @@ jobs:
           test -s build/native-tcp-app.svbc
           test "$(od -An -tx1 -N4 build/native-tcp-app.svbc | tr -d ' \n')" = '53564243'
 
+      - name: Compile HTTP health application with Stage1
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > build/native-http-health-app.sources <<'EOF'
+          std/base/lista.sev
+          std/base/resultado.sev
+          std/base/talvez.sev
+          std/base/mapa.sev
+          std/base/texto.sev
+          std/mem/bytes.sev
+          std/net/tcp.sev
+          tests/native/http_health_app.sev
+          EOF
+          cat > build/native-http-health-app.pkg <<'EOF'
+          pacote native-http-health-app
+          versao 0.0.1
+          criador Gabriel Barcelos
+          entrada tests.native.http_health_app.inicio
+          alvo svbc
+          indice build/native-http-health-app.sources
+          EOF
+          build/genesis-host build/seven.stage1.svbc build/native-http-health-app.pkg build/native-http-health-app.svbc
+          test -s build/native-http-health-app.svbc
+          test "$(od -An -tx1 -N4 build/native-http-health-app.svbc | tr -d ' \n')" = '53564243'
+
       - name: Compile TCP native lowering driver with Stage1
         shell: bash
         run: |
@@ -171,6 +197,8 @@ jobs:
           build/genesis-host build/native-tcp-backend.svbc
           test "$(od -An -tx1 -N4 build/native-tcp-proof | tr -d ' \n')" = '7f454c46'
           test "$(od -An -tx1 -N2 build/native-tcp-proof.exe | tr -d ' \n')" = '4d5a'
+          test "$(od -An -tx1 -N4 build/native-http-health-proof | tr -d ' \n')" = '7f454c46'
+          test "$(od -An -tx1 -N2 build/native-http-health-proof.exe | tr -d ' \n')" = '4d5a'
 
       - name: Inspect Windows TCP imports
         shell: bash
@@ -220,6 +248,53 @@ jobs:
               raise SystemExit(f"unexpected TCP response: {data!r}")
           PY
 
+      - name: Execute native HTTP health check on Linux
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x build/native-http-health-proof
+          python3 - <<'PY'
+          import socket
+          import subprocess
+          import time
+
+          proc = subprocess.Popen(["./build/native-http-health-proof"])
+          sock = None
+          last = None
+          for _ in range(100):
+              if proc.poll() is not None:
+                  raise SystemExit(f"HTTP server exited early with {proc.returncode}")
+              try:
+                  sock = socket.create_connection(("127.0.0.1", 18778), timeout=0.25)
+                  break
+              except OSError as exc:
+                  last = exc
+                  time.sleep(0.05)
+          if sock is None:
+              proc.kill()
+              raise SystemExit(f"could not connect to HTTP health server: {last}")
+
+          with sock:
+              sock.sendall(b"GET /health HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n")
+              chunks = []
+              while True:
+                  part = sock.recv(4096)
+                  if not part:
+                      break
+                  chunks.append(part)
+          data = b"".join(chunks)
+          rc = proc.wait(timeout=7)
+          head, sep, body = data.partition(b"\r\n\r\n")
+          if rc != 42:
+              raise SystemExit(f"HTTP server exit code {rc}; response={data!r}")
+          if not head.startswith(b"HTTP/1.1 200 OK\r\n"):
+              raise SystemExit(f"missing HTTP 200: {data!r}")
+          if b"content-type: application/json" not in head.lower():
+              raise SystemExit(f"missing JSON content type: {data!r}")
+          if sep != b"\r\n\r\n" or body != b"true":
+              raise SystemExit(f"unexpected JSON body: {data!r}")
+          PY
+
       - uses: actions/upload-artifact@v4
         with:
           name: seven-native-tcp-proof
@@ -229,6 +304,9 @@ jobs:
             build/native-tcp-app.svbc
             build/native-tcp-backend.svbc
             build/native-tcp-proof.pe.txt
+            build/native-http-health-proof
+            build/native-http-health-proof.exe
+            build/native-http-health-app.svbc
           if-no-files-found: error
 
   windows:
@@ -275,4 +353,50 @@ jobs:
               raise SystemExit(f"unexpected TCP response: {data!r}")
           if rc != 42:
               raise SystemExit(f"unexpected server exit code: {rc}")
+          PY
+
+      - name: Execute native HTTP health check on Windows
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import socket
+          import subprocess
+          import time
+
+          proc = subprocess.Popen([r"build\native-http-health-proof.exe"])
+          sock = None
+          last = None
+          for _ in range(100):
+              if proc.poll() is not None:
+                  raise SystemExit(f"HTTP server exited early with {proc.returncode}")
+              try:
+                  sock = socket.create_connection(("127.0.0.1", 18778), timeout=0.25)
+                  break
+              except OSError as exc:
+                  last = exc
+                  time.sleep(0.05)
+          if sock is None:
+              proc.kill()
+              raise SystemExit(f"could not connect to HTTP health server: {last}")
+
+          with sock:
+              sock.sendall(b"GET /health HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n")
+              chunks = []
+              while True:
+                  part = sock.recv(4096)
+                  if not part:
+                      break
+                  chunks.append(part)
+          data = b"".join(chunks)
+          rc = proc.wait(timeout=7)
+          head, sep, body = data.partition(b"\r\n\r\n")
+          if rc != 42:
+              raise SystemExit(f"HTTP server exit code {rc}; response={data!r}")
+          if not head.startswith(b"HTTP/1.1 200 OK\r\n"):
+              raise SystemExit(f"missing HTTP 200: {data!r}")
+          if b"content-type: application/json" not in head.lower():
+              raise SystemExit(f"missing JSON content type: {data!r}")
+          if sep != b"\r\n\r\n" or body != b"true":
+              raise SystemExit(f"unexpected JSON body: {data!r}")
           PY
