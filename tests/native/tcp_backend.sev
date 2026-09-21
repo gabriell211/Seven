@@ -1,0 +1,32 @@
+modulo tests.native.tcp_backend
+
+usa seven.runtime.platform.native.linker
+usa seven.runtime.platform.native.target
+usa seven.runtime.svbc.decoder
+usa std.base.resultado
+
+campo inicio() -> Num toca disco ::
+  guarda carga := sys_arquivo_ler_bytes("build/native-tcp-app.svbc")
+  veja carga e Falha ::
+    devolve 20
+  fecha
+
+  guarda imagem := svbc_decodifica(carga.valor)
+  veja imagem e Falha ::
+    devolve 21
+  fecha
+
+  guarda linux := baixa_nativo(imagem.valor, alvo_linux_x64())
+  veja linux e Falha ::
+    devolve 22
+  fecha
+
+  guarda windows := baixa_nativo(imagem.valor, alvo_win_x64())
+  veja windows e Falha ::
+    devolve 23
+  fecha
+
+  sys_arquivo_grava_bytes("build/native-tcp-proof", linux.valor.bytes)
+  sys_arquivo_grava_bytes("build/native-tcp-proof.exe", windows.valor.bytes)
+  devolve 0
+fecha
