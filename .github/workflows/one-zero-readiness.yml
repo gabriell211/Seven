@@ -1,9 +1,13 @@
-name: Seven 1.0 Readiness Blockers
+name: Seven 1.0 Readiness Audit
 
 on:
   push:
     branches:
+      - main
       - hardening/seven-1.0
+    tags:
+      - 'v1.0.0'
+      - 'v1.0.0-rc*'
   pull_request:
     paths:
       - '.github/workflows/**'
@@ -14,6 +18,12 @@ on:
       - 'conformance/**'
       - 'docs/1.0-gate.md'
   workflow_dispatch:
+    inputs:
+      enforce:
+        description: 'Fail when Seven 1.0 blockers remain'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -24,7 +34,7 @@ concurrency:
 
 jobs:
   hardening-boundary:
-    name: Enforce Seven 1.0 hardening boundary
+    name: Audit Seven 1.0 hardening boundary
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -33,12 +43,14 @@ jobs:
 
       - name: Audit remaining 1.0 blockers
         shell: bash
+        env:
+          MANUAL_ENFORCE: ${{ inputs.enforce || false }}
         run: |
           set -uo pipefail
           failures=0
 
-          fail() {
-            echo "::error::$1"
+          blocker() {
+            echo "::warning::$1"
             failures=$((failures + 1))
           }
 
@@ -46,39 +58,60 @@ jobs:
           for workflow in             .github/workflows/foundation.yml             .github/workflows/readiness.yml             .github/workflows/release.yml             .github/workflows/pages.yml             .github/workflows/bootstrap-stage0.yml
           do
             if grep -n 'seed/native/final/v1' "$workflow"; then
-              fail "$workflow still depends on seed/native/final/v1"
+              blocker "$workflow still depends on seed/native/final/v1"
             fi
           done
 
           echo "== x64 stable stubs =="
           if grep -n 'x64_syscall_stub_nulo(codigo,' runtime/platform/native/x64.sev; then
-            fail "runtime/platform/native/x64.sev still emits null syscall stubs"
+            blocker "runtime/platform/native/x64.sev still emits null syscall stubs"
           fi
 
           echo "== native TCP dispatcher =="
           if test ! -f runtime/platform/native/syscall_net.sev; then
-            fail "runtime/platform/native/syscall_net.sev does not exist"
+            blocker "runtime/platform/native/syscall_net.sev does not exist"
           else
             for syscall in               sys_tcp_escuta               sys_tcp_aceita               sys_tcp_le               sys_tcp_escreve               sys_tcp_fecha
             do
               if ! grep -q "$syscall" runtime/platform/native/syscall_net.sev; then
-                fail "native network emitter does not cover $syscall"
+                blocker "native network emitter does not cover $syscall"
               fi
             done
           fi
 
           if ! grep -q 'seven.runtime.platform.native.syscall_net' runtime/platform/native/syscall_dispatch.sev; then
-            fail "native syscall dispatcher does not import syscall_net"
+            blocker "native syscall dispatcher does not import syscall_net"
           fi
 
           if ! grep -q 'x64_syscall_net_emite' runtime/platform/native/syscall_dispatch.sev; then
-            fail "native syscall dispatcher does not call x64_syscall_net_emite"
+            blocker "native syscall dispatcher does not call x64_syscall_net_emite"
           fi
 
           echo "== native HTTP E2E =="
           if test ! -f .github/workflows/native-network.yml; then
-            fail "native-network.yml E2E proof is missing"
+            blocker "native-network.yml E2E proof is missing"
           fi
 
-          echo "Seven 1.0 blocker count: $failures"
-          test "$failures" -eq 0
+          {
+            echo "## Seven 1.0 readiness"
+            echo
+            echo "Blockers remaining: **$failures**"
+            echo
+            if test "$failures" -eq 0; then
+              echo "All currently automated Seven 1.0 hardening checks are green."
+            else
+              echo "Development may continue, but a 1.0/RC tag must not be published yet."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          enforce=false
+          case "$GITHUB_REF" in
+            refs/tags/v1.0.0|refs/tags/v1.0.0-rc*) enforce=true ;;
+          esac
+          if test "$MANUAL_ENFORCE" = "true"; then
+            enforce=true
+          fi
+
+          if test "$enforce" = "true"; then
+            test "$failures" -eq 0
+          fi
