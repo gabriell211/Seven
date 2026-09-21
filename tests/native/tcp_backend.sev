@@ -32,5 +32,32 @@ campo inicio() -> Num toca disco, terminal ::
 
   sys_arquivo_grava_bytes("build/native-tcp-proof", linux.valor.bytes)
   sys_arquivo_grava_bytes("build/native-tcp-proof.exe", windows.valor.bytes)
+
+  guarda carga_http := sys_arquivo_ler_bytes("build/native-http-health-app.svbc")
+  veja carga_http e Falha ::
+    diga carga_http.valor.codigo + ": " + carga_http.valor.mensagem
+    devolve 24
+  fecha
+
+  guarda imagem_http := svbc_decodifica(carga_http.valor)
+  veja imagem_http e Falha ::
+    diga imagem_http.valor.codigo + ": " + imagem_http.valor.mensagem
+    devolve 25
+  fecha
+
+  guarda linux_http := baixa_nativo(imagem_http.valor, alvo_linux_x64())
+  veja linux_http e Falha ::
+    diga linux_http.valor.codigo + ": " + linux_http.valor.mensagem
+    devolve 26
+  fecha
+
+  guarda windows_http := baixa_nativo(imagem_http.valor, alvo_win_x64())
+  veja windows_http e Falha ::
+    diga windows_http.valor.codigo + ": " + windows_http.valor.mensagem
+    devolve 27
+  fecha
+
+  sys_arquivo_grava_bytes("build/native-http-health-proof", linux_http.valor.bytes)
+  sys_arquivo_grava_bytes("build/native-http-health-proof.exe", windows_http.valor.bytes)
   devolve 0
 fecha
