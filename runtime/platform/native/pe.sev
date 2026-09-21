@@ -136,7 +136,8 @@ campo pe_import_iat_rva(
 ) -> U64 ::
   guarda indice := pe_import_indice(layout, dll, nome)
   veja indice < 0 :: devolve 0 fecha
-  devolve idata_rva + lista_pega(layout.iat_offsets, U64(indice))
+  guarda offset: U64 := lista_pega(layout.iat_offsets, U64(indice))
+  devolve idata_rva + offset
 fecha
 
 campo pe_dos_header(arquivo: Bytes) -> Nada ::
@@ -260,7 +261,7 @@ campo pe_idata_x64(
   fecha
 
   guarda tem_winsock := lista_tamanho(winsock_nomes) > 0
-  guarda qtd_dll: U64 := 1
+  solta qtd_dll: U64 := 1
   veja tem_winsock :: vira qtd_dll := 2 fecha
   guarda diretorio_tamanho := (qtd_dll + 1) * 20
 
@@ -317,13 +318,36 @@ campo pe_idata_x64(
 
   nativo_preenche_ate(idata, diretorio_tamanho, 0)
 
-  para cada offset em kernel_hints :: nativo_u64_le(idata, idata_rva + offset) fecha
+  solta hint_indice: U64 := 0
+  gira hint_indice < lista_tamanho(kernel_hints) ::
+    guarda offset: U64 := lista_pega(kernel_hints, hint_indice)
+    nativo_u64_le(idata, idata_rva + offset)
+    vira hint_indice := hint_indice + 1
+  fecha
   nativo_u64_le(idata, 0)
-  para cada offset em winsock_hints :: nativo_u64_le(idata, idata_rva + offset) fecha
+
+  vira hint_indice := 0
+  gira hint_indice < lista_tamanho(winsock_hints) ::
+    guarda offset: U64 := lista_pega(winsock_hints, hint_indice)
+    nativo_u64_le(idata, idata_rva + offset)
+    vira hint_indice := hint_indice + 1
+  fecha
   nativo_u64_le(idata, 0)
-  para cada offset em kernel_hints :: nativo_u64_le(idata, idata_rva + offset) fecha
+
+  vira hint_indice := 0
+  gira hint_indice < lista_tamanho(kernel_hints) ::
+    guarda offset: U64 := lista_pega(kernel_hints, hint_indice)
+    nativo_u64_le(idata, idata_rva + offset)
+    vira hint_indice := hint_indice + 1
+  fecha
   nativo_u64_le(idata, 0)
-  para cada offset em winsock_hints :: nativo_u64_le(idata, idata_rva + offset) fecha
+
+  vira hint_indice := 0
+  gira hint_indice < lista_tamanho(winsock_hints) ::
+    guarda offset: U64 := lista_pega(winsock_hints, hint_indice)
+    nativo_u64_le(idata, idata_rva + offset)
+    vira hint_indice := hint_indice + 1
+  fecha
   nativo_u64_le(idata, 0)
 
   nativo_preenche_ate(idata, kernel_dll_offset, 0)
@@ -374,7 +398,7 @@ campo pe_idata_x64(
   fecha
 
   guarda iat_inicio := kernel_iat
-  guarda iat_fim := kernel_iat + kernel_tabela
+  solta iat_fim := kernel_iat + kernel_tabela
   veja tem_winsock ::
     vira iat_fim := winsock_iat + winsock_tabela
   fecha
