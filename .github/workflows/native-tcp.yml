@@ -179,7 +179,7 @@ jobs:
           objdump -p build/native-tcp-proof.exe | tee build/native-tcp-proof.pe.txt
           grep -q 'KERNEL32.dll' build/native-tcp-proof.pe.txt
           grep -q 'WS2_32.dll' build/native-tcp-proof.pe.txt
-          for symbol in WSAStartup socket bind listen accept recv send closesocket; do
+          for symbol in WSAStartup socket bind listen accept recv send closesocket setsockopt; do
             grep -q "$symbol" build/native-tcp-proof.pe.txt
           done
 
