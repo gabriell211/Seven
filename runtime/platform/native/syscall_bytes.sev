@@ -149,9 +149,6 @@ campo x64_bytes_bytes_para_texto(
   bytes_coloca_byte(codigo, 94)
   bytes_coloca_byte(codigo, 24)
 
-  bytes_coloca_byte(codigo, 76)
-  bytes_coloca_byte(codigo, 137)
-  bytes_coloca_byte(codigo, 219)
   bytes_coloca_byte(codigo, 77)
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 253)
