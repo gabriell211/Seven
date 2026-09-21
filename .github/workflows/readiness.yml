@@ -118,10 +118,6 @@ jobs:
             echo 'Production placeholders remain in the public compiler/runtime surface.'
             exit 1
           fi
-          if grep -n 'seed/native/final/v1' .github/workflows/readiness.yml; then
-            echo 'Production readiness still references the archived transition compiler.'
-            exit 1
-          fi
 
       - name: Verify compiler contracts and regressions
         shell: bash
