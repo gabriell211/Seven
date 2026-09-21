@@ -1,0 +1,78 @@
+modulo tests.native.reachability_backend
+
+usa seven.runtime.platform.native.linker
+usa seven.runtime.platform.native.target
+usa seven.runtime.svbc.image
+usa seven.runtime.svbc.opcode
+usa seven.runtime.svbc.value
+usa std.base.lista
+usa std.base.resultado
+
+campo imagem_morta_preview() -> ImagemSvbc ::
+  solta nomes := lista<Texto>()
+  lista_coloca(nomes, "sys_url_encode")
+
+  solta campos := lista<CampoImagem>()
+  lista_coloca(campos, CampoImagem {
+    nome: "inicio",
+    entrada: 0,
+    locais: 0,
+    parametros: 0,
+    efeitos: lista<Texto>()
+  })
+  lista_coloca(campos, CampoImagem {
+    nome: "preview_morta",
+    entrada: 2,
+    locais: 0,
+    parametros: 0,
+    efeitos: lista<Texto>()
+  })
+
+  solta codigo := lista<Instrucao>()
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 0, b: 0, c: 0, ip: 0 })
+  lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: 1 })
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 0, b: 0, c: 0, ip: 2 })
+  lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: 3 })
+
+  solta constantes := lista<ValorVm>()
+  lista_coloca(constantes, VmNum(42))
+
+  devolve ImagemSvbc {
+    versao: 1,
+    nomes: nomes,
+    constantes: constantes,
+    campos: campos,
+    codigo: codigo
+  }
+fecha
+
+campo imagem_preview_alcancavel() -> ImagemSvbc ::
+  guarda imagem := imagem_morta_preview()
+  solta codigo := lista<Instrucao>()
+  lista_coloca(codigo, Instrucao { opcode: Chama, a: 1, b: 0, c: 0, ip: 0 })
+  lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: 1 })
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 0, b: 0, c: 0, ip: 2 })
+  lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: 3 })
+  vira imagem.codigo := codigo
+  devolve imagem
+fecha
+
+campo inicio() -> Num toca disco ::
+  guarda morta_linux := baixa_nativo(imagem_morta_preview(), alvo_linux_x64())
+  veja morta_linux e Falha :: devolve 30 fecha
+
+  guarda morta_windows := baixa_nativo(imagem_morta_preview(), alvo_win_x64())
+  veja morta_windows e Falha :: devolve 31 fecha
+
+  guarda viva_linux := baixa_nativo(imagem_preview_alcancavel(), alvo_linux_x64())
+  veja viva_linux e Valor :: devolve 32 fecha
+  veja viva_linux.valor.codigo != "SV-NATIVE-SYSCALL" :: devolve 33 fecha
+
+  guarda viva_windows := baixa_nativo(imagem_preview_alcancavel(), alvo_win_x64())
+  veja viva_windows e Valor :: devolve 34 fecha
+  veja viva_windows.valor.codigo != "SV-NATIVE-SYSCALL" :: devolve 35 fecha
+
+  sys_arquivo_grava_bytes("build/native-reachability-proof", morta_linux.valor.bytes)
+  sys_arquivo_grava_bytes("build/native-reachability-proof.exe", morta_windows.valor.bytes)
+  devolve 0
+fecha
