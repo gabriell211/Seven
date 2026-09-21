@@ -1,70 +1,142 @@
-name: Verify Seven 0.1.0 Release
+name: Seven Current Self-Hosted Release
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v0.2.3'
+      - 'v1.0.0-rc*'
+      - 'v1.0.0'
 
 permissions:
   contents: read
 
-env:
-  SEVEN_TAG: v0.1.0
-  SEED_ARCHIVE_SHA256: a2d09138008ae7223683681443663da8d4c58b39600cbaf3bef11889c2495ad3
-  WINDOWS_COMPILER_SHA256: f9ebcbe747f5646f1f224af0929d19d321a67a241be3844116e42ac2a5207296
-  WINDOWS_INSTALLER_SHA256: e4847375d1e800425e23253d36394bc8d2a2d9a97598f8905a30986310f176ed
-  LINUX_COMPILER_SHA256: 2f073ab8101742006728a491b3093ddb093d202289002d13cc2a6a03dfa55dcb
-  LINUX_INSTALLER_SHA256: 8d5b9c534018d8b8ccca7fcdfaa6f7d40587c8a039d63ae214c62f93d35d533e
-
 jobs:
-  verify:
-    name: Verify immutable release assets
+  linux:
+    name: Package Linux x64 from current self-hosted chain
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify audited native seed archive
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p build/native-seeds
-          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo "$SEED_ARCHIVE_SHA256  build/native-seeds.zip" | sha256sum --check
-          unzip -q build/native-seeds.zip -d build/native-seeds
-          echo "$WINDOWS_COMPILER_SHA256  build/native-seeds/seven-windows.exe" | sha256sum --check
-          echo "$WINDOWS_INSTALLER_SHA256  build/native-seeds/seven-installer-windows.exe" | sha256sum --check
-          echo "$LINUX_COMPILER_SHA256  build/native-seeds/seven-linux" | sha256sum --check
-          echo "$LINUX_INSTALLER_SHA256  build/native-seeds/seven-installer-linux" | sha256sum --check
+      - name: Build current self-hosted Seven
+        uses: ./.github/actions/self-hosted-seven
 
-      - name: Download published release
+      - name: Assemble Linux package
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mkdir -p dist
-          gh release download "$SEVEN_TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --dir dist \
-            --pattern 'seven-0.1.0-windows-x64.zip' \
-            --pattern 'seven-0.1.0-windows-x64.zip.sha256' \
-            --pattern 'seven-0.1.0-linux-x64.tar.gz' \
-            --pattern 'seven-0.1.0-linux-x64.tar.gz.sha256'
+          root=build/release-linux/seven-current-linux-x64
+          mkdir -p "$root/bin" "$root/std" "$root/brand"
 
-      - name: Verify published package checksums
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd dist
-          sha256sum --check seven-0.1.0-windows-x64.zip.sha256
-          sha256sum --check seven-0.1.0-linux-x64.tar.gz.sha256
+          install -m 0755 build/current-seven/bin/seven "$root/bin/seven"
+          install -m 0644 build/current-seven/bin/seven.stage2.svbc "$root/bin/"
+          install -m 0644 build/current-seven/bin/seven.launcher.svbc "$root/bin/"
+          install -m 0644 build/current-seven/bin/seven.webbuild.svbc "$root/bin/"
+          install -m 0644 build/current-seven/bin/seven.webserve.svbc "$root/bin/"
+          install -m 0644 build/current-seven/PROVENANCE "$root/PROVENANCE"
+          install -m 0644 LICENSE NOTICE "$root/"
+          cp -R std/. "$root/std/"
+          cp brand/seven.ico brand/seven-mark.svg "$root/brand/"
 
-      - name: Verify release publication manifest
+          (
+            cd "$root"
+            sha256sum bin/* > SHA256SUMS
+          )
+
+          tar -C build/release-linux -czf build/seven-current-linux-x64.tar.gz seven-current-linux-x64
+          sha256sum build/seven-current-linux-x64.tar.gz > build/seven-current-linux-x64.tar.gz.sha256
+
+      - name: Exercise packaged Linux compiler
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '"version": "0.1.0"' releases/v0.1.0.json
-          grep -q '"tag": "v0.1.0"' releases/v0.1.0.json
-          grep -q '"verified": true' releases/v0.1.0.json
-          grep -q "$SEED_ARCHIVE_SHA256" releases/v0.1.0.json
-          grep -q "$WINDOWS_COMPILER_SHA256" releases/v0.1.0.json
-          grep -q "$LINUX_COMPILER_SHA256" releases/v0.1.0.json
+          seven="$PWD/build/release-linux/seven-current-linux-x64/bin/seven"
+          "$seven" --version
+          "$seven" doctor
+          "$seven" check examples/hello.sev
+          "$seven" build examples/hello.sev build/release-linux-hello.svbc
+          "$seven" web build examples/web_dev.sev build/release-linux-web
+          test -s build/release-linux-hello.svbc
+          test -s build/release-linux-web/app.wasm
+          grep -q '^transition_seed nao$' build/release-linux/seven-current-linux-x64/PROVENANCE
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-current-linux-x64
+          path: |
+            build/seven-current-linux-x64.tar.gz
+            build/seven-current-linux-x64.tar.gz.sha256
+          if-no-files-found: error
+
+  windows:
+    name: Package Windows x64 from current self-hosted chain
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build current self-hosted Seven
+        uses: ./.github/actions/self-hosted-seven
+
+      - name: Assemble Windows package
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=build/release-windows/seven-current-windows-x64
+          mkdir -p "$root/bin" "$root/std" "$root/brand"
+
+          cp build/current-seven/bin/seven.exe "$root/bin/seven.exe"
+          cp build/current-seven/bin/seven.stage2.svbc "$root/bin/"
+          cp build/current-seven/bin/seven.launcher.svbc "$root/bin/"
+          cp build/current-seven/bin/seven.webbuild.svbc "$root/bin/"
+          cp build/current-seven/bin/seven.webserve.svbc "$root/bin/"
+          cp build/current-seven/PROVENANCE "$root/PROVENANCE"
+          cp LICENSE NOTICE "$root/"
+          cp -R std/. "$root/std/"
+          cp brand/seven.ico brand/seven-mark.svg "$root/brand/"
+
+          (
+            cd "$root"
+            sha256sum bin/* > SHA256SUMS
+          )
+
+          7z a -tzip build/seven-current-windows-x64.zip "./$root/*"
+          sha256sum build/seven-current-windows-x64.zip > build/seven-current-windows-x64.zip.sha256
+
+      - name: Exercise packaged Windows compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$PWD/build/release-windows/seven-current-windows-x64/bin/seven.exe"
+          "$seven" --version
+          "$seven" doctor
+          "$seven" check examples/hello.sev
+          "$seven" build examples/hello.sev build/release-windows-hello.svbc
+          "$seven" web build examples/web_dev.sev build/release-windows-web
+          test -s build/release-windows-hello.svbc
+          test -s build/release-windows-web/app.wasm
+          grep -q '^transition_seed nao$' build/release-windows/seven-current-windows-x64/PROVENANCE
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-current-windows-x64
+          path: |
+            build/seven-current-windows-x64.zip
+            build/seven-current-windows-x64.zip.sha256
+          if-no-files-found: error
+
+  boundary:
+    name: Reject transition compiler in current release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify current release boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -n 'seed/native/final/v1' .github/workflows/release.yml; then
+            echo 'Current release still references archived transition compiler.'
+            exit 1
+          fi
+          grep -q 'self-hosted-seven' .github/workflows/release.yml
