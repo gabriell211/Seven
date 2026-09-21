@@ -45,22 +45,30 @@ campo x64_windows_import_chama_dll(
 ) -> Nada ::
   bytes_coloca_byte(codigo, 76)
   bytes_coloca_byte(codigo, 139)
-  bytes_coloca_byte(codigo, 228)
+  bytes_coloca_byte(codigo, 220)
+
   bytes_coloca_byte(codigo, 72)
   bytes_coloca_byte(codigo, 131)
   bytes_coloca_byte(codigo, 228)
   bytes_coloca_byte(codigo, 240)
 
-  veja sombra > 0 ::
-    bytes_coloca_byte(codigo, 72)
-    bytes_coloca_byte(codigo, 131)
-    bytes_coloca_byte(codigo, 236)
-    bytes_coloca_byte(codigo, Byte(sombra))
-  fecha
-
-  x64_windows_import_call_dll(codigo, imports_windows, dll, nome)
+  guarda reserva := sombra + 16
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 236)
+  bytes_coloca_byte(codigo, Byte(reserva))
 
   bytes_coloca_byte(codigo, 76)
   bytes_coloca_byte(codigo, 137)
-  bytes_coloca_byte(codigo, 228)
+  bytes_coloca_byte(codigo, 92)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, Byte(sombra))
+
+  x64_windows_import_call_dll(codigo, imports_windows, dll, nome)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 100)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, Byte(sombra))
 fecha
