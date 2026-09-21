@@ -388,11 +388,11 @@ campo pe_idata_x64(
     guarda nome := lista_pega(nomes, indice)
     guarda dll := lista_pega(dlls, indice)
     veja dll == "WS2_32.dll" ::
-      guarda local := pe_lista_indice_texto(winsock_nomes, nome)
-      lista_coloca(iat_offsets, winsock_iat + U64(local) * 8)
+      guarda local_winsock := pe_lista_indice_texto(winsock_nomes, nome)
+      lista_coloca(iat_offsets, winsock_iat + U64(local_winsock) * 8)
     outro ::
-      guarda local := pe_lista_indice_texto(kernel_nomes, nome)
-      lista_coloca(iat_offsets, kernel_iat + U64(local) * 8)
+      guarda local_kernel := pe_lista_indice_texto(kernel_nomes, nome)
+      lista_coloca(iat_offsets, kernel_iat + U64(local_kernel) * 8)
     fecha
     vira indice := indice + 1
   fecha
