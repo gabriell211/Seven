@@ -1,0 +1,84 @@
+name: Seven 1.0 Readiness Blockers
+
+on:
+  push:
+    branches:
+      - hardening/seven-1.0
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'bootstrap/**'
+      - 'compiler/**'
+      - 'runtime/**'
+      - 'std/**'
+      - 'conformance/**'
+      - 'docs/1.0-gate.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seven-1-0-readiness-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hardening-boundary:
+    name: Enforce Seven 1.0 hardening boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Audit remaining 1.0 blockers
+        shell: bash
+        run: |
+          set -uo pipefail
+          failures=0
+
+          fail() {
+            echo "::error::$1"
+            failures=$((failures + 1))
+          }
+
+          echo "== transition compiler references =="
+          for workflow in             .github/workflows/foundation.yml             .github/workflows/readiness.yml             .github/workflows/release.yml             .github/workflows/pages.yml             .github/workflows/bootstrap-stage0.yml
+          do
+            if grep -n 'seed/native/final/v1' "$workflow"; then
+              fail "$workflow still depends on seed/native/final/v1"
+            fi
+          done
+
+          echo "== x64 stable stubs =="
+          if grep -n 'x64_syscall_stub_nulo(codigo,' runtime/platform/native/x64.sev; then
+            fail "runtime/platform/native/x64.sev still emits null syscall stubs"
+          fi
+
+          echo "== native TCP dispatcher =="
+          if test ! -f runtime/platform/native/syscall_net.sev; then
+            fail "runtime/platform/native/syscall_net.sev does not exist"
+          else
+            for syscall in               sys_tcp_escuta               sys_tcp_aceita               sys_tcp_le               sys_tcp_escreve               sys_tcp_fecha
+            do
+              if ! grep -q "$syscall" runtime/platform/native/syscall_net.sev; then
+                fail "native network emitter does not cover $syscall"
+              fi
+            done
+          fi
+
+          if ! grep -q 'seven.runtime.platform.native.syscall_net' runtime/platform/native/syscall_dispatch.sev; then
+            fail "native syscall dispatcher does not import syscall_net"
+          fi
+
+          if ! grep -q 'x64_syscall_net_emite' runtime/platform/native/syscall_dispatch.sev; then
+            fail "native syscall dispatcher does not call x64_syscall_net_emite"
+          fi
+
+          echo "== native HTTP E2E =="
+          if test ! -f .github/workflows/native-network.yml; then
+            fail "native-network.yml E2E proof is missing"
+          fi
+
+          echo "Seven 1.0 blocker count: $failures"
+          test "$failures" -eq 0
