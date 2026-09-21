@@ -899,11 +899,6 @@ campo x64_syscall_pura(codigo: Bytes, nome: Texto, aridade: U32) -> Resultado<Na
     devolve Valor(nulo)
   fecha
 
-  veja nome == "sys_texto_fatia" e aridade == 3 ::
-    x64_syscall_stub_nulo(codigo, aridade)
-    devolve Valor(nulo)
-  fecha
-
   veja (nome == "sys_texto_num" ou nome == "sys_texto_u64" ou nome == "texto" ou nome == "texto_u64") e aridade == 1 ::
     x64_syscall_stub_nulo(codigo, aridade)
     devolve Valor(nulo)

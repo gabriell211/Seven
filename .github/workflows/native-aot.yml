@@ -147,6 +147,37 @@ jobs:
           test "$(od -An -tx1 -N4 build/native-aot-proof | tr -d ' \n')" = '7f454c46'
           test "$(od -An -tx1 -N2 build/native-aot-proof.exe | tr -d ' \n')" = '4d5a'
 
+      - name: Compile native text runtime proof with Stage1
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp runtime/platform/native/runtime.sources build/native-text.sources
+          echo 'tests/native/text_backend.sev' >> build/native-text.sources
+          cat > build/native-text.pkg <<'EOF'
+          pacote native-text-proof
+          versao 0.0.1
+          criador Gabriel Barcelos
+          entrada tests.native.text_backend.inicio
+          alvo svbc
+          indice build/native-text.sources
+          EOF
+          build/genesis-host build/seven.stage1.svbc build/native-text.pkg build/native-text-test.svbc
+          build/genesis-host build/native-text-test.svbc
+          test "$(od -An -tx1 -N4 build/native-text-proof | tr -d ' \n')" = '7f454c46'
+          test "$(od -An -tx1 -N2 build/native-text-proof.exe | tr -d ' \n')" = '4d5a'
+
+      - name: Execute Seven native text ELF
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x build/native-text-proof
+          set +e
+          ./build/native-text-proof
+          code=$?
+          set -e
+          echo "native text proof exit code: $code"
+          test "$code" -eq 42
+
       - name: Inspect generated native formats
         shell: bash
         run: |
@@ -193,6 +224,9 @@ jobs:
             build/native-aot-proof
             build/native-aot-proof.exe
             build/native-aot-test.svbc
+            build/native-text-proof
+            build/native-text-proof.exe
+            build/native-text-test.svbc
             build/native-aot-proof.elf.txt
             build/native-aot-proof.pe.txt
           if-no-files-found: error
@@ -213,6 +247,15 @@ jobs:
         run: |
           set +e
           ./build/native-aot-proof.exe
+          code=$?
+          set -e
+          test "$code" -eq 42
+
+      - name: Execute Seven native text PE
+        shell: bash
+        run: |
+          set +e
+          ./build/native-text-proof.exe
           code=$?
           set -e
           test "$code" -eq 42
