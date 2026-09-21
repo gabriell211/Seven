@@ -521,7 +521,7 @@ campo x64_fs_windows_le_bytes(
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 199)
 
-  x64_fs_bytes_inicializa_objeto(codigo, sim)
+  x64_fs_bytes_inicializa_objeto_windows(codigo, sim)
 
   bytes_coloca_byte(codigo, 76)
   bytes_coloca_byte(codigo, 137)
@@ -568,7 +568,7 @@ campo x64_fs_windows_le_bytes(
   guarda apos_vazio := x64_fs_bytes_jmp(codigo)
 
   guarda vazio := codigo.tamanho
-  x64_fs_bytes_inicializa_objeto(codigo, nao)
+  x64_fs_bytes_inicializa_objeto_windows(codigo, nao)
 
   guarda fecha_sucesso := codigo.tamanho
   x64_fs_windows_close_handle(codigo, imports_windows)
@@ -600,3 +600,48 @@ campo x64_fs_windows_le_bytes(
   x64_fs_bytes_patch(codigo, fim_sucesso, fim)
 fecha
 
+
+campo x64_fs_bytes_inicializa_objeto_windows(codigo: Bytes, com_buffer: Bit) -> Nada ::
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 4)
+  bytes_coloca_byte(codigo, 36)
+  nativo_u32_le(codigo, 4)
+
+  veja com_buffer ::
+    bytes_coloca_byte(codigo, 77)
+    bytes_coloca_byte(codigo, 137)
+    bytes_coloca_byte(codigo, 116)
+    bytes_coloca_byte(codigo, 36)
+    bytes_coloca_byte(codigo, 8)
+    bytes_coloca_byte(codigo, 77)
+    bytes_coloca_byte(codigo, 137)
+    bytes_coloca_byte(codigo, 116)
+    bytes_coloca_byte(codigo, 36)
+    bytes_coloca_byte(codigo, 16)
+    bytes_coloca_byte(codigo, 77)
+    bytes_coloca_byte(codigo, 137)
+    bytes_coloca_byte(codigo, 124)
+    bytes_coloca_byte(codigo, 36)
+    bytes_coloca_byte(codigo, 24)
+    devolve nulo
+  fecha
+
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 24)
+fecha
