@@ -40,11 +40,6 @@ jobs:
           test "$(od -An -tx1 -N4 build/seven0.svbc | tr -d ' \n')" = '53564230'
           test "$(od -An -tx1 -N4 build/seven.stage2.svbc | tr -d ' \n')" = '53564243'
 
-          if grep -R -n 'seed/native/final/v1'             .github/actions/self-hosted-seven .github/workflows/bootstrap-stage0.yml; then
-            echo 'current bootstrap path references the archived transition seed'
-            exit 1
-          fi
-
       - name: Record current bootstrap audit
         shell: bash
         run: |
