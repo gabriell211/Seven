@@ -175,6 +175,7 @@ jobs:
           ./build/native-text-proof
           code=$?
           set -e
+          echo "native text proof exit code: $code"
           test "$code" -eq 42
 
       - name: Inspect generated native formats
