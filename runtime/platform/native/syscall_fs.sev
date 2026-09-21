@@ -218,6 +218,7 @@ campo x64_fs_linux_le_texto(codigo: Bytes) -> Nada ::
   bytes_coloca_byte(codigo, 255)
   bytes_coloca_byte(codigo, 255)
   bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 255)
   bytes_coloca_byte(codigo, 69)
   bytes_coloca_byte(codigo, 49)
   bytes_coloca_byte(codigo, 201)
