@@ -167,6 +167,17 @@ jobs:
           ./build/native-aot-proof
           code=$?
           set -e
+          if test "$code" -ne 42; then
+            echo "native exit code: $code"
+            dd if=build/native-aot-proof of=build/native-aot-code.bin bs=1 skip=4096 status=none || true
+            objdump -D -b binary -m i386:x86-64 --adjust-vma=0x401000 -Mintel build/native-aot-code.bin | tail -n 320 || true
+            if command -v strace >/dev/null 2>&1; then
+              set +e
+              strace -f -o build/native-aot-proof.strace ./build/native-aot-proof
+              set -e
+              tail -n 80 build/native-aot-proof.strace || true
+            fi
+          fi
           test "$code" -eq 42
 
       - name: Reject transition native lowering

@@ -1,0 +1,207 @@
+modulo seven.runtime.platform.native.syscall_text
+
+usa seven.runtime.platform.native.object_runtime
+usa std.mem.bytes
+
+campo x64_syscall_text_emite(
+  codigo: Bytes,
+  nome: Texto,
+  aridade: U32
+) -> Bit ::
+  veja nome == "sys_texto_contem" e aridade == 2 ::
+    x64_texto_contem(codigo)
+    devolve sim
+  fecha
+
+  veja nome == "sys_texto_comeca" e aridade == 2 ::
+    x64_texto_comeca(codigo)
+    devolve sim
+  fecha
+
+  devolve nao
+fecha
+
+campo x64_texto_comeca(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 89)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 232)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 233)
+  bytes_coloca_byte(codigo, 1)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 80)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 208)
+  guarda prefixo_maior := x64_runtime_jcc(codigo, 135)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 112)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 121)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 69)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 201)
+
+  guarda loop := codigo.tamanho
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 193)
+  guarda completo := x64_runtime_jcc(codigo, 132)
+  bytes_coloca_byte(codigo, 70)
+  bytes_coloca_byte(codigo, 138)
+  bytes_coloca_byte(codigo, 20)
+  bytes_coloca_byte(codigo, 14)
+  bytes_coloca_byte(codigo, 70)
+  bytes_coloca_byte(codigo, 58)
+  bytes_coloca_byte(codigo, 20)
+  bytes_coloca_byte(codigo, 15)
+  guarda diferente := x64_runtime_jcc(codigo, 133)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 193)
+  guarda volta := x64_runtime_jmp(codigo)
+  x64_runtime_patch(codigo, volta, loop)
+
+  guarda verdadeiro := codigo.tamanho
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 2)
+  guarda pula_falso := x64_runtime_jmp(codigo)
+
+  guarda falso := codigo.tamanho
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+
+  guarda fim := codigo.tamanho
+  bytes_coloca_byte(codigo, 80)
+
+  x64_runtime_patch(codigo, prefixo_maior, falso)
+  x64_runtime_patch(codigo, completo, verdadeiro)
+  x64_runtime_patch(codigo, diferente, falso)
+  x64_runtime_patch(codigo, pula_falso, fim)
+fecha
+
+campo x64_texto_contem(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 89)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 232)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 233)
+  bytes_coloca_byte(codigo, 1)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 80)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 8)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda trecho_vazio := x64_runtime_jcc(codigo, 132)
+
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 208)
+  guarda trecho_maior := x64_runtime_jcc(codigo, 135)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 41)
+  bytes_coloca_byte(codigo, 194)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 112)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 121)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 69)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 201)
+
+  guarda externo := codigo.tamanho
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 209)
+  guarda acabou := x64_runtime_jcc(codigo, 135)
+
+  bytes_coloca_byte(codigo, 78)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 28)
+  bytes_coloca_byte(codigo, 14)
+  bytes_coloca_byte(codigo, 69)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 210)
+
+  guarda interno := codigo.tamanho
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 57)
+  bytes_coloca_byte(codigo, 194)
+  guarda achou := x64_runtime_jcc(codigo, 132)
+
+  bytes_coloca_byte(codigo, 67)
+  bytes_coloca_byte(codigo, 138)
+  bytes_coloca_byte(codigo, 4)
+  bytes_coloca_byte(codigo, 19)
+  bytes_coloca_byte(codigo, 66)
+  bytes_coloca_byte(codigo, 58)
+  bytes_coloca_byte(codigo, 4)
+  bytes_coloca_byte(codigo, 23)
+  guarda proximo := x64_runtime_jcc(codigo, 133)
+
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 194)
+  guarda volta_interno := x64_runtime_jmp(codigo)
+  x64_runtime_patch(codigo, volta_interno, interno)
+
+  guarda proxima_posicao := codigo.tamanho
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 193)
+  guarda volta_externo := x64_runtime_jmp(codigo)
+  x64_runtime_patch(codigo, volta_externo, externo)
+
+  guarda verdadeiro := codigo.tamanho
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 2)
+  guarda pula_falso := x64_runtime_jmp(codigo)
+
+  guarda falso := codigo.tamanho
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+
+  guarda fim := codigo.tamanho
+  bytes_coloca_byte(codigo, 80)
+
+  x64_runtime_patch(codigo, trecho_vazio, verdadeiro)
+  x64_runtime_patch(codigo, trecho_maior, falso)
+  x64_runtime_patch(codigo, acabou, falso)
+  x64_runtime_patch(codigo, achou, verdadeiro)
+  x64_runtime_patch(codigo, proximo, proxima_posicao)
+  x64_runtime_patch(codigo, pula_falso, fim)
+fecha
