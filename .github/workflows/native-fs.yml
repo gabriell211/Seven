@@ -162,7 +162,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -f build/seven-native-fs.txt
+          rm -f build/seven-native-fs.txt build/seven-native-missing.bin
           printf '\x53\x00\xff\x2a' > build/seven-native-bytes.bin
           chmod +x build/native-fs-proof
           set +e
@@ -196,7 +196,7 @@ jobs:
       - name: Execute native filesystem proof
         shell: bash
         run: |
-          rm -f build/seven-native-fs.txt
+          rm -f build/seven-native-fs.txt build/seven-native-missing.bin
           printf '\x53\x00\xff\x2a' > build/seven-native-bytes.bin
           set +e
           ./build/native-fs-proof.exe
