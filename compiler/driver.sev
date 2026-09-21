@@ -12,6 +12,7 @@ usa seven.compiler.bytecode
 usa seven.compiler.diagnostic
 usa seven.compiler.package
 usa std.fs.file
+usa std.base.texto
 usa std.io.console
 
 molde PedidoCompilacao ::
@@ -30,7 +31,7 @@ fecha
 campo pedido_de_compilacao(argumentos: Lista<Texto>) -> PedidoCompilacao toca ambiente, disco ::
   guarda manifesto := argumento_compilacao(argumentos, 0, "seven.pkg")
   guarda saida := argumento_compilacao(argumentos, 1, "")
-  guarda pacote := pacote_carrega(manifesto)
+  guarda pacote := pacote_entrada_compilacao(manifesto)
 
   devolve PedidoCompilacao {
     pacote: pacote,
@@ -39,6 +40,21 @@ campo pedido_de_compilacao(argumentos: Lista<Texto>) -> PedidoCompilacao toca am
     modo: "seguro",
     saida: saida
   }
+fecha
+
+campo pacote_entrada_compilacao(caminho: Texto) -> Pacote toca disco ::
+  veja texto_contem(caminho, ".sev") ::
+    devolve pacote_parse(
+      "pacote seven-source\n" +
+      "versao 1.0.0\n" +
+      "criador Seven\n" +
+      "entrada inicio\n" +
+      "alvo svbc\n" +
+      "fonte " + caminho + "\n"
+    )
+  fecha
+
+  devolve pacote_carrega(caminho)
 fecha
 
 campo argumento_compilacao(argumentos: Lista<Texto>, indice: U64, padrao: Texto) -> Texto ::
