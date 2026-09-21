@@ -653,7 +653,7 @@ campo x64_tcp_windows_escreve(
   bytes_coloca_byte(codigo, 234)
   bytes_coloca_byte(codigo, 69)
   bytes_coloca_byte(codigo, 137)
-  bytes_coloca_byte(codigo, 240)
+  bytes_coloca_byte(codigo, 224)
   bytes_coloca_byte(codigo, 69)
   bytes_coloca_byte(codigo, 49)
   bytes_coloca_byte(codigo, 201)
