@@ -217,11 +217,16 @@ jobs:
           set -euo pipefail
           chmod +x build/native-tcp-proof
           python3 - <<'PY'
+          import shutil
           import socket
           import subprocess
           import time
 
-          proc = subprocess.Popen(["./build/native-tcp-proof"])
+          trace_path = "build/native-tcp-proof.strace"
+          if shutil.which("strace"):
+              proc = subprocess.Popen(["strace", "-f", "-o", trace_path, "./build/native-tcp-proof"])
+          else:
+              proc = subprocess.Popen(["./build/native-tcp-proof"])
           sock = None
           last = None
           for _ in range(100):
@@ -243,6 +248,9 @@ jobs:
           rc = proc.wait(timeout=5)
           print(f"native TCP server exit code: {rc}; response={data!r}")
           if rc != 42:
+              if shutil.which("strace"):
+                  with open(trace_path, "r", encoding="utf-8", errors="replace") as fh:
+                      print(fh.read()[-12000:])
               raise SystemExit(f"unexpected server exit code: {rc}; response={data!r}")
           if data != b"pong":
               raise SystemExit(f"unexpected TCP response: {data!r}")
