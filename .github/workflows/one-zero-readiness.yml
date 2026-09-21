@@ -70,6 +70,17 @@ jobs:
             fi
           done
 
+          while IFS= read -r workflow; do
+            case "$workflow" in
+              .github/workflows/historical-*|.github/workflows/publish-v0.2.1.yml|.github/workflows/publish-v0.2.2.yml)
+                continue
+                ;;
+            esac
+            if grep -n 'seed/native/final/v1' "$workflow"; then
+              blocker "$workflow reintroduced the archived transition compiler"
+            fi
+          done < <(find .github/workflows -maxdepth 1 -type f -name '*.yml' | LC_ALL=C sort)
+
           if test ! -f .github/actions/self-hosted-seven/action.yml; then
             blocker "canonical self-hosted Seven action is missing"
           else
