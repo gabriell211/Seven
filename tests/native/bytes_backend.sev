@@ -14,12 +14,18 @@ campo imagem_prova_bytes() -> ImagemSvbc ::
   lista_coloca(constantes, VmNum(64))
   lista_coloca(constantes, VmNum(2))
   lista_coloca(constantes, VmNum(40))
+  lista_coloca(constantes, VmTexto("Seven"))
+  lista_coloca(constantes, VmNum(5))
+  lista_coloca(constantes, VmNum(83))
 
   solta nomes := lista<Texto>()
   lista_coloca(nomes, "sys_bytes_novo")
   lista_coloca(nomes, "sys_bytes_coloca_byte")
   lista_coloca(nomes, "sys_bytes_define")
   lista_coloca(nomes, "sys_bytes_pega")
+  lista_coloca(nomes, "sys_texto_bytes")
+  lista_coloca(nomes, "sys_bytes_texto")
+  lista_coloca(nomes, "sys_texto_tamanho")
 
   solta campos := lista<CampoImagem>()
   lista_coloca(campos, CampoImagem {
@@ -62,6 +68,46 @@ campo imagem_prova_bytes() -> ImagemSvbc ::
   lista_coloca(codigo, Instrucao { opcode: Guarda, a: 1, b: 0, c: 0, ip: ip })
   vira ip := ip + 1
 
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 4, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 4, b: 1, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Guarda, a: 1, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 1, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 0, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 3, b: 2, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 6, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Diferente, a: 0, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  guarda falha_primeiro := ip
+  lista_coloca(codigo, Instrucao { opcode: SaltaSeNao, a: 0, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 1, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 5, b: 1, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Guarda, a: 1, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+
+  lista_coloca(codigo, Instrucao { opcode: Carrega, a: 1, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Syscall, a: 6, b: 1, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 5, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Diferente, a: 0, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  guarda falha_tamanho := ip
+  lista_coloca(codigo, Instrucao { opcode: SaltaSeNao, a: 0, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+
   lista_coloca(codigo, Instrucao { opcode: Carrega, a: 0, b: 0, c: 0, ip: ip })
   vira ip := ip + 1
   lista_coloca(codigo, Instrucao { opcode: Const, a: 1, b: 0, c: 0, ip: ip })
@@ -73,6 +119,15 @@ campo imagem_prova_bytes() -> ImagemSvbc ::
   lista_coloca(codigo, Instrucao { opcode: Soma, a: 0, b: 0, c: 0, ip: ip })
   vira ip := ip + 1
   lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+
+  guarda falha_ip := ip
+  lista_coloca(codigo, Instrucao { opcode: Const, a: 0, b: 0, c: 0, ip: ip })
+  vira ip := ip + 1
+  lista_coloca(codigo, Instrucao { opcode: Volta, a: 0, b: 0, c: 0, ip: ip })
+
+  vira lista_pega(codigo, falha_primeiro).a := U32(falha_ip)
+  vira lista_pega(codigo, falha_tamanho).a := U32(falha_ip)
 
   devolve ImagemSvbc {
     versao: 1,
