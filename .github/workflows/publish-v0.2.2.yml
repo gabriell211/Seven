@@ -12,6 +12,16 @@ on:
       - 'RELEASE.md'
       - 'editors/vscode/seven-language/package.json'
       - 'editors/vscode/seven-language/CHANGELOG.md'
+  pull_request:
+    paths:
+      - '.github/workflows/publish-v0.2.2.yml'
+      - 'releases/v0.2.2.md'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'RELEASE.md'
+      - 'docs/1.0-gate.md'
+      - 'editors/vscode/seven-language/package.json'
+      - 'editors/vscode/seven-language/CHANGELOG.md'
   workflow_dispatch:
 
 permissions:
@@ -28,6 +38,27 @@ env:
   LINUX_INSTALLER_SHA256: 8d5b9c534018d8b8ccca7fcdfaa6f7d40587c8a039d63ae214c62f93d35d533e
 
 jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    name: Validate 0.2.2 release metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check release version consistency
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'SEVEN_TAG: v0.2.2' .github/workflows/publish-v0.2.2.yml
+          grep -q 'SEVEN_VERSION: 0.2.2' .github/workflows/publish-v0.2.2.yml
+          grep -q 'SEVEN_COMPILER_VERSION: 0.2.0' .github/workflows/publish-v0.2.2.yml
+          grep -q '"version": "0.2.2"' editors/vscode/seven-language/package.json
+          grep -q '## 0.2.2' CHANGELOG.md
+          grep -q 'Seven 0.2.2 Release Notes' RELEASE.md
+          grep -q 'releases/download/v0.2.2' README.md
+          test -s releases/v0.2.2.md
+          grep -q 'compilador de transicao' releases/v0.2.2.md
+
   windows:
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'Prepare Seven 0.2.2 release')
     name: Package Windows x64 MSI
