@@ -1,16 +1,14 @@
 modulo seven.runtime.launcher
 
-usa seven.runtime.svbc.runner
-
-campo seven_launcher(argumentos: Lista<Texto>) -> Num toca disco, terminal, rede, tempo, ambiente, frontend ::
+campo seven_launcher(argumentos: Lista<Texto>) -> Num toca terminal, ambiente ::
   veja lista_tamanho(argumentos) == 0 ou lista_pega(argumentos, 0) == "--help" ou lista_pega(argumentos, 0) == "help" ::
     diga "Seven 0.2.0"
     diga "usage:"
     diga "  seven --version"
     diga "  seven doctor"
-    diga "  seven check <pacote.pkg>"
-    diga "  seven build <pacote.pkg> <saida.svbc>"
-    diga "  seven run <pacote.pkg>"
+    diga "  seven check <pacote.pkg|arquivo.sev>"
+    diga "  seven build <pacote.pkg|arquivo.sev> <saida.svbc>"
+    diga "  seven run <pacote.pkg|arquivo.sev>"
     diga "  seven web build <entrada.sev> <saida-dir>"
     diga "  seven web serve <diretorio> <porta>"
     devolve 0
@@ -25,54 +23,8 @@ campo seven_launcher(argumentos: Lista<Texto>) -> Num toca disco, terminal, rede
   fecha
 
   veja comando == "doctor" ::
-    diga "seven doctor: host nativo SVBC operacional, argv real e launcher Seven ativo"
+    diga "seven doctor: bootstrap minimo auditavel e compilador Stage2 self-hosted operacionais"
     devolve 0
-  fecha
-
-  veja comando == "check" ::
-    solta args_check := lista<Texto>()
-    lista_coloca(args_check, arg_ou(argumentos, 1, "seven.pkg"))
-    lista_coloca(args_check, "build/seven.check.svbc")
-    devolve roda_svbc_com_args(imagem_irma("seven.stage2.svbc"), args_check)
-  fecha
-
-  veja comando == "build" ::
-    solta args_compilador := lista<Texto>()
-    lista_coloca(args_compilador, arg_ou(argumentos, 1, "seven.pkg"))
-    lista_coloca(args_compilador, arg_ou(argumentos, 2, "build/out.svbc"))
-    devolve roda_svbc_com_args(imagem_irma("seven.stage2.svbc"), args_compilador)
-  fecha
-
-  veja comando == "run" ::
-    solta args_run := lista<Texto>()
-    lista_coloca(args_run, arg_ou(argumentos, 1, "seven.pkg"))
-    lista_coloca(args_run, "build/seven.run.svbc")
-    guarda compilacao := roda_svbc_com_args(imagem_irma("seven.stage2.svbc"), args_run)
-    veja compilacao != 0 ::
-      devolve compilacao
-    fecha
-    devolve roda_svbc_com_args("build/seven.run.svbc", lista<Texto>())
-  fecha
-
-  veja comando == "web" e lista_tamanho(argumentos) > 1 e lista_pega(argumentos, 1) == "build" ::
-    solta args_web := lista<Texto>()
-    lista_coloca(args_web, arg_ou(argumentos, 2, "examples/web_dev.sev"))
-    lista_coloca(args_web, arg_ou(argumentos, 3, "build/web"))
-    devolve roda_svbc_com_args(imagem_irma("seven.webbuild.svbc"), args_web)
-  fecha
-
-  veja comando == "web" e lista_tamanho(argumentos) > 1 e lista_pega(argumentos, 1) == "serve" ::
-    solta args_serve := lista<Texto>()
-    lista_coloca(args_serve, arg_ou(argumentos, 2, "build/web"))
-    lista_coloca(args_serve, arg_ou(argumentos, 3, "7070"))
-    devolve roda_svbc_com_args(imagem_irma("seven.webserve.svbc"), args_serve)
-  fecha
-
-  veja comando == "serve" ::
-    solta args_serve := lista<Texto>()
-    lista_coloca(args_serve, arg_ou(argumentos, 1, "build/web"))
-    lista_coloca(args_serve, arg_ou(argumentos, 2, "7070"))
-    devolve roda_svbc_com_args(imagem_irma("seven.webserve.svbc"), args_serve)
   fecha
 
   diga "comando fora da superficie stable do launcher: " + comando
@@ -80,20 +32,6 @@ campo seven_launcher(argumentos: Lista<Texto>) -> Num toca disco, terminal, rede
   devolve 2
 fecha
 
-campo inicio() -> Num toca disco, terminal, rede, tempo, ambiente, frontend ::
+campo inicio() -> Num toca terminal, ambiente ::
   devolve seven_launcher(sys_args())
-fecha
-
-campo arg_ou(argumentos: Lista<Texto>, indice: U64, padrao: Texto) -> Texto ::
-  veja lista_tamanho(argumentos) <= indice ::
-    devolve padrao
-  fecha
-
-  devolve lista_pega(argumentos, indice)
-fecha
-
-
-campo imagem_irma(nome: Texto) -> Texto toca ambiente ::
-  guarda raiz := sys_executavel_diretorio()
-  devolve raiz + "/" + nome
 fecha
