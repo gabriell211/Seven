@@ -7,6 +7,14 @@ on:
       - 'v0.2.3'
       - 'v1.0.0-rc*'
       - 'v1.0.0'
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - '.github/actions/self-hosted-seven/**'
+      - 'bootstrap/**'
+      - 'compiler/**'
+      - 'runtime/**'
+      - 'std/**'
 
 permissions:
   contents: read
