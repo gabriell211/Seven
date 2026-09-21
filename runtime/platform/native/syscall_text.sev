@@ -248,7 +248,7 @@ campo x64_texto_fatia(
   bytes_coloca_byte(codigo, 139)
   bytes_coloca_byte(codigo, 71)
   bytes_coloca_byte(codigo, 8)
-  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 72)
   bytes_coloca_byte(codigo, 57)
   bytes_coloca_byte(codigo, 193)
   guarda fim_maior := x64_runtime_jcc(codigo, 135)
