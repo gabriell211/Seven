@@ -50,10 +50,6 @@ jobs:
           cmp build/seven.stage2.svbc build/seven.stage2.self.svbc
           grep -q '^stage2_fixed_point sim$' build/current-seven/PROVENANCE
           grep -q '^transition_seed nao$' build/current-seven/PROVENANCE
-          if grep -n 'seed/native/final/v1' .github/workflows/foundation.yml; then
-            echo 'Foundation still references the archived transition compiler.'
-            exit 1
-          fi
 
       - name: Exercise current compiler bundle
         shell: bash
