@@ -16,7 +16,7 @@ jobs:
   readiness:
     name: Compiler, conformance and source contracts
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -56,30 +56,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          find compiler compiler0 runtime std bootstrap \
-            -type f -name '*.sev' -print | LC_ALL=C sort > "$RUNNER_TEMP/seven.sources"
+          find compiler compiler0 runtime std bootstrap             -type f -name '*.sev' -print | LC_ALL=C sort > "$RUNNER_TEMP/seven.sources"
           diff -u seven.sources "$RUNNER_TEMP/seven.sources"
           grep -q '^indice seven.sources$' seven.pkg
           grep -q 'fonte_carrega_indice' compiler/source.sev
 
-      - name: Reconstruct audited Seven 0.2 transition seeds
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p build/native-seeds
-          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
-          unzip -t build/native-seeds.zip
-          unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
-          echo '80f1948e83b1c58c719c2ae0579a4b03edd1ccc1bf1e4e52091e2c66478feba5  build/native-seeds/seven-windows.exe' | sha256sum --check
-          chmod +x build/native-seeds/seven-linux
+      - name: Build current self-hosted Seven
+        uses: ./.github/actions/self-hosted-seven
 
-      - name: Exercise compiler, WebAssembly and conformance behavior
+      - name: Exercise stable CLI and conformance
         shell: bash
         run: |
           set -uo pipefail
-          seven="$PWD/build/native-seeds/seven-linux"
+          seven="$PWD/build/current-seven/bin/seven"
           failures=0
 
           "$seven" --version || failures=$((failures + 1))
@@ -92,7 +81,7 @@ jobs:
           while IFS= read -r file; do
             echo "valid: $file"
             "$seven" check "$file" || failures=$((failures + 1))
-          done < <(find conformance -type f -path '*/valid/*.sev' | sort)
+          done < <(find conformance -type f -path '*/valid/*.sev' | LC_ALL=C sort)
 
           while IFS= read -r file; do
             echo "invalid: $file"
@@ -100,32 +89,37 @@ jobs:
               echo "ERROR: invalid conformance file was accepted: $file"
               failures=$((failures + 1))
             fi
-          done < <(find conformance -type f -path '*/invalid/*.sev' | sort)
+          done < <(find conformance -type f -path '*/invalid/*.sev' | LC_ALL=C sort)
 
           test -s build/readiness-hello.svbc || failures=$((failures + 1))
           test -s build/readiness-web/app.wasm || failures=$((failures + 1))
           test -s build/readiness-web/seven.web.json || failures=$((failures + 1))
           grep -q '"target": "webassembly"' build/readiness-web/seven.web.json || failures=$((failures + 1))
+          grep -q '^transition_seed nao$' build/current-seven/PROVENANCE || failures=$((failures + 1))
 
           echo "readiness failures: $failures"
           test "$failures" -eq 0
 
-      - name: Check every indexed Seven source
+      - name: Check every indexed Seven source with self-hosted CLI
         shell: bash
         run: |
           set -euo pipefail
-          seven="$PWD/build/native-seeds/seven-linux"
+          seven="$PWD/build/current-seven/bin/seven"
           while IFS= read -r file; do
             echo "source: $file"
             "$seven" check "$file"
           done < seven.sources
 
-      - name: Reject production placeholders
+      - name: Reject production placeholders and transition compiler
         shell: bash
         run: |
           set -euo pipefail
           if grep -R -n -E 'comando ainda nao implementado|intrinseco puro ainda nao ligado' compiler runtime std; then
             echo 'Production placeholders remain in the public compiler/runtime surface.'
+            exit 1
+          fi
+          if grep -n 'seed/native/final/v1' .github/workflows/readiness.yml; then
+            echo 'Production readiness still references the archived transition compiler.'
             exit 1
           fi
 
