@@ -123,6 +123,7 @@ campo x64_console_windows_diga(
   guarda pos := codigo.tamanho
   nativo_u32_le(codigo, 0)
   lista_coloca(imports_windows, PatchImportWindowsX64 {
+    dll: "KERNEL32.dll",
     nome: "WriteFile",
     posicao: pos
   })

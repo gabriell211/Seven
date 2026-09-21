@@ -29,6 +29,11 @@ campo x64_syscall_bytes_emite(
     devolve sim
   fecha
 
+  veja nome == "sys_bytes_coloca_texto" e aridade == 2 ::
+    x64_bytes_core_coloca_texto(codigo, virtual_alloc_patches, alvo)
+    devolve sim
+  fecha
+
   veja nome == "sys_texto_bytes" e aridade == 1 ::
     x64_bytes_texto_para_bytes(codigo, virtual_alloc_patches, alvo)
     devolve sim
@@ -189,6 +194,102 @@ campo x64_bytes_bytes_para_texto(
   bytes_coloca_byte(codigo, 198)
   bytes_coloca_byte(codigo, 7)
   bytes_coloca_byte(codigo, 0)
+
+  x64_bytes_core_push_objeto(codigo)
+fecha
+
+
+campo x64_bytes_core_coloca_texto(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 238)
+  bytes_coloca_byte(codigo, 1)
+
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 232)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 196)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 92)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 86)
+  bytes_coloca_byte(codigo, 8)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 84)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 223)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 215)
+
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 86)
+  x64_bytes_core_garante(codigo, virtual_alloc_patches, alvo)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 92)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 108)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 24)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 86)
+  bytes_coloca_byte(codigo, 8)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 239)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 223)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 141)
+  bytes_coloca_byte(codigo, 118)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 252)
+  bytes_coloca_byte(codigo, 243)
+  bytes_coloca_byte(codigo, 164)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 211)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 92)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
 
   x64_bytes_core_push_objeto(codigo)
 fecha

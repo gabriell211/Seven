@@ -48,6 +48,7 @@ campo x64_compila(imagem: ImagemSvbc, alvo: AlvoNativo) -> Resultado<CodigoX64, 
     devolve Falha(nova_falha("SV-NATIVE-ARGS", "o campo inicio nativo nao recebe parametros"))
   fecha
 
+  guarda alcancaveis := x64_campos_alcancaveis(imagem, U32(indice_inicio))
   solta saida := CodigoX64 {
     bytes: bytes_novo(),
     entrada: 0,
@@ -60,48 +61,56 @@ campo x64_compila(imagem: ImagemSvbc, alvo: AlvoNativo) -> Resultado<CodigoX64, 
   solta saltos := lista<PatchSaltoX64>()
   solta chamadas := lista<PatchChamadaX64>()
 
+  solta indice_offset: U64 := 0
+  gira indice_offset < lista_tamanho(imagem.campos) ::
+    lista_coloca(offsets_campo, 0)
+    vira indice_offset := indice_offset + 1
+  fecha
+
   solta indice_campo: U64 := 0
   gira indice_campo < lista_tamanho(imagem.campos) ::
-    guarda campo := lista_pega(imagem.campos, indice_campo)
-    guarda fim := x64_campo_fim(imagem, campo.entrada)
+    veja lista_pega(alcancaveis, indice_campo) ::
+      guarda campo := lista_pega(imagem.campos, indice_campo)
+      guarda fim := x64_campo_fim(imagem, campo.entrada)
 
-    veja campo.entrada >= fim ::
-      devolve Falha(nova_falha("SV-NATIVE-CODIGO", "campo sem codigo: " + campo.nome))
-    fecha
-    veja campo.locais < campo.parametros ::
-      devolve Falha(nova_falha("SV-NATIVE-LOCAIS", "campo possui menos locais que parametros: " + campo.nome))
-    fecha
-
-    lista_coloca(offsets_campo, saida.bytes.tamanho)
-    veja Num(indice_campo) == indice_inicio ::
-      vira saida.entrada := saida.bytes.tamanho
-    fecha
-
-    x64_prologo(saida.bytes, campo.locais, campo.parametros)
-
-    solta ip := campo.entrada
-    gira ip < fim ::
-      lista_coloca(offsets_ip, OffsetIpX64 {
-        ip: ip,
-        offset: saida.bytes.tamanho
-      })
-
-      guarda instr := lista_pega(imagem.codigo, ip)
-      guarda emitida := x64_emite_instrucao(
-        saida,
-        imagem,
-        alvo,
-        U32(indice_campo),
-        campo.entrada,
-        fim,
-        instr,
-        saltos,
-        chamadas
-      )
-      veja emitida e Falha ::
-        devolve Falha(emitida.valor)
+      veja campo.entrada >= fim ::
+        devolve Falha(nova_falha("SV-NATIVE-CODIGO", "campo sem codigo: " + campo.nome))
       fecha
-      vira ip := ip + 1
+      veja campo.locais < campo.parametros ::
+        devolve Falha(nova_falha("SV-NATIVE-LOCAIS", "campo possui menos locais que parametros: " + campo.nome))
+      fecha
+
+      lista_define(offsets_campo, indice_campo, saida.bytes.tamanho)
+      veja Num(indice_campo) == indice_inicio ::
+        vira saida.entrada := saida.bytes.tamanho
+      fecha
+
+      x64_prologo(saida.bytes, campo.locais, campo.parametros)
+
+      solta ip := campo.entrada
+      gira ip < fim ::
+        lista_coloca(offsets_ip, OffsetIpX64 {
+          ip: ip,
+          offset: saida.bytes.tamanho
+        })
+
+        guarda instr := lista_pega(imagem.codigo, ip)
+        guarda emitida := x64_emite_instrucao(
+          saida,
+          imagem,
+          alvo,
+          U32(indice_campo),
+          campo.entrada,
+          fim,
+          instr,
+          saltos,
+          chamadas
+        )
+        veja emitida e Falha ::
+          devolve Falha(emitida.valor)
+        fecha
+        vira ip := ip + 1
+      fecha
     fecha
 
     vira indice_campo := indice_campo + 1
@@ -119,10 +128,55 @@ campo x64_compila(imagem: ImagemSvbc, alvo: AlvoNativo) -> Resultado<CodigoX64, 
     veja patch.campo >= lista_tamanho(offsets_campo) ::
       devolve Falha(nova_falha("SV-NATIVE-CALL", "campo de chamada fora do limite"))
     fecha
+    veja nao lista_pega(alcancaveis, patch.campo) ::
+      devolve Falha(nova_falha("SV-NATIVE-CALL", "campo chamado nao alcancavel"))
+    fecha
     x64_patch_rel32(saida.bytes, patch.posicao, lista_pega(offsets_campo, patch.campo))
   fecha
 
   devolve Valor(saida)
+fecha
+
+campo x64_campos_alcancaveis(imagem: ImagemSvbc, inicio: U32) -> Lista<Bit> ::
+  solta alcancaveis := lista<Bit>()
+  solta indice: U64 := 0
+  gira indice < lista_tamanho(imagem.campos) ::
+    lista_coloca(alcancaveis, nao)
+    vira indice := indice + 1
+  fecha
+
+  veja inicio >= lista_tamanho(imagem.campos) ::
+    devolve alcancaveis
+  fecha
+  lista_define(alcancaveis, inicio, sim)
+
+  solta mudou := sim
+  gira mudou ::
+    vira mudou := nao
+    vira indice := 0
+
+    gira indice < lista_tamanho(imagem.campos) ::
+      veja lista_pega(alcancaveis, indice) ::
+        guarda campo := lista_pega(imagem.campos, indice)
+        guarda fim := x64_campo_fim(imagem, campo.entrada)
+        solta ip := campo.entrada
+
+        gira ip < fim ::
+          guarda instr := lista_pega(imagem.codigo, ip)
+          veja instr.opcode e Chama ::
+            veja instr.a < lista_tamanho(imagem.campos) e nao lista_pega(alcancaveis, instr.a) ::
+              lista_define(alcancaveis, instr.a, sim)
+              vira mudou := sim
+            fecha
+          fecha
+          vira ip := ip + 1
+        fecha
+      fecha
+      vira indice := indice + 1
+    fecha
+  fecha
+
+  devolve alcancaveis
 fecha
 
 campo x64_campo_inicio(imagem: ImagemSvbc) -> Num ::

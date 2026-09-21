@@ -1,0 +1,30 @@
+modulo tests.native.pe_imports_backend
+
+usa seven.runtime.platform.native.imports
+usa seven.runtime.platform.native.pe
+usa seven.runtime.platform.native.x64
+usa std.base.lista
+usa std.mem.bytes
+
+campo inicio() -> Num toca disco ::
+  solta codigo := bytes_novo()
+  bytes_coloca_byte(codigo, 195)
+
+  solta imports := lista<PatchImportWindowsX64>()
+  lista_coloca(imports, PatchImportWindowsX64 {
+    dll: "WS2_32.dll",
+    nome: "socket",
+    posicao: 0
+  })
+
+  guarda pe := pe_x64(CodigoX64 {
+    bytes: codigo,
+    entrada: 0,
+    exit_process_patches: lista<U64>(),
+    virtual_alloc_patches: lista<U64>(),
+    imports_windows: imports
+  })
+
+  sys_arquivo_grava_bytes("build/native-pe-imports-proof.exe", pe)
+  devolve 0
+fecha

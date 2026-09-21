@@ -1,0 +1,45 @@
+modulo tests.native.http_health_app
+
+usa std.base.resultado
+usa std.base.texto
+usa std.mem.bytes
+usa std.net.tcp
+
+campo inicio() -> Num toca rede ::
+  guarda listener := tcp_escuta("127.0.0.1", 18778)
+  veja listener e Falha ::
+    devolve 10
+  fecha
+
+  guarda conexao := tcp_aceita(listener.valor)
+  veja conexao e Falha ::
+    tcp_listener_fecha(listener.valor)
+    devolve 11
+  fecha
+
+  guarda entrada := tcp_le(conexao.valor)
+  veja entrada e Falha ::
+    tcp_fecha(conexao.valor)
+    tcp_listener_fecha(listener.valor)
+    devolve 12
+  fecha
+
+  guarda requisicao := bytes_texto(entrada.valor)
+  veja texto_contem(requisicao, "GET /health ") == nao ::
+    tcp_fecha(conexao.valor)
+    tcp_listener_fecha(listener.valor)
+    devolve 13
+  fecha
+
+  guarda resposta := "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: 4\r\nconnection: close\r\n\r\ntrue"
+  guarda escrita := tcp_escreve(conexao.valor, texto_bytes(resposta))
+  veja escrita e Falha ::
+    tcp_fecha(conexao.valor)
+    tcp_listener_fecha(listener.valor)
+    devolve 14
+  fecha
+
+  tcp_fecha(conexao.valor)
+  tcp_listener_fecha(listener.valor)
+  devolve 42
+fecha

@@ -14,17 +14,21 @@ const PeSectionAlignX64: U64 := 4096
 molde PeImportLayoutX64 ::
   bytes: Bytes
   nomes: Lista<Texto>
+  dlls: Lista<Texto>
+  iat_offsets: Lista<U64>
   iat_offset: U64
   iat_tamanho: U64
+  diretorio_tamanho: U64
 fecha
 
 campo pe_x64(codigo: CodigoX64) -> Bytes ::
   guarda texto_virtual := nativo_alinha(codigo.bytes.tamanho, PeSectionAlignX64)
   guarda idata_rva := PeTextRvaX64 + texto_virtual
   guarda nomes_importados := pe_import_nomes(codigo)
-  guarda imports := pe_idata_x64(idata_rva, nomes_importados)
-  guarda exit_rva := pe_import_iat_rva(imports, idata_rva, "ExitProcess")
-  guarda virtual_alloc_rva := pe_import_iat_rva(imports, idata_rva, "VirtualAlloc")
+  guarda dlls_importadas := pe_import_dlls(codigo)
+  guarda imports := pe_idata_x64(idata_rva, nomes_importados, dlls_importadas)
+  guarda exit_rva := pe_import_iat_rva(imports, idata_rva, "KERNEL32.dll", "ExitProcess")
+  guarda virtual_alloc_rva := pe_import_iat_rva(imports, idata_rva, "KERNEL32.dll", "VirtualAlloc")
 
   para cada posicao em codigo.exit_process_patches ::
     guarda relativo := Num(exit_rva) - Num(PeTextRvaX64 + posicao + 4)
@@ -37,7 +41,7 @@ campo pe_x64(codigo: CodigoX64) -> Bytes ::
   fecha
 
   para cada patch em codigo.imports_windows ::
-    guarda import_rva := pe_import_iat_rva(imports, idata_rva, patch.nome)
+    guarda import_rva := pe_import_iat_rva(imports, idata_rva, patch.dll, patch.nome)
     guarda relativo := Num(import_rva) - Num(PeTextRvaX64 + patch.posicao + 4)
     nativo_define_u32_le(codigo.bytes, patch.posicao, relativo)
   fecha
@@ -58,7 +62,8 @@ campo pe_x64(codigo: CodigoX64) -> Bytes ::
     idata_rva,
     imagem_tamanho,
     imports.iat_offset,
-    imports.iat_tamanho
+    imports.iat_tamanho,
+    imports.diretorio_tamanho
   )
   pe_section_header(arquivo, ".text", codigo.bytes.tamanho, PeTextRvaX64, texto_raw, PeHeadersX64, 1610612768)
   pe_section_header(arquivo, ".idata", imports.bytes.tamanho, idata_rva, idata_raw, idata_offset, 3221225536)
@@ -73,38 +78,66 @@ fecha
 
 campo pe_import_nomes(codigo: CodigoX64) -> Lista<Texto> ::
   solta nomes := lista<Texto>()
-  lista_coloca(nomes, "ExitProcess")
-  lista_coloca(nomes, "VirtualAlloc")
+  solta dlls := lista<Texto>()
+  pe_import_adiciona(nomes, dlls, "KERNEL32.dll", "ExitProcess")
+  pe_import_adiciona(nomes, dlls, "KERNEL32.dll", "VirtualAlloc")
 
   para cada patch em codigo.imports_windows ::
-    veja nao pe_lista_contem_texto(nomes, patch.nome) ::
-      lista_coloca(nomes, patch.nome)
-    fecha
+    pe_import_adiciona(nomes, dlls, patch.dll, patch.nome)
   fecha
-
   devolve nomes
 fecha
 
-campo pe_lista_contem_texto(nomes: Lista<Texto>, procurado: Texto) -> Bit ::
-  para cada nome em nomes ::
-    veja nome == procurado :: devolve sim fecha
+campo pe_import_dlls(codigo: CodigoX64) -> Lista<Texto> ::
+  solta nomes := lista<Texto>()
+  solta dlls := lista<Texto>()
+  pe_import_adiciona(nomes, dlls, "KERNEL32.dll", "ExitProcess")
+  pe_import_adiciona(nomes, dlls, "KERNEL32.dll", "VirtualAlloc")
+
+  para cada patch em codigo.imports_windows ::
+    pe_import_adiciona(nomes, dlls, patch.dll, patch.nome)
   fecha
-  devolve nao
+  devolve dlls
 fecha
 
-campo pe_import_indice(nomes: Lista<Texto>, procurado: Texto) -> Num ::
+campo pe_import_adiciona(
+  nomes: Lista<Texto>,
+  dlls: Lista<Texto>,
+  dll: Texto,
+  nome: Texto
+) -> Nada ::
   solta indice: U64 := 0
-  para cada nome em nomes ::
-    veja nome == procurado :: devolve Num(indice) fecha
+  gira indice < lista_tamanho(nomes) ::
+    veja lista_pega(nomes, indice) == nome e lista_pega(dlls, indice) == dll ::
+      devolve nulo
+    fecha
+    vira indice := indice + 1
+  fecha
+  lista_coloca(nomes, nome)
+  lista_coloca(dlls, dll)
+fecha
+
+campo pe_import_indice(layout: PeImportLayoutX64, dll: Texto, nome: Texto) -> Num ::
+  solta indice: U64 := 0
+  gira indice < lista_tamanho(layout.nomes) ::
+    veja lista_pega(layout.nomes, indice) == nome e lista_pega(layout.dlls, indice) == dll ::
+      devolve Num(indice)
+    fecha
     vira indice := indice + 1
   fecha
   devolve -1
 fecha
 
-campo pe_import_iat_rva(layout: PeImportLayoutX64, idata_rva: U64, nome: Texto) -> U64 ::
-  guarda indice := pe_import_indice(layout.nomes, nome)
+campo pe_import_iat_rva(
+  layout: PeImportLayoutX64,
+  idata_rva: U64,
+  dll: Texto,
+  nome: Texto
+) -> U64 ::
+  guarda indice := pe_import_indice(layout, dll, nome)
   veja indice < 0 :: devolve 0 fecha
-  devolve idata_rva + layout.iat_offset + U64(indice) * 8
+  guarda offset: U64 := lista_pega(layout.iat_offsets, U64(indice))
+  devolve idata_rva + offset
 fecha
 
 campo pe_dos_header(arquivo: Bytes) -> Nada ::
@@ -120,7 +153,6 @@ campo pe_coff_header(arquivo: Bytes) -> Nada ::
   bytes_coloca_byte(arquivo, 69)
   bytes_coloca_byte(arquivo, 0)
   bytes_coloca_byte(arquivo, 0)
-
   nativo_u16_le(arquivo, 34404)
   nativo_u16_le(arquivo, 2)
   nativo_u32_le(arquivo, 0)
@@ -138,7 +170,8 @@ campo pe_optional_header(
   idata_rva: U64,
   imagem_tamanho: U64,
   iat_offset: U64,
-  iat_tamanho: U64
+  iat_tamanho: U64,
+  import_directory_tamanho: U64
 ) -> Nada ::
   nativo_u16_le(arquivo, 523)
   bytes_coloca_byte(arquivo, 0)
@@ -174,7 +207,7 @@ campo pe_optional_header(
   gira indice < 16 ::
     veja indice == 1 ::
       nativo_u32_le(arquivo, idata_rva)
-      nativo_u32_le(arquivo, 40)
+      nativo_u32_le(arquivo, import_directory_tamanho)
     outro ::
       veja indice == 12 ::
         nativo_u32_le(arquivo, idata_rva + iat_offset)
@@ -209,54 +242,128 @@ campo pe_section_header(
   nativo_u32_le(arquivo, caracteristicas)
 fecha
 
-campo pe_idata_x64(idata_rva: U64, nomes: Lista<Texto>) -> PeImportLayoutX64 ::
-  guarda quantidade := U64(lista_tamanho(nomes))
-  guarda oft_offset: U64 := 40
-  guarda tabela_tamanho := (quantidade + 1) * 8
-  guarda iat_offset := oft_offset + tabela_tamanho
-  guarda dll_offset := iat_offset + tabela_tamanho
-  guarda dll := texto_bytes("KERNEL32.dll")
-  solta cursor := nativo_alinha(dll_offset + dll.tamanho + 1, 2)
-  solta nomes_offsets: Lista<U64> := lista<U64>()
+campo pe_idata_x64(
+  idata_rva: U64,
+  nomes: Lista<Texto>,
+  dlls: Lista<Texto>
+) -> PeImportLayoutX64 ::
+  solta kernel_nomes := lista<Texto>()
+  solta winsock_nomes := lista<Texto>()
 
-  para cada nome em nomes ::
-    lista_coloca(nomes_offsets, cursor)
+  solta indice: U64 := 0
+  gira indice < lista_tamanho(nomes) ::
+    veja lista_pega(dlls, indice) == "WS2_32.dll" ::
+      lista_coloca(winsock_nomes, lista_pega(nomes, indice))
+    outro ::
+      lista_coloca(kernel_nomes, lista_pega(nomes, indice))
+    fecha
+    vira indice := indice + 1
+  fecha
+
+  guarda tem_winsock := lista_tamanho(winsock_nomes) > 0
+  solta qtd_dll: U64 := 1
+  veja tem_winsock :: vira qtd_dll := 2 fecha
+  guarda diretorio_tamanho := (qtd_dll + 1) * 20
+
+  guarda kernel_qtd := U64(lista_tamanho(kernel_nomes))
+  guarda winsock_qtd := U64(lista_tamanho(winsock_nomes))
+  guarda kernel_tabela := (kernel_qtd + 1) * 8
+  guarda winsock_tabela := (winsock_qtd + 1) * 8
+
+  guarda kernel_oft := diretorio_tamanho
+  guarda winsock_oft := kernel_oft + kernel_tabela
+  guarda kernel_iat := winsock_oft + winsock_tabela
+  guarda winsock_iat := kernel_iat + kernel_tabela
+
+  guarda kernel_dll_offset := winsock_iat + winsock_tabela
+  guarda kernel_dll_bytes := texto_bytes("KERNEL32.dll")
+  solta cursor := nativo_alinha(kernel_dll_offset + kernel_dll_bytes.tamanho + 1, 2)
+
+  solta winsock_dll_offset: U64 := 0
+  veja tem_winsock ::
+    vira winsock_dll_offset := cursor
+    guarda winsock_dll_bytes := texto_bytes("WS2_32.dll")
+    vira cursor := nativo_alinha(winsock_dll_offset + winsock_dll_bytes.tamanho + 1, 2)
+  fecha
+
+  solta kernel_hints := lista<U64>()
+  para cada nome em kernel_nomes ::
+    lista_coloca(kernel_hints, cursor)
+    guarda dados := texto_bytes(nome)
+    vira cursor := nativo_alinha(cursor + 2 + dados.tamanho + 1, 2)
+  fecha
+
+  solta winsock_hints := lista<U64>()
+  para cada nome em winsock_nomes ::
+    lista_coloca(winsock_hints, cursor)
     guarda dados := texto_bytes(nome)
     vira cursor := nativo_alinha(cursor + 2 + dados.tamanho + 1, 2)
   fecha
 
   solta idata := bytes_novo()
-  nativo_u32_le(idata, idata_rva + oft_offset)
-  nativo_u32_le(idata, 0)
-  nativo_u32_le(idata, 0)
-  nativo_u32_le(idata, idata_rva + dll_offset)
-  nativo_u32_le(idata, idata_rva + iat_offset)
-  nativo_preenche_ate(idata, 40, 0)
 
-  solta indice_offset: U64 := 0
-  gira indice_offset < lista_tamanho(nomes_offsets) ::
-    solta hint_offset: U64 := lista_pega(nomes_offsets, indice_offset)
-    nativo_u64_le(idata, idata_rva + hint_offset)
-    vira indice_offset := indice_offset + 1
+  nativo_u32_le(idata, idata_rva + kernel_oft)
+  nativo_u32_le(idata, 0)
+  nativo_u32_le(idata, 0)
+  nativo_u32_le(idata, idata_rva + kernel_dll_offset)
+  nativo_u32_le(idata, idata_rva + kernel_iat)
+
+  veja tem_winsock ::
+    nativo_u32_le(idata, idata_rva + winsock_oft)
+    nativo_u32_le(idata, 0)
+    nativo_u32_le(idata, 0)
+    nativo_u32_le(idata, idata_rva + winsock_dll_offset)
+    nativo_u32_le(idata, idata_rva + winsock_iat)
+  fecha
+
+  nativo_preenche_ate(idata, diretorio_tamanho, 0)
+
+  solta hint_indice: U64 := 0
+  gira hint_indice < lista_tamanho(kernel_hints) ::
+    guarda offset: U64 := lista_pega(kernel_hints, hint_indice)
+    nativo_u64_le(idata, idata_rva + offset)
+    vira hint_indice := hint_indice + 1
   fecha
   nativo_u64_le(idata, 0)
 
-  vira indice_offset := 0
-  gira indice_offset < lista_tamanho(nomes_offsets) ::
-    solta hint_offset: U64 := lista_pega(nomes_offsets, indice_offset)
-    nativo_u64_le(idata, idata_rva + hint_offset)
-    vira indice_offset := indice_offset + 1
+  vira hint_indice := 0
+  gira hint_indice < lista_tamanho(winsock_hints) ::
+    guarda offset: U64 := lista_pega(winsock_hints, hint_indice)
+    nativo_u64_le(idata, idata_rva + offset)
+    vira hint_indice := hint_indice + 1
   fecha
   nativo_u64_le(idata, 0)
 
-  nativo_preenche_ate(idata, dll_offset, 0)
+  vira hint_indice := 0
+  gira hint_indice < lista_tamanho(kernel_hints) ::
+    guarda offset: U64 := lista_pega(kernel_hints, hint_indice)
+    nativo_u64_le(idata, idata_rva + offset)
+    vira hint_indice := hint_indice + 1
+  fecha
+  nativo_u64_le(idata, 0)
+
+  vira hint_indice := 0
+  gira hint_indice < lista_tamanho(winsock_hints) ::
+    guarda offset: U64 := lista_pega(winsock_hints, hint_indice)
+    nativo_u64_le(idata, idata_rva + offset)
+    vira hint_indice := hint_indice + 1
+  fecha
+  nativo_u64_le(idata, 0)
+
+  nativo_preenche_ate(idata, kernel_dll_offset, 0)
   bytes_coloca_texto(idata, "KERNEL32.dll")
   bytes_coloca_byte(idata, 0)
 
-  solta indice: U64 := 0
-  gira indice < quantidade ::
-    solta offset: U64 := lista_pega(nomes_offsets, indice)
-    solta nome: Texto := lista_pega(nomes, indice)
+  veja tem_winsock ::
+    nativo_preenche_ate(idata, winsock_dll_offset, 0)
+    bytes_coloca_texto(idata, "WS2_32.dll")
+    bytes_coloca_byte(idata, 0)
+  fecha
+
+  vira indice := 0
+  gira indice < kernel_qtd ::
+    guarda offset := lista_pega(kernel_hints, indice)
+    guarda nome := lista_pega(kernel_nomes, indice)
     nativo_preenche_ate(idata, offset, 0)
     nativo_u16_le(idata, 0)
     bytes_coloca_texto(idata, nome)
@@ -264,10 +371,54 @@ campo pe_idata_x64(idata_rva: U64, nomes: Lista<Texto>) -> PeImportLayoutX64 ::
     vira indice := indice + 1
   fecha
 
+  vira indice := 0
+  gira indice < winsock_qtd ::
+    guarda offset := lista_pega(winsock_hints, indice)
+    guarda nome := lista_pega(winsock_nomes, indice)
+    nativo_preenche_ate(idata, offset, 0)
+    nativo_u16_le(idata, 0)
+    bytes_coloca_texto(idata, nome)
+    bytes_coloca_byte(idata, 0)
+    vira indice := indice + 1
+  fecha
+
+  solta iat_offsets := lista<U64>()
+  vira indice := 0
+  gira indice < lista_tamanho(nomes) ::
+    guarda nome := lista_pega(nomes, indice)
+    guarda dll := lista_pega(dlls, indice)
+    veja dll == "WS2_32.dll" ::
+      guarda local_winsock := pe_lista_indice_texto(winsock_nomes, nome)
+      lista_coloca(iat_offsets, winsock_iat + U64(local_winsock) * 8)
+    outro ::
+      guarda local_kernel := pe_lista_indice_texto(kernel_nomes, nome)
+      lista_coloca(iat_offsets, kernel_iat + U64(local_kernel) * 8)
+    fecha
+    vira indice := indice + 1
+  fecha
+
+  guarda iat_inicio := kernel_iat
+  solta iat_fim := kernel_iat + kernel_tabela
+  veja tem_winsock ::
+    vira iat_fim := winsock_iat + winsock_tabela
+  fecha
+
   devolve PeImportLayoutX64 {
     bytes: idata,
     nomes: nomes,
-    iat_offset: iat_offset,
-    iat_tamanho: tabela_tamanho
+    dlls: dlls,
+    iat_offsets: iat_offsets,
+    iat_offset: iat_inicio,
+    iat_tamanho: iat_fim - iat_inicio,
+    diretorio_tamanho: diretorio_tamanho
   }
+fecha
+
+campo pe_lista_indice_texto(itens: Lista<Texto>, procurado: Texto) -> Num ::
+  solta indice: U64 := 0
+  para cada item em itens ::
+    veja item == procurado :: devolve Num(indice) fecha
+    vira indice := indice + 1
+  fecha
+  devolve -1
 fecha

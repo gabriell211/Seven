@@ -1,0 +1,174 @@
+modulo seven.runtime.platform.native.value_build
+
+usa seven.runtime.platform.native.bytes
+usa seven.runtime.platform.native.object_runtime
+usa seven.runtime.platform.native.target
+usa std.base.lista
+usa std.mem.bytes
+
+campo x64_runtime_push_texto_constante(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo,
+  valor: Texto
+) -> Nada ::
+  guarda dados := texto_bytes(valor)
+  x64_runtime_aloca(codigo, virtual_alloc_patches, alvo, dados.tamanho + 17)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 195)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 3)
+  nativo_u32_le(codigo, 1)
+
+  x64_runtime_mov_rax(codigo, dados.tamanho)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 67)
+  bytes_coloca_byte(codigo, 8)
+
+  solta indice: U64 := 0
+  gira indice < dados.tamanho ::
+    x64_runtime_texto_byte_imediato(codigo, 16 + indice, bytes_pega(dados, indice))
+    vira indice := indice + 1
+  fecha
+  x64_runtime_texto_byte_imediato(codigo, 16 + dados.tamanho, 0)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 216)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 80)
+fecha
+
+campo x64_runtime_texto_byte_imediato(
+  codigo: Bytes,
+  deslocamento: U64,
+  valor: Byte
+) -> Nada ::
+  veja deslocamento <= 127 ::
+    bytes_coloca_byte(codigo, 198)
+    bytes_coloca_byte(codigo, 67)
+    bytes_coloca_byte(codigo, Byte(deslocamento))
+    bytes_coloca_byte(codigo, valor)
+    devolve nulo
+  fecha
+
+  bytes_coloca_byte(codigo, 198)
+  bytes_coloca_byte(codigo, 131)
+  nativo_u32_le(codigo, deslocamento)
+  bytes_coloca_byte(codigo, valor)
+fecha
+
+campo x64_runtime_push_numero_rax(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 224)
+  bytes_coloca_byte(codigo, 80)
+fecha
+
+campo x64_runtime_push_nulo(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 80)
+fecha
+
+campo x64_runtime_push_objeto_id_r15(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo,
+  tipo: Texto
+) -> Nada ::
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "__tipo")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, tipo)
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "tag")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, tipo)
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "id")
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 248)
+  x64_runtime_push_numero_rax(codigo)
+  x64_runtime_obj_novo(codigo, virtual_alloc_patches, alvo, 6)
+fecha
+
+campo x64_runtime_push_resultado_valor_da_pilha(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 95)
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "__tipo")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "Valor")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "tag")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "Valor")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "valor")
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 87)
+  x64_runtime_obj_novo(codigo, virtual_alloc_patches, alvo, 6)
+fecha
+
+campo x64_runtime_push_resultado_nulo(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  x64_runtime_push_nulo(codigo)
+  x64_runtime_push_resultado_valor_da_pilha(codigo, virtual_alloc_patches, alvo)
+fecha
+
+campo x64_runtime_push_resultado_falha(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo,
+  codigo_falha: Texto,
+  mensagem: Texto
+) -> Nada ::
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "__tipo")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "Falha")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "tag")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "Falha")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "codigo")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, codigo_falha)
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "mensagem")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, mensagem)
+  x64_runtime_obj_novo(codigo, virtual_alloc_patches, alvo, 8)
+  x64_runtime_push_resultado_falha_objeto_da_pilha(codigo, virtual_alloc_patches, alvo)
+fecha
+
+campo x64_runtime_push_resultado_falha_objeto_da_pilha(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 95)
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "__tipo")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "Falha")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "tag")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "Falha")
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "valor")
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 87)
+  x64_runtime_obj_novo(codigo, virtual_alloc_patches, alvo, 6)
+fecha
+
+campo x64_runtime_objeto_id_para_r15(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  x64_runtime_push_texto_constante(codigo, virtual_alloc_patches, alvo, "id")
+  x64_runtime_obj_pega(codigo)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 95)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 239)
+fecha

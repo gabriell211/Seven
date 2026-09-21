@@ -1,0 +1,859 @@
+modulo seven.runtime.platform.native.syscall_net
+
+usa seven.runtime.platform.native.bytes
+usa seven.runtime.platform.native.imports
+usa seven.runtime.platform.native.object_runtime
+usa seven.runtime.platform.native.target
+usa seven.runtime.platform.native.value_build
+usa std.base.lista
+usa std.mem.bytes
+
+const TcpBufferNativo: U64 := 65536
+const TcpTimeoutMsNativo: U64 := 5000
+const TipoBytesTcp: U64 := 4
+
+campo x64_syscall_net_emite(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  alvo: AlvoNativo,
+  nome: Texto,
+  aridade: U32
+) -> Bit ::
+  veja nome == "sys_tcp_escuta" e aridade == 2 ::
+    veja alvo.formato == "elf" ::
+      x64_tcp_linux_escuta(codigo, virtual_alloc_patches, alvo)
+    outro ::
+      x64_tcp_windows_escuta(codigo, virtual_alloc_patches, imports_windows, alvo)
+    fecha
+    devolve sim
+  fecha
+
+  veja nome == "sys_tcp_aceita" e aridade == 1 ::
+    veja alvo.formato == "elf" ::
+      x64_tcp_linux_aceita(codigo, virtual_alloc_patches, alvo)
+    outro ::
+      x64_tcp_windows_aceita(codigo, virtual_alloc_patches, imports_windows, alvo)
+    fecha
+    devolve sim
+  fecha
+
+  veja nome == "sys_tcp_le" e aridade == 1 ::
+    veja alvo.formato == "elf" ::
+      x64_tcp_linux_le(codigo, virtual_alloc_patches, alvo)
+    outro ::
+      x64_tcp_windows_le(codigo, virtual_alloc_patches, imports_windows, alvo)
+    fecha
+    devolve sim
+  fecha
+
+  veja nome == "sys_tcp_escreve" e aridade == 2 ::
+    veja alvo.formato == "elf" ::
+      x64_tcp_linux_escreve(codigo, virtual_alloc_patches, alvo)
+    outro ::
+      x64_tcp_windows_escreve(codigo, virtual_alloc_patches, imports_windows, alvo)
+    fecha
+    devolve sim
+  fecha
+
+  veja nome == "sys_tcp_fecha" e aridade == 1 ::
+    veja alvo.formato == "elf" ::
+      x64_tcp_linux_fecha(codigo, virtual_alloc_patches, alvo)
+    outro ::
+      x64_tcp_windows_fecha(codigo, virtual_alloc_patches, imports_windows, alvo)
+    fecha
+    devolve sim
+  fecha
+
+  devolve nao
+fecha
+
+campo x64_tcp_descarta_host_porta(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 209)
+  bytes_coloca_byte(codigo, 238)
+  bytes_coloca_byte(codigo, 88)
+fecha
+
+campo x64_tcp_sockaddr_loopback(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 236)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 4)
+  bytes_coloca_byte(codigo, 36)
+  nativo_u32_le(codigo, 2)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+  nativo_u32_le(codigo, 0)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 240)
+  bytes_coloca_byte(codigo, 102)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 193)
+  bytes_coloca_byte(codigo, 198)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 102)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 116)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 2)
+
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 4)
+  nativo_u32_le(codigo, 16777343)
+fecha
+
+campo x64_tcp_sockaddr_libera(codigo: Bytes) -> Nada ::
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 196)
+  bytes_coloca_byte(codigo, 16)
+fecha
+
+campo x64_tcp_linux_escuta(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  x64_tcp_descarta_host_porta(codigo)
+
+  bytes_coloca_byte(codigo, 191)
+  nativo_u32_le(codigo, 2)
+  bytes_coloca_byte(codigo, 190)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 210)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 41)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda socket_falhou := x64_runtime_jcc(codigo, 136)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 199)
+
+  x64_tcp_sockaddr_loopback(codigo)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 230)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, 16)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 49)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+  x64_tcp_sockaddr_libera(codigo)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda bind_falhou := x64_runtime_jcc(codigo, 136)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 190)
+  nativo_u32_le(codigo, 128)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 50)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda listen_falhou := x64_runtime_jcc(codigo, 136)
+
+  x64_runtime_push_objeto_id_r15(codigo, virtual_alloc_patches, alvo, "ListenerTcp")
+  x64_runtime_push_resultado_valor_da_pilha(codigo, virtual_alloc_patches, alvo)
+  guarda fim := x64_runtime_jmp(codigo)
+
+  guarda fecha_socket := codigo.tamanho
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 3)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+
+  guarda falha := codigo.tamanho
+  x64_runtime_push_resultado_falha(
+    codigo,
+    virtual_alloc_patches,
+    alvo,
+    "SV-NATIVE-TCP-LISTEN",
+    "nao foi possivel abrir o listener TCP nativo"
+  )
+
+  guarda fim_real := codigo.tamanho
+  x64_runtime_patch(codigo, socket_falhou, falha)
+  x64_runtime_patch(codigo, bind_falhou, fecha_socket)
+  x64_runtime_patch(codigo, listen_falhou, fecha_socket)
+  x64_runtime_patch(codigo, fim, fim_real)
+fecha
+
+campo x64_tcp_linux_aceita(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  x64_runtime_objeto_id_para_r15(codigo, virtual_alloc_patches, alvo)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 246)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 210)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 43)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda falhou := x64_runtime_jcc(codigo, 136)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 199)
+
+  guarda timeout_le := x64_tcp_linux_timeout_opcao(codigo, 20)
+  guarda timeout_escreve := x64_tcp_linux_timeout_opcao(codigo, 21)
+
+  x64_runtime_push_objeto_id_r15(codigo, virtual_alloc_patches, alvo, "ConexaoTcp")
+  x64_runtime_push_resultado_valor_da_pilha(codigo, virtual_alloc_patches, alvo)
+  guarda fim := x64_runtime_jmp(codigo)
+
+  guarda falha_timeout_fecha := codigo.tamanho
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 3)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+
+  guarda falha_timeout := codigo.tamanho
+  x64_runtime_push_resultado_falha(
+    codigo,
+    virtual_alloc_patches,
+    alvo,
+    "SV-NATIVE-TCP-TIMEOUT",
+    "nao foi possivel configurar timeout da conexao TCP nativa"
+  )
+  guarda pula_falha_accept := x64_runtime_jmp(codigo)
+
+  guarda falha := codigo.tamanho
+  x64_runtime_push_resultado_falha(
+    codigo,
+    virtual_alloc_patches,
+    alvo,
+    "SV-NATIVE-TCP-ACCEPT",
+    "falha ao aceitar conexao TCP nativa"
+  )
+
+  guarda fim_real := codigo.tamanho
+  x64_runtime_patch(codigo, falhou, falha)
+  x64_runtime_patch(codigo, timeout_le, falha_timeout_fecha)
+  x64_runtime_patch(codigo, timeout_escreve, falha_timeout_fecha)
+  x64_runtime_patch(codigo, pula_falha_accept, fim_real)
+  x64_runtime_patch(codigo, fim, fim_real)
+fecha
+
+campo x64_tcp_linux_timeout_opcao(codigo: Bytes, opcao: U32) -> U64 ::
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 236)
+  bytes_coloca_byte(codigo, 16)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 4)
+  bytes_coloca_byte(codigo, 36)
+  nativo_u32_le(codigo, TcpTimeoutMsNativo / 1000)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+  nativo_u32_le(codigo, 0)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 190)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, opcao)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 226)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 16)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 54)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 196)
+  bytes_coloca_byte(codigo, 16)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  devolve x64_runtime_jcc(codigo, 136)
+fecha
+
+campo x64_tcp_monta_bytes_r13_r14(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  x64_runtime_aloca(codigo, virtual_alloc_patches, alvo, 32)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 196)
+
+  x64_runtime_mov_rax(codigo, TipoBytesTcp)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 4)
+  bytes_coloca_byte(codigo, 36)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 116)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+
+  x64_runtime_mov_rax(codigo, TcpBufferNativo)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 16)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 108)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 24)
+
+  x64_runtime_push_objeto(codigo)
+fecha
+
+campo x64_tcp_linux_le(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  x64_runtime_objeto_id_para_r15(codigo, virtual_alloc_patches, alvo)
+  x64_runtime_aloca(codigo, virtual_alloc_patches, alvo, TcpBufferNativo)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 197)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 238)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, TcpBufferNativo)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda falhou := x64_runtime_jcc(codigo, 136)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 198)
+
+  x64_tcp_monta_bytes_r13_r14(codigo, virtual_alloc_patches, alvo)
+  x64_runtime_push_resultado_valor_da_pilha(codigo, virtual_alloc_patches, alvo)
+  guarda fim := x64_runtime_jmp(codigo)
+
+  guarda falha := codigo.tamanho
+  x64_runtime_push_resultado_falha(
+    codigo,
+    virtual_alloc_patches,
+    alvo,
+    "SV-NATIVE-TCP-READ",
+    "falha ao ler da conexao TCP nativa"
+  )
+  guarda fim_real := codigo.tamanho
+  x64_runtime_patch(codigo, falhou, falha)
+  x64_runtime_patch(codigo, fim, fim_real)
+fecha
+
+campo x64_tcp_linux_escreve(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 86)
+  bytes_coloca_byte(codigo, 80)
+  x64_runtime_objeto_id_para_r15(codigo, virtual_alloc_patches, alvo)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 238)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 102)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 110)
+  bytes_coloca_byte(codigo, 24)
+
+  guarda loop := codigo.tamanho
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 228)
+  guarda sucesso := x64_runtime_jcc(codigo, 132)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 238)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 226)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda falhou := x64_runtime_jcc(codigo, 142)
+
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 197)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 41)
+  bytes_coloca_byte(codigo, 196)
+  guarda volta := x64_runtime_jmp(codigo)
+  x64_runtime_patch(codigo, volta, loop)
+
+  guarda ok := codigo.tamanho
+  x64_runtime_push_resultado_nulo(codigo, virtual_alloc_patches, alvo)
+  guarda fim := x64_runtime_jmp(codigo)
+
+  guarda falha := codigo.tamanho
+  x64_runtime_push_resultado_falha(
+    codigo,
+    virtual_alloc_patches,
+    alvo,
+    "SV-NATIVE-TCP-WRITE",
+    "falha ao escrever na conexao TCP nativa"
+  )
+
+  guarda fim_real := codigo.tamanho
+  x64_runtime_patch(codigo, sucesso, ok)
+  x64_runtime_patch(codigo, falhou, falha)
+  x64_runtime_patch(codigo, fim, fim_real)
+fecha
+
+campo x64_tcp_linux_fecha(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  x64_runtime_objeto_id_para_r15(codigo, virtual_alloc_patches, alvo)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 255)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 3)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+  x64_runtime_push_nulo(codigo)
+fecha
+
+campo x64_tcp_windows_escuta(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  x64_tcp_descarta_host_porta(codigo)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 129)
+  bytes_coloca_byte(codigo, 236)
+  nativo_u32_le(codigo, 512)
+  bytes_coloca_byte(codigo, 185)
+  nativo_u32_le(codigo, 514)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 226)
+  x64_windows_import_chama_dll(codigo, imports_windows, "WS2_32.dll", "WSAStartup", 32)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 129)
+  bytes_coloca_byte(codigo, 196)
+  nativo_u32_le(codigo, 512)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda wsa_falhou := x64_runtime_jcc(codigo, 133)
+
+  bytes_coloca_byte(codigo, 185)
+  nativo_u32_le(codigo, 2)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, 1)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 6)
+  x64_windows_import_chama_dll(codigo, imports_windows, "WS2_32.dll", "socket", 32)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 255)
+  guarda socket_falhou := x64_runtime_jcc(codigo, 132)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 199)
+
+  x64_tcp_sockaddr_loopback(codigo)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 249)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 226)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 16)
+  x64_windows_import_chama_dll(codigo, imports_windows, "WS2_32.dll", "bind", 32)
+  x64_tcp_sockaddr_libera(codigo)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 255)
+  guarda bind_falhou := x64_runtime_jcc(codigo, 132)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 249)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, 128)
+  x64_windows_import_chama_dll(codigo, imports_windows, "WS2_32.dll", "listen", 32)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 255)
+  guarda listen_falhou := x64_runtime_jcc(codigo, 132)
+
+  x64_runtime_push_objeto_id_r15(codigo, virtual_alloc_patches, alvo, "ListenerTcp")
+  x64_runtime_push_resultado_valor_da_pilha(codigo, virtual_alloc_patches, alvo)
+  guarda fim := x64_runtime_jmp(codigo)
+
+  guarda fecha_socket := codigo.tamanho
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 249)
+  x64_windows_import_chama_dll(codigo, imports_windows, "WS2_32.dll", "closesocket", 32)
+
+  guarda falha := codigo.tamanho
+  x64_runtime_push_resultado_falha(
+    codigo,
+    virtual_alloc_patches,
+    alvo,
+    "SV-NATIVE-TCP-LISTEN",
+    "nao foi possivel abrir o listener TCP nativo"
+  )
+  guarda fim_real := codigo.tamanho
+  x64_runtime_patch(codigo, wsa_falhou, falha)
+  x64_runtime_patch(codigo, socket_falhou, falha)
+  x64_runtime_patch(codigo, bind_falhou, fecha_socket)
+  x64_runtime_patch(codigo, listen_falhou, fecha_socket)
+  x64_runtime_patch(codigo, fim, fim_real)
+fecha
+
+campo x64_tcp_windows_aceita(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  x64_runtime_objeto_id_para_r15(codigo, virtual_alloc_patches, alvo)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 249)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 210)
+  bytes_coloca_byte(codigo, 69)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  x64_windows_import_chama_dll(codigo, imports_windows, "WS2_32.dll", "accept", 32)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 255)
+  guarda falhou := x64_runtime_jcc(codigo, 132)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 199)
+
+  guarda timeout_le := x64_tcp_windows_timeout_opcao(codigo, imports_windows, 4102)
+  guarda timeout_escreve := x64_tcp_windows_timeout_opcao(codigo, imports_windows, 4101)
+
+  x64_runtime_push_objeto_id_r15(codigo, virtual_alloc_patches, alvo, "ConexaoTcp")
+  x64_runtime_push_resultado_valor_da_pilha(codigo, virtual_alloc_patches, alvo)
+  guarda fim := x64_runtime_jmp(codigo)
+
+  guarda falha_timeout_fecha := codigo.tamanho
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 249)
+  x64_windows_import_chama_dll(codigo, imports_windows, "WS2_32.dll", "closesocket", 32)
+
+  guarda falha_timeout := codigo.tamanho
+  x64_runtime_push_resultado_falha(
+    codigo,
+    virtual_alloc_patches,
+    alvo,
+    "SV-NATIVE-TCP-TIMEOUT",
+    "nao foi possivel configurar timeout da conexao TCP nativa"
+  )
+  guarda pula_falha_accept := x64_runtime_jmp(codigo)
+
+  guarda falha := codigo.tamanho
+  x64_runtime_push_resultado_falha(
+    codigo,
+    virtual_alloc_patches,
+    alvo,
+    "SV-NATIVE-TCP-ACCEPT",
+    "falha ao aceitar conexao TCP nativa"
+  )
+
+  guarda fim_real := codigo.tamanho
+  x64_runtime_patch(codigo, falhou, falha)
+  x64_runtime_patch(codigo, timeout_le, falha_timeout_fecha)
+  x64_runtime_patch(codigo, timeout_escreve, falha_timeout_fecha)
+  x64_runtime_patch(codigo, pula_falha_accept, fim_real)
+  x64_runtime_patch(codigo, fim, fim_real)
+fecha
+
+campo x64_tcp_windows_timeout_opcao(
+  codigo: Bytes,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  opcao: U32
+) -> U64 ::
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 236)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 4)
+  bytes_coloca_byte(codigo, 36)
+  nativo_u32_le(codigo, TcpTimeoutMsNativo)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 249)
+  bytes_coloca_byte(codigo, 186)
+  nativo_u32_le(codigo, 65535)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, opcao)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 225)
+
+  x64_windows_import_chama_dll_arg5_u32(
+    codigo,
+    imports_windows,
+    "WS2_32.dll",
+    "setsockopt",
+    4
+  )
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 196)
+  bytes_coloca_byte(codigo, 16)
+
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 255)
+  devolve x64_runtime_jcc(codigo, 132)
+fecha
+
+campo x64_tcp_windows_le(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  x64_runtime_objeto_id_para_r15(codigo, virtual_alloc_patches, alvo)
+  x64_runtime_aloca(codigo, virtual_alloc_patches, alvo, TcpBufferNativo)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 197)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 249)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 234)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, TcpBufferNativo)
+  bytes_coloca_byte(codigo, 69)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 201)
+  x64_windows_import_chama_dll(codigo, imports_windows, "WS2_32.dll", "recv", 32)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 255)
+  guarda falhou := x64_runtime_jcc(codigo, 132)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 198)
+
+  x64_tcp_monta_bytes_r13_r14(codigo, virtual_alloc_patches, alvo)
+  x64_runtime_push_resultado_valor_da_pilha(codigo, virtual_alloc_patches, alvo)
+  guarda fim := x64_runtime_jmp(codigo)
+
+  guarda falha := codigo.tamanho
+  x64_runtime_push_resultado_falha(
+    codigo,
+    virtual_alloc_patches,
+    alvo,
+    "SV-NATIVE-TCP-READ",
+    "falha ao ler da conexao TCP nativa"
+  )
+  guarda fim_real := codigo.tamanho
+  x64_runtime_patch(codigo, falhou, falha)
+  x64_runtime_patch(codigo, fim, fim_real)
+fecha
+
+campo x64_tcp_windows_escreve(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+  bytes_coloca_byte(codigo, 88)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 86)
+  bytes_coloca_byte(codigo, 80)
+  x64_runtime_objeto_id_para_r15(codigo, virtual_alloc_patches, alvo)
+  bytes_coloca_byte(codigo, 65)
+  bytes_coloca_byte(codigo, 94)
+
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 238)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 102)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 110)
+  bytes_coloca_byte(codigo, 24)
+
+  guarda loop := codigo.tamanho
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 228)
+  guarda sucesso := x64_runtime_jcc(codigo, 132)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 249)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 234)
+  bytes_coloca_byte(codigo, 69)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 224)
+  bytes_coloca_byte(codigo, 69)
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 201)
+  x64_windows_import_chama_dll(codigo, imports_windows, "WS2_32.dll", "send", 32)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 255)
+  guarda falhou := x64_runtime_jcc(codigo, 142)
+
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 1)
+  bytes_coloca_byte(codigo, 197)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 41)
+  bytes_coloca_byte(codigo, 196)
+  guarda volta := x64_runtime_jmp(codigo)
+  x64_runtime_patch(codigo, volta, loop)
+
+  guarda ok := codigo.tamanho
+  x64_runtime_push_resultado_nulo(codigo, virtual_alloc_patches, alvo)
+  guarda fim := x64_runtime_jmp(codigo)
+
+  guarda falha := codigo.tamanho
+  x64_runtime_push_resultado_falha(
+    codigo,
+    virtual_alloc_patches,
+    alvo,
+    "SV-NATIVE-TCP-WRITE",
+    "falha ao escrever na conexao TCP nativa"
+  )
+  guarda fim_real := codigo.tamanho
+  x64_runtime_patch(codigo, sucesso, ok)
+  x64_runtime_patch(codigo, falhou, falha)
+  x64_runtime_patch(codigo, fim, fim_real)
+fecha
+
+campo x64_tcp_windows_fecha(
+  codigo: Bytes,
+  virtual_alloc_patches: Lista<U64>,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  alvo: AlvoNativo
+) -> Nada ::
+  x64_runtime_objeto_id_para_r15(codigo, virtual_alloc_patches, alvo)
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 249)
+  x64_windows_import_chama_dll(codigo, imports_windows, "WS2_32.dll", "closesocket", 32)
+  x64_runtime_push_nulo(codigo)
+fecha

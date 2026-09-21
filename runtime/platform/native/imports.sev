@@ -5,6 +5,7 @@ usa std.base.lista
 usa std.mem.bytes
 
 molde PatchImportWindowsX64 ::
+  dll: Texto
   nome: Texto
   posicao: U64
 fecha
@@ -14,12 +15,103 @@ campo x64_windows_import_call(
   imports_windows: Lista<PatchImportWindowsX64>,
   nome: Texto
 ) -> Nada ::
+  x64_windows_import_call_dll(codigo, imports_windows, "KERNEL32.dll", nome)
+fecha
+
+campo x64_windows_import_call_dll(
+  codigo: Bytes,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  dll: Texto,
+  nome: Texto
+) -> Nada ::
   bytes_coloca_byte(codigo, 255)
   bytes_coloca_byte(codigo, 21)
   guarda pos := codigo.tamanho
   nativo_u32_le(codigo, 0)
   lista_coloca(imports_windows, PatchImportWindowsX64 {
+    dll: dll,
     nome: nome,
     posicao: pos
   })
+fecha
+
+
+campo x64_windows_import_chama_dll(
+  codigo: Bytes,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  dll: Texto,
+  nome: Texto,
+  sombra: U64
+) -> Nada ::
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 220)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 228)
+  bytes_coloca_byte(codigo, 240)
+
+  guarda reserva := sombra + 16
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 236)
+  bytes_coloca_byte(codigo, Byte(reserva))
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 92)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, Byte(sombra))
+
+  x64_windows_import_call_dll(codigo, imports_windows, dll, nome)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 100)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, Byte(sombra))
+fecha
+
+
+campo x64_windows_import_chama_dll_arg5_u32(
+  codigo: Bytes,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  dll: Texto,
+  nome: Texto,
+  arg5: U32
+) -> Nada ::
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 220)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 228)
+  bytes_coloca_byte(codigo, 240)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 236)
+  bytes_coloca_byte(codigo, 64)
+
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 92)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 48)
+
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 32)
+  nativo_u32_le(codigo, arg5)
+
+  x64_windows_import_call_dll(codigo, imports_windows, dll, nome)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 100)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 48)
 fecha
