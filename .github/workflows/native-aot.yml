@@ -178,6 +178,28 @@ jobs:
           echo "native text proof exit code: $code"
           test "$code" -eq 42
 
+      - name: Compile PE multi-DLL import proof with Stage1
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp runtime/platform/native/runtime.sources build/native-pe-imports.sources
+          echo 'tests/native/pe_imports_backend.sev' >> build/native-pe-imports.sources
+          cat > build/native-pe-imports.pkg <<'EOF'
+          pacote native-pe-imports-proof
+          versao 0.0.1
+          criador Gabriel Barcelos
+          entrada tests.native.pe_imports_backend.inicio
+          alvo svbc
+          indice build/native-pe-imports.sources
+          EOF
+          build/genesis-host build/seven.stage1.svbc build/native-pe-imports.pkg build/native-pe-imports-test.svbc
+          build/genesis-host build/native-pe-imports-test.svbc
+          test "$(od -An -tx1 -N2 build/native-pe-imports-proof.exe | tr -d ' \n')" = '4d5a'
+          objdump -p build/native-pe-imports-proof.exe | tee build/native-pe-imports-proof.pe.txt
+          grep -q 'KERNEL32.dll' build/native-pe-imports-proof.pe.txt
+          grep -q 'WS2_32.dll' build/native-pe-imports-proof.pe.txt
+          grep -q 'socket' build/native-pe-imports-proof.pe.txt
+
       - name: Inspect generated native formats
         shell: bash
         run: |
@@ -229,6 +251,9 @@ jobs:
             build/native-text-test.svbc
             build/native-aot-proof.elf.txt
             build/native-aot-proof.pe.txt
+            build/native-pe-imports-proof.exe
+            build/native-pe-imports-test.svbc
+            build/native-pe-imports-proof.pe.txt
           if-no-files-found: error
 
   windows:
