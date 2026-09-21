@@ -929,11 +929,6 @@ campo x64_syscall_pura(codigo: Bytes, nome: Texto, aridade: U32) -> Resultado<Na
     devolve Valor(nulo)
   fecha
 
-  veja nome == "sys_arquivo_ler_bytes" ::
-    x64_syscall_stub_nulo(codigo, aridade)
-    devolve Valor(nulo)
-  fecha
-
   veja nome == "sys_arquivo_copia" ou nome == "sys_arquivo_remove" ou nome == "sys_diretorio_cria" ou nome == "sys_diretorio_copia" ou nome == "sys_diretorio_remove_arvore" ou nome == "sys_arquivo_link_simbolico" ou nome == "sys_path_usuario_adiciona" ou nome == "sys_path_usuario_remove" ou nome == "sys_windows_atalho_cria" ou nome == "sys_windows_associacao_registra" ou nome == "sys_windows_associacao_remove" ou nome == "sys_windows_desinstalador_registra" ou nome == "sys_windows_desinstalador_remove" ou nome == "sys_linux_desktop_atualiza" ou nome == "sys_linux_mime_atualiza" ou nome == "sys_plataforma_atual" ou nome == "sys_executavel_diretorio" ::
     x64_syscall_stub_nulo(codigo, aridade)
     devolve Valor(nulo)
