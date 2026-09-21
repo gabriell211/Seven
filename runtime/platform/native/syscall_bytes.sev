@@ -232,6 +232,12 @@ campo x64_bytes_core_coloca_texto(
   bytes_coloca_byte(codigo, 8)
 
   bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 84)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+
+  bytes_coloca_byte(codigo, 77)
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 223)
   bytes_coloca_byte(codigo, 77)
