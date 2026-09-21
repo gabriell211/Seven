@@ -299,6 +299,7 @@ static const char *default_webserve_image(const char *executable_path) {
 }
 
 int main(int argc, char **argv) {
+  seven_executable_dir = dirname_dup_c(argc > 0 && argv[0] ? argv[0] : ".");
   const char *image_path = NULL;
   int program_argc = 0;
   char **program_argv = NULL;
