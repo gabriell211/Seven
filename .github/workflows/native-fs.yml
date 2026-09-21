@@ -163,6 +163,7 @@ jobs:
         run: |
           set -euo pipefail
           rm -f build/seven-native-fs.txt
+          printf '\x53\x00\xff\x2a' > build/seven-native-bytes.bin
           chmod +x build/native-fs-proof
           set +e
           ./build/native-fs-proof
@@ -196,6 +197,7 @@ jobs:
         shell: bash
         run: |
           rm -f build/seven-native-fs.txt
+          printf '\x53\x00\xff\x2a' > build/seven-native-bytes.bin
           set +e
           ./build/native-fs-proof.exe
           code=$?
