@@ -1,5 +1,20 @@
 # Seven Release Notes
 
+## Seven 0.2.2 Release Notes
+
+Seven 0.2.2 endurece o runtime AOT x64, fecha primitivas centrais de Texto e
+adiciona leitura binaria nativa real em Linux e Windows. O compilador de
+transicao distribuido continua na linha 0.2.0 ate o cutover self-hosted final.
+
+- `sys_texto_contem`, `sys_texto_comeca` e `sys_texto_fatia` nativos;
+- correcao de `sys_texto_caractere` e dos encodings Linux `mmap`;
+- `sys_arquivo_ler_bytes` com prova ELF64/PE32+;
+- falhas de abertura tratadas antes de alocacao/leitura;
+- leitura binaria validada com `53 00 FF 2A`;
+- limite seguro atual de `0x7ffff000` bytes por leitura AOT;
+- gate de readiness da Seven 1.0 integrado ao CI.
+
+
 ## Seven 0.2.1 Release Notes
 
 Seven 0.2.1 substitui o instalador Windows de transicao do 0.2.0 por um MSI
