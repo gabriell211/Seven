@@ -1,0 +1,42 @@
+modulo tests.native.tcp_app
+
+usa std.base.resultado
+usa std.mem.bytes
+usa std.net.tcp
+
+campo inicio() -> Num toca rede ::
+  guarda listener := tcp_escuta("127.0.0.1", 18777)
+  veja listener e Falha ::
+    devolve 10
+  fecha
+
+  guarda conexao := tcp_aceita(listener.valor)
+  veja conexao e Falha ::
+    tcp_listener_fecha(listener.valor)
+    devolve 11
+  fecha
+
+  guarda entrada := tcp_le(conexao.valor)
+  veja entrada e Falha ::
+    tcp_fecha(conexao.valor)
+    tcp_listener_fecha(listener.valor)
+    devolve 12
+  fecha
+
+  veja bytes_texto(entrada.valor) != "ping" ::
+    tcp_fecha(conexao.valor)
+    tcp_listener_fecha(listener.valor)
+    devolve 13
+  fecha
+
+  guarda escrita := tcp_escreve(conexao.valor, texto_bytes("pong"))
+  veja escrita e Falha ::
+    tcp_fecha(conexao.valor)
+    tcp_listener_fecha(listener.valor)
+    devolve 14
+  fecha
+
+  tcp_fecha(conexao.valor)
+  tcp_listener_fecha(listener.valor)
+  devolve 42
+fecha
