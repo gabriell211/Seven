@@ -8,7 +8,9 @@ campo seven_launcher(argumentos: Lista<Texto>) -> Num toca disco, terminal, rede
     diga "usage:"
     diga "  seven --version"
     diga "  seven doctor"
+    diga "  seven check <pacote.pkg>"
     diga "  seven build <pacote.pkg> <saida.svbc>"
+    diga "  seven run <pacote.pkg>"
     diga "  seven web build <entrada.sev> <saida-dir>"
     diga "  seven web serve <diretorio> <porta>"
     devolve 0
@@ -27,11 +29,29 @@ campo seven_launcher(argumentos: Lista<Texto>) -> Num toca disco, terminal, rede
     devolve 0
   fecha
 
+  veja comando == "check" ::
+    solta args_check := lista<Texto>()
+    lista_coloca(args_check, arg_ou(argumentos, 1, "seven.pkg"))
+    lista_coloca(args_check, "build/seven.check.svbc")
+    devolve roda_svbc_com_args("build/seven.stage2.svbc", args_check)
+  fecha
+
   veja comando == "build" ::
     solta args_compilador := lista<Texto>()
     lista_coloca(args_compilador, arg_ou(argumentos, 1, "seven.pkg"))
     lista_coloca(args_compilador, arg_ou(argumentos, 2, "build/out.svbc"))
     devolve roda_svbc_com_args("build/seven.stage2.svbc", args_compilador)
+  fecha
+
+  veja comando == "run" ::
+    solta args_run := lista<Texto>()
+    lista_coloca(args_run, arg_ou(argumentos, 1, "seven.pkg"))
+    lista_coloca(args_run, "build/seven.run.svbc")
+    guarda compilacao := roda_svbc_com_args("build/seven.stage2.svbc", args_run)
+    veja compilacao != 0 ::
+      devolve compilacao
+    fecha
+    devolve roda_svbc_com_args("build/seven.run.svbc", lista<Texto>())
   fecha
 
   veja comando == "web" e lista_tamanho(argumentos) > 1 e lista_pega(argumentos, 1) == "build" ::
@@ -55,7 +75,7 @@ campo seven_launcher(argumentos: Lista<Texto>) -> Num toca disco, terminal, rede
     devolve roda_svbc_com_args("build/seven.webserve.svbc", args_serve)
   fecha
 
-  diga "comando ainda nao conectado no launcher nativo: " + comando
+  diga "comando fora da superficie stable do launcher: " + comando
   diga "use: seven --help"
   devolve 2
 fecha
