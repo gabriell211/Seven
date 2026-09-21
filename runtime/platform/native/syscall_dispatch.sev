@@ -28,7 +28,7 @@ campo x64_runtime_dispatch(
     devolve sim
   fecha
 
-  veja x64_syscall_text_emite(codigo, nome, aridade) ::
+  veja x64_syscall_text_emite(codigo, virtual_alloc_patches, alvo, nome, aridade) ::
     devolve sim
   fecha
 
