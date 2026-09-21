@@ -5,6 +5,7 @@ usa std.base.lista
 usa std.mem.bytes
 
 molde PatchImportWindowsX64 ::
+  dll: Texto
   nome: Texto
   posicao: U64
 fecha
@@ -14,11 +15,21 @@ campo x64_windows_import_call(
   imports_windows: Lista<PatchImportWindowsX64>,
   nome: Texto
 ) -> Nada ::
+  x64_windows_import_call_dll(codigo, imports_windows, "KERNEL32.dll", nome)
+fecha
+
+campo x64_windows_import_call_dll(
+  codigo: Bytes,
+  imports_windows: Lista<PatchImportWindowsX64>,
+  dll: Texto,
+  nome: Texto
+) -> Nada ::
   bytes_coloca_byte(codigo, 255)
   bytes_coloca_byte(codigo, 21)
   guarda pos := codigo.tamanho
   nativo_u32_le(codigo, 0)
   lista_coloca(imports_windows, PatchImportWindowsX64 {
+    dll: dll,
     nome: nome,
     posicao: pos
   })
