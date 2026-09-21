@@ -148,7 +148,7 @@ runs:
           host="$GITHUB_WORKSPACE/build/genesis-host"
         fi
 
-        "$host" build/seven.stage2.svbc runtime/launcher/seven.sev build/seven.launcher.svbc
+        "$host" build/seven.stage2.svbc runtime/launcher/seven.pkg build/seven.launcher.svbc
         "$host" build/seven.stage2.svbc runtime/webbuild/seven.pkg build/seven.webbuild.svbc
         "$host" build/seven.stage2.svbc runtime/webserve/seven.pkg build/seven.webserve.svbc
 
