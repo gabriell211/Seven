@@ -63,8 +63,16 @@ jobs:
           done
 
           echo "== x64 stable stubs =="
-          if grep -n 'x64_syscall_stub_nulo(codigo,' runtime/platform/native/x64.sev; then
-            blocker "runtime/platform/native/x64.sev still emits null syscall stubs"
+          if grep -n 'x64_syscall_stub_nulo' runtime/platform/native/x64.sev; then
+            blocker "runtime/platform/native/x64.sev still contains null syscall stubs"
+          fi
+
+          echo "== stable versus preview contract =="
+          if test ! -f docs/stability.md; then
+            blocker "docs/stability.md is missing"
+          else
+            grep -q 'Stable native 1.0 surface' docs/stability.md || blocker "stable native surface is not documented"
+            grep -q 'Preview / host-only surface' docs/stability.md || blocker "preview/host-only surface is not documented"
           fi
 
           echo "== native TCP dispatcher =="
