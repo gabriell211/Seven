@@ -146,6 +146,36 @@ jobs:
           test "$(od -An -tx1 -N4 build/native-bytes-proof | tr -d ' \n')" = '7f454c46'
           test "$(od -An -tx1 -N2 build/native-bytes-proof.exe | tr -d ' \n')" = '4d5a'
 
+      - name: Compile Bytes text append proof with Stage1
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp runtime/platform/native/runtime.sources build/native-bytes-text-append.sources
+          echo 'tests/native/bytes_text_append_backend.sev' >> build/native-bytes-text-append.sources
+          cat > build/native-bytes-text-append.pkg <<'EOF'
+          pacote native-bytes-text-append-proof
+          versao 0.0.1
+          criador Gabriel Barcelos
+          entrada tests.native.bytes_text_append_backend.inicio
+          alvo svbc
+          indice build/native-bytes-text-append.sources
+          EOF
+          build/genesis-host build/seven.stage1.svbc build/native-bytes-text-append.pkg build/native-bytes-text-append-test.svbc
+          build/genesis-host build/native-bytes-text-append-test.svbc
+          test "$(od -An -tx1 -N4 build/native-bytes-text-append-proof | tr -d ' \n')" = '7f454c46'
+          test "$(od -An -tx1 -N2 build/native-bytes-text-append-proof.exe | tr -d ' \n')" = '4d5a'
+
+      - name: Execute Bytes text append ELF
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x build/native-bytes-text-append-proof
+          set +e
+          ./build/native-bytes-text-append-proof
+          code=$?
+          set -e
+          test "$code" -eq 42
+
       - name: Execute Seven-generated growable Bytes ELF
         shell: bash
         run: |
@@ -175,6 +205,9 @@ jobs:
             build/native-bytes-proof.exe
             build/native-bytes-proof
             build/native-bytes-test.svbc
+            build/native-bytes-text-append-proof.exe
+            build/native-bytes-text-append-proof
+            build/native-bytes-text-append-test.svbc
           if-no-files-found: error
 
   windows:
@@ -187,6 +220,15 @@ jobs:
         with:
           name: seven-native-bytes-proof
           path: build
+
+      - name: Execute Bytes text append proof
+        shell: bash
+        run: |
+          set +e
+          ./build/native-bytes-text-append-proof.exe
+          code=$?
+          set -e
+          test "$code" -eq 42
 
       - name: Execute native growable Bytes proof
         shell: bash
