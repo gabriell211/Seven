@@ -213,10 +213,11 @@ jobs:
               sock.sendall(b"ping")
               data = sock.recv(4)
           rc = proc.wait(timeout=5)
+          print(f"native TCP server exit code: {rc}; response={data!r}")
+          if rc != 42:
+              raise SystemExit(f"unexpected server exit code: {rc}; response={data!r}")
           if data != b"pong":
               raise SystemExit(f"unexpected TCP response: {data!r}")
-          if rc != 42:
-              raise SystemExit(f"unexpected server exit code: {rc}")
           PY
 
       - uses: actions/upload-artifact@v4
