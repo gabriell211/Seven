@@ -175,6 +175,11 @@ campo x64_fs_linux_le_bytes(codigo: Bytes) -> Nada ::
   nativo_u32_le(codigo, 257)
   bytes_coloca_byte(codigo, 15)
   bytes_coloca_byte(codigo, 5)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda falha_abertura := x64_fs_bytes_jcc(codigo, 136)
   bytes_coloca_byte(codigo, 73)
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 196)
@@ -190,9 +195,19 @@ campo x64_fs_linux_le_bytes(codigo: Bytes) -> Nada ::
   nativo_u32_le(codigo, 8)
   bytes_coloca_byte(codigo, 15)
   bytes_coloca_byte(codigo, 5)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda falha_tamanho := x64_fs_bytes_jcc(codigo, 136)
   bytes_coloca_byte(codigo, 73)
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 197)
+
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 129)
+  bytes_coloca_byte(codigo, 253)
+  nativo_u32_le(codigo, 2147479552)
+  guarda arquivo_grande := x64_fs_bytes_jcc(codigo, 135)
 
   bytes_coloca_byte(codigo, 76)
   bytes_coloca_byte(codigo, 137)
@@ -205,39 +220,38 @@ campo x64_fs_linux_le_bytes(codigo: Bytes) -> Nada ::
   nativo_u32_le(codigo, 8)
   bytes_coloca_byte(codigo, 15)
   bytes_coloca_byte(codigo, 5)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda falha_rebobina := x64_fs_bytes_jcc(codigo, 136)
 
   x64_fs_linux_mmap_constante(codigo, 32)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda falha_objeto := x64_fs_bytes_jcc(codigo, 136)
   bytes_coloca_byte(codigo, 73)
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 198)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 237)
+  guarda arquivo_vazio := x64_fs_bytes_jcc(codigo, 132)
 
   bytes_coloca_byte(codigo, 76)
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 238)
-  bytes_coloca_byte(codigo, 72)
-  bytes_coloca_byte(codigo, 255)
-  bytes_coloca_byte(codigo, 198)
   x64_fs_linux_mmap_rsi(codigo)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda falha_buffer := x64_fs_bytes_jcc(codigo, 136)
   bytes_coloca_byte(codigo, 73)
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 199)
 
-  bytes_coloca_byte(codigo, 73)
-  bytes_coloca_byte(codigo, 199)
-  bytes_coloca_byte(codigo, 6)
-  nativo_u32_le(codigo, 4)
-  bytes_coloca_byte(codigo, 77)
-  bytes_coloca_byte(codigo, 137)
-  bytes_coloca_byte(codigo, 110)
-  bytes_coloca_byte(codigo, 8)
-  bytes_coloca_byte(codigo, 77)
-  bytes_coloca_byte(codigo, 137)
-  bytes_coloca_byte(codigo, 110)
-  bytes_coloca_byte(codigo, 16)
-  bytes_coloca_byte(codigo, 77)
-  bytes_coloca_byte(codigo, 137)
-  bytes_coloca_byte(codigo, 126)
-  bytes_coloca_byte(codigo, 24)
+  x64_fs_bytes_inicializa_objeto(codigo, sim)
 
   bytes_coloca_byte(codigo, 76)
   bytes_coloca_byte(codigo, 137)
@@ -252,7 +266,21 @@ campo x64_fs_linux_le_bytes(codigo: Bytes) -> Nada ::
   bytes_coloca_byte(codigo, 192)
   bytes_coloca_byte(codigo, 15)
   bytes_coloca_byte(codigo, 5)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda falha_leitura := x64_fs_bytes_jcc(codigo, 136)
 
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 70)
+  bytes_coloca_byte(codigo, 8)
+  guarda apos_vazio := x64_fs_bytes_jmp(codigo)
+
+  guarda vazio := codigo.tamanho
+  x64_fs_bytes_inicializa_objeto(codigo, nao)
+
+  guarda fecha_sucesso := codigo.tamanho
   bytes_coloca_byte(codigo, 76)
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 231)
@@ -266,6 +294,91 @@ campo x64_fs_linux_le_bytes(codigo: Bytes) -> Nada ::
   bytes_coloca_byte(codigo, 70)
   bytes_coloca_byte(codigo, 1)
   bytes_coloca_byte(codigo, 80)
+  guarda fim_sucesso := x64_fs_bytes_jmp(codigo)
+
+  guarda fecha_falha := codigo.tamanho
+  bytes_coloca_byte(codigo, 76)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 231)
+  bytes_coloca_byte(codigo, 184)
+  nativo_u32_le(codigo, 3)
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, 5)
+
+  guarda falha := codigo.tamanho
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 80)
+
+  guarda fim := codigo.tamanho
+
+  x64_fs_bytes_patch(codigo, falha_abertura, falha)
+  x64_fs_bytes_patch(codigo, falha_tamanho, fecha_falha)
+  x64_fs_bytes_patch(codigo, arquivo_grande, fecha_falha)
+  x64_fs_bytes_patch(codigo, falha_rebobina, fecha_falha)
+  x64_fs_bytes_patch(codigo, falha_objeto, fecha_falha)
+  x64_fs_bytes_patch(codigo, arquivo_vazio, vazio)
+  x64_fs_bytes_patch(codigo, falha_buffer, fecha_falha)
+  x64_fs_bytes_patch(codigo, falha_leitura, fecha_falha)
+  x64_fs_bytes_patch(codigo, apos_vazio, fecha_sucesso)
+  x64_fs_bytes_patch(codigo, fim_sucesso, fim)
+fecha
+
+campo x64_fs_bytes_inicializa_objeto(codigo: Bytes, com_buffer: Bit) -> Nada ::
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 199)
+  bytes_coloca_byte(codigo, 6)
+  nativo_u32_le(codigo, 4)
+
+  veja com_buffer ::
+    bytes_coloca_byte(codigo, 77)
+    bytes_coloca_byte(codigo, 137)
+    bytes_coloca_byte(codigo, 110)
+    bytes_coloca_byte(codigo, 8)
+    bytes_coloca_byte(codigo, 77)
+    bytes_coloca_byte(codigo, 137)
+    bytes_coloca_byte(codigo, 110)
+    bytes_coloca_byte(codigo, 16)
+    bytes_coloca_byte(codigo, 77)
+    bytes_coloca_byte(codigo, 137)
+    bytes_coloca_byte(codigo, 126)
+    bytes_coloca_byte(codigo, 24)
+    devolve nulo
+  fecha
+
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 70)
+  bytes_coloca_byte(codigo, 8)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 70)
+  bytes_coloca_byte(codigo, 16)
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 70)
+  bytes_coloca_byte(codigo, 24)
+fecha
+
+campo x64_fs_bytes_jcc(codigo: Bytes, condicao: Byte) -> U64 ::
+  bytes_coloca_byte(codigo, 15)
+  bytes_coloca_byte(codigo, condicao)
+  guarda pos := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  devolve pos
+fecha
+
+campo x64_fs_bytes_jmp(codigo: Bytes) -> U64 ::
+  bytes_coloca_byte(codigo, 233)
+  guarda pos := codigo.tamanho
+  nativo_u32_le(codigo, 0)
+  devolve pos
+fecha
+
+campo x64_fs_bytes_patch(codigo: Bytes, posicao: U64, destino: U64) -> Nada ::
+  nativo_define_u32_le(codigo, posicao, Num(destino) - Num(posicao + 4))
 fecha
 
 campo x64_fs_linux_mmap_constante(codigo: Bytes, tamanho: U64) -> Nada ::
@@ -322,6 +435,12 @@ campo x64_fs_windows_le_bytes(
   x64_fs_windows_create_file_args(codigo, 3)
   x64_windows_import_call(codigo, imports_windows, "CreateFileA")
   x64_fs_windows_restore_rsp(codigo)
+
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 131)
+  bytes_coloca_byte(codigo, 248)
+  bytes_coloca_byte(codigo, 255)
+  guarda falha_abertura := x64_fs_bytes_jcc(codigo, 132)
   bytes_coloca_byte(codigo, 73)
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 197)
@@ -348,6 +467,15 @@ campo x64_fs_windows_le_bytes(
   bytes_coloca_byte(codigo, 36)
   bytes_coloca_byte(codigo, 32)
   x64_fs_windows_restore_rsp(codigo)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda falha_tamanho := x64_fs_bytes_jcc(codigo, 132)
+
+  bytes_coloca_byte(codigo, 73)
+  bytes_coloca_byte(codigo, 129)
+  bytes_coloca_byte(codigo, 254)
+  nativo_u32_le(codigo, 2147479552)
+  guarda arquivo_grande := x64_fs_bytes_jcc(codigo, 135)
 
   bytes_coloca_byte(codigo, 49)
   bytes_coloca_byte(codigo, 201)
@@ -360,18 +488,24 @@ campo x64_fs_windows_le_bytes(
   bytes_coloca_byte(codigo, 185)
   nativo_u32_le(codigo, 4)
   x64_fs_windows_call(codigo, imports_windows, "VirtualAlloc", 32)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda falha_objeto := x64_fs_bytes_jcc(codigo, 132)
   bytes_coloca_byte(codigo, 73)
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 196)
+
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 246)
+  guarda arquivo_vazio := x64_fs_bytes_jcc(codigo, 132)
 
   bytes_coloca_byte(codigo, 49)
   bytes_coloca_byte(codigo, 201)
   bytes_coloca_byte(codigo, 76)
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 242)
-  bytes_coloca_byte(codigo, 72)
-  bytes_coloca_byte(codigo, 255)
-  bytes_coloca_byte(codigo, 194)
   bytes_coloca_byte(codigo, 65)
   bytes_coloca_byte(codigo, 184)
   nativo_u32_le(codigo, 12288)
@@ -379,30 +513,15 @@ campo x64_fs_windows_le_bytes(
   bytes_coloca_byte(codigo, 185)
   nativo_u32_le(codigo, 4)
   x64_fs_windows_call(codigo, imports_windows, "VirtualAlloc", 32)
+  bytes_coloca_byte(codigo, 72)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda falha_buffer := x64_fs_bytes_jcc(codigo, 132)
   bytes_coloca_byte(codigo, 73)
   bytes_coloca_byte(codigo, 137)
   bytes_coloca_byte(codigo, 199)
 
-  bytes_coloca_byte(codigo, 73)
-  bytes_coloca_byte(codigo, 199)
-  bytes_coloca_byte(codigo, 4)
-  bytes_coloca_byte(codigo, 36)
-  nativo_u32_le(codigo, 4)
-  bytes_coloca_byte(codigo, 77)
-  bytes_coloca_byte(codigo, 137)
-  bytes_coloca_byte(codigo, 116)
-  bytes_coloca_byte(codigo, 36)
-  bytes_coloca_byte(codigo, 8)
-  bytes_coloca_byte(codigo, 77)
-  bytes_coloca_byte(codigo, 137)
-  bytes_coloca_byte(codigo, 116)
-  bytes_coloca_byte(codigo, 36)
-  bytes_coloca_byte(codigo, 16)
-  bytes_coloca_byte(codigo, 77)
-  bytes_coloca_byte(codigo, 137)
-  bytes_coloca_byte(codigo, 124)
-  bytes_coloca_byte(codigo, 36)
-  bytes_coloca_byte(codigo, 24)
+  x64_fs_bytes_inicializa_objeto(codigo, sim)
 
   bytes_coloca_byte(codigo, 76)
   bytes_coloca_byte(codigo, 137)
@@ -431,8 +550,27 @@ campo x64_fs_windows_le_bytes(
   bytes_coloca_byte(codigo, 36)
   bytes_coloca_byte(codigo, 40)
   x64_windows_import_call(codigo, imports_windows, "ReadFile")
+  bytes_coloca_byte(codigo, 68)
+  bytes_coloca_byte(codigo, 139)
+  bytes_coloca_byte(codigo, 116)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 40)
   x64_fs_windows_restore_rsp(codigo)
+  bytes_coloca_byte(codigo, 133)
+  bytes_coloca_byte(codigo, 192)
+  guarda falha_leitura := x64_fs_bytes_jcc(codigo, 132)
 
+  bytes_coloca_byte(codigo, 77)
+  bytes_coloca_byte(codigo, 137)
+  bytes_coloca_byte(codigo, 116)
+  bytes_coloca_byte(codigo, 36)
+  bytes_coloca_byte(codigo, 8)
+  guarda apos_vazio := x64_fs_bytes_jmp(codigo)
+
+  guarda vazio := codigo.tamanho
+  x64_fs_bytes_inicializa_objeto(codigo, nao)
+
+  guarda fecha_sucesso := codigo.tamanho
   x64_fs_windows_close_handle(codigo, imports_windows)
   bytes_coloca_byte(codigo, 73)
   bytes_coloca_byte(codigo, 141)
@@ -440,4 +578,25 @@ campo x64_fs_windows_le_bytes(
   bytes_coloca_byte(codigo, 36)
   bytes_coloca_byte(codigo, 1)
   bytes_coloca_byte(codigo, 80)
+  guarda fim_sucesso := x64_fs_bytes_jmp(codigo)
+
+  guarda fecha_falha := codigo.tamanho
+  x64_fs_windows_close_handle(codigo, imports_windows)
+
+  guarda falha := codigo.tamanho
+  bytes_coloca_byte(codigo, 49)
+  bytes_coloca_byte(codigo, 192)
+  bytes_coloca_byte(codigo, 80)
+
+  guarda fim := codigo.tamanho
+  x64_fs_bytes_patch(codigo, falha_abertura, falha)
+  x64_fs_bytes_patch(codigo, falha_tamanho, fecha_falha)
+  x64_fs_bytes_patch(codigo, arquivo_grande, fecha_falha)
+  x64_fs_bytes_patch(codigo, falha_objeto, fecha_falha)
+  x64_fs_bytes_patch(codigo, arquivo_vazio, vazio)
+  x64_fs_bytes_patch(codigo, falha_buffer, fecha_falha)
+  x64_fs_bytes_patch(codigo, falha_leitura, fecha_falha)
+  x64_fs_bytes_patch(codigo, apos_vazio, fecha_sucesso)
+  x64_fs_bytes_patch(codigo, fim_sucesso, fim)
 fecha
+
