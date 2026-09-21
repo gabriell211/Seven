@@ -124,14 +124,16 @@ Excecao permanente: workflows destinados exclusivamente a verificar releases his
 
 ## Ordem de migracao
 
-1. manter os gates atuais verdes;
-2. fazer Stage 2 compilar a superficie canonica completa;
-3. mover conformance para o compilador self-hosted;
-4. provar a CLI usada pelo readiness;
-5. provar `web build` pela mesma cadeia;
-6. substituir a execucao do compilador de transicao no readiness;
-7. adicionar um gate que rejeite novas referencias a `seed/native/final/v1` em workflows ativos;
-8. manter somente os workflows de verificacao de release historica com acesso ao seed arquivado.
+Estado do cutover neste branch:
+
+1. Stage 2 fixed point preservado;
+2. `foundation.yml`, `readiness.yml`, `release.yml`, `pages.yml` e `bootstrap-stage0.yml` usam a acao self-hosted canonica;
+3. release historica v0.1.0 foi separada para `historical-v0.1.0-release.yml`;
+4. workflows 0.2.1/0.2.2 permanecem historicos e fora do CI corrente;
+5. o gate 1.0 rejeita reintroducao do seed de transicao em qualquer workflow corrente;
+6. o bundle corrente registra `transition_seed nao` na proveniencia;
+7. o E2E `self-hosted-cli.yml` valida a CLI portatil em Linux e Windows;
+8. o cutover so e declarado concluido quando todos esses gates estiverem verdes no mesmo commit.
 
 ## Criterio de conclusao
 
