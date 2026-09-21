@@ -89,7 +89,6 @@ runtime/platform/native/imports.sev
 runtime/platform/native/iterator_runtime.sev
 runtime/platform/native/linker.sev
 runtime/platform/native/object_runtime.sev
-runtime/platform/native/value_build.sev
 runtime/platform/native/pe.sev
 runtime/platform/native/syscall_bytes.sev
 runtime/platform/native/syscall_console.sev
@@ -102,6 +101,7 @@ runtime/platform/native/syscall_objects.sev
 runtime/platform/native/syscall_text.sev
 runtime/platform/native/target.sev
 runtime/platform/native/value_access.sev
+runtime/platform/native/value_build.sev
 runtime/platform/native/value_define.sev
 runtime/platform/native/x64.sev
 runtime/platform/svbc/bytes.sev
