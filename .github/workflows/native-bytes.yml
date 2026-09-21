@@ -155,6 +155,17 @@ jobs:
           ./build/native-bytes-proof
           code=$?
           set -e
+          if test "$code" -ne 42; then
+            echo "native bytes exit code: $code"
+            dd if=build/native-bytes-proof of=build/native-bytes-code.bin bs=1 skip=4096 status=none || true
+            objdump -D -b binary -m i386:x86-64 --adjust-vma=0x401000 -Mintel build/native-bytes-code.bin | tail -n 360 || true
+            if command -v strace >/dev/null 2>&1; then
+              set +e
+              strace -f -o build/native-bytes-proof.strace ./build/native-bytes-proof
+              set -e
+              tail -n 100 build/native-bytes-proof.strace || true
+            fi
+          fi
           test "$code" -eq 42
 
       - uses: actions/upload-artifact@v4
