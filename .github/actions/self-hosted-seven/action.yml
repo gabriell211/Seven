@@ -161,7 +161,8 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        mkdir -p build/current-seven/bin
+        mkdir -p build/current-seven/bin build/current-seven/std
+        cp -R std/. build/current-seven/std/
         if test "$RUNNER_OS" = "Windows"; then
           cp build/genesis-host.exe build/current-seven/bin/seven.exe
         else
