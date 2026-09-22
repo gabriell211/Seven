@@ -1,0 +1,195 @@
+name: Build self-hosted Seven
+description: Build the current Seven CLI bundle from the audited bootstrap root
+
+runs:
+  using: composite
+  steps:
+    - name: Reconstruct audited bootstrap
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p build
+        cat bootstrap/seed/v2/part*.b64 | tr -d '\r\n\t ' | base64 --decode | gzip --decompress > build/seven0.seed.svbc
+        echo '123f5b513bcae7774671898f471441b3c71efd570acad91fa634cbc5f33bb223  build/seven0.seed.svbc' | sha256sum --check
+        (cd bootstrap/host/v2 && sha256sum --check SHA256SUMS)
+
+        if test "$RUNNER_OS" = "Windows"; then
+          clang -D_CRT_SECURE_NO_WARNINGS -O2 -std=c11 -Wall -Wextra -Werror bootstrap/host/v2/genesis-host.c -lws2_32 -o build/genesis-host.exe
+        else
+          gcc -O2 -std=c11 -Wall -Wextra -Werror bootstrap/host/v2/genesis-host.c -o build/genesis-host
+          chmod +x build/genesis-host
+        fi
+
+    - name: Rebuild Seven-0 fixed point
+      shell: bash
+      run: |
+        set -euo pipefail
+        if test "$RUNNER_OS" = "Windows"; then
+          host="$GITHUB_WORKSPACE/build/genesis-host.exe"
+        else
+          host="$GITHUB_WORKSPACE/build/genesis-host"
+        fi
+
+        {
+          printf 'modulo seven0_bootstrap_monolith\n\n'
+          for arquivo in $(find compiler0 -maxdepth 1 -type f -name '*.sev' | LC_ALL=C sort); do
+            printf '// BEGIN %s\n' "$(basename "$arquivo")"
+            sed '/^modulo /d; /^usa /d' "$arquivo"
+            printf '// END %s\n\n' "$(basename "$arquivo")"
+          done
+        } > build/seven0.monolith.sev
+
+        "$host" build/seven0.seed.svbc build/seven0.monolith.sev build/seven0.svbc
+        "$host" build/seven0.svbc build/seven0.monolith.sev build/seven0.self.svbc
+        cmp build/seven0.svbc build/seven0.self.svbc
+        test "$(od -An -tx1 -N4 build/seven0.svbc | tr -d ' \n')" = '53564230'
+
+    - name: Build Stage 1 and Stage 2 fixed point
+      shell: bash
+      run: |
+        set -euo pipefail
+        if test "$RUNNER_OS" = "Windows"; then
+          host="$GITHUB_WORKSPACE/build/genesis-host.exe"
+        else
+          host="$GITHUB_WORKSPACE/build/genesis-host"
+        fi
+
+        cat > build/stage1.sources <<'EOF'
+        std/base/lista.sev
+        std/base/resultado.sev
+        std/base/talvez.sev
+        std/base/mapa.sev
+        std/base/texto.sev
+        std/mem/bytes.sev
+        std/fs/file.sev
+        compiler/ast.sev
+        compiler/bytecode.sev
+        compiler/diagnostic.sev
+        compiler/driver.sev
+        compiler/effects.sev
+        compiler/emitter.sev
+        compiler/ffi.sev
+        compiler/ir.sev
+        compiler/lexer.sev
+        compiler/memory.sev
+        compiler/package.sev
+        compiler/parser_part00.sev
+        compiler/parser_part01.sev
+        compiler/parser_part02.sev
+        compiler/parser_part03.sev
+        compiler/parser_part04.sev
+        compiler/parser_part05.sev
+        compiler/parser_cursor.sev
+        compiler/semantic.sev
+        compiler/source.sev
+        compiler/symbols.sev
+        compiler/token.sev
+        compiler/types_part00.sev
+        compiler/types_part01.sev
+        compiler/types_part02.sev
+        compiler/types_part03.sev
+        EOF
+
+        {
+          printf 'modulo seven_stage1_monolith\n\n'
+          while IFS= read -r arquivo; do
+            printf '// BEGIN %s\n' "$arquivo"
+            case "$arquivo" in
+              compiler/bytecode.sev)
+                sed '/^modulo /d; /^usa /d; s/emite_constante(/bytecode_emite_constante(/g' "$arquivo"
+                ;;
+              compiler/emitter.sev)
+                sed '/^modulo /d; /^usa /d; s/^campo emite(/campo emite_formato(/' "$arquivo"
+                ;;
+              *)
+                sed '/^modulo /d; /^usa /d' "$arquivo"
+                ;;
+            esac
+            printf '// END %s\n\n' "$arquivo"
+          done < build/stage1.sources
+          cat <<'EOF'
+        campo inicio(argumentos: Lista<Texto>) -> Num toca terminal, disco, ambiente ::
+          guarda pedido := pedido_de_compilacao(argumentos)
+          guarda saida := compila(pedido)
+          veja saida e Sucesso ::
+            devolve 0
+          outro ::
+            mostra_diagnosticos(saida.diagnosticos)
+            devolve 1
+          fecha
+        fecha
+        EOF
+        } > build/seven.stage1.monolith.sev
+
+        "$host" build/seven0.svbc build/seven.stage1.monolith.sev build/seven.stage1.svbc
+
+        printf '%s\n' 'build/seven.stage1.monolith.sev' > build/stage2.sources
+        cat > build/stage2.pkg <<'EOF'
+        pacote seven-stage2
+        versao 0.0.1
+        criador Gabriel Barcelos
+        entrada seven_stage1_monolith.inicio
+        alvo svbc
+        indice build/stage2.sources
+        EOF
+
+        "$host" build/seven.stage1.svbc build/stage2.pkg build/seven.stage2.svbc
+        "$host" build/seven.stage2.svbc build/stage2.pkg build/seven.stage2.self.svbc
+        cmp build/seven.stage2.svbc build/seven.stage2.self.svbc
+        test "$(od -An -tx1 -N4 build/seven.stage2.svbc | tr -d ' \n')" = '53564243'
+
+    - name: Build current CLI command images
+      shell: bash
+      run: |
+        set -euo pipefail
+        if test "$RUNNER_OS" = "Windows"; then
+          host="$GITHUB_WORKSPACE/build/genesis-host.exe"
+        else
+          host="$GITHUB_WORKSPACE/build/genesis-host"
+        fi
+
+        "$host" build/seven.stage2.svbc runtime/launcher/seven.pkg build/seven.launcher.svbc
+        "$host" build/seven.stage2.svbc runtime/webbuild/seven.pkg build/seven.webbuild.svbc
+        "$host" build/seven.stage2.svbc runtime/webserve/seven.pkg build/seven.webserve.svbc
+
+        for image in seven.stage2.svbc seven.launcher.svbc seven.webbuild.svbc seven.webserve.svbc; do
+          test -s "build/$image"
+          test "$(od -An -tx1 -N4 "build/$image" | tr -d ' \n')" = '53564243'
+        done
+
+    - name: Assemble current CLI bundle
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p build/current-seven/bin build/current-seven/std
+        cp -R std/. build/current-seven/std/
+        if test "$RUNNER_OS" = "Windows"; then
+          cp build/genesis-host.exe build/current-seven/bin/seven.exe
+        else
+          install -m 0755 build/genesis-host build/current-seven/bin/seven
+        fi
+
+        install -m 0644 build/seven.stage2.svbc build/current-seven/bin/seven.stage2.svbc
+        install -m 0644 build/seven.launcher.svbc build/current-seven/bin/seven.launcher.svbc
+        install -m 0644 build/seven.webbuild.svbc build/current-seven/bin/seven.webbuild.svbc
+        install -m 0644 build/seven.webserve.svbc build/current-seven/bin/seven.webserve.svbc
+
+        (
+          cd build/current-seven/bin
+          sha256sum seven* > SHA256SUMS
+        )
+
+        host_source_hash=$(cat bootstrap/host/v2/genesis-host.c bootstrap/host/v2/genesis-host.part*.inc | sha256sum | awk '{print $1}')
+        stage0_hash=$(sha256sum build/seven0.svbc | awk '{print $1}')
+        stage2_hash=$(sha256sum build/seven.stage2.svbc | awk '{print $1}')
+        stage2_self_hash=$(sha256sum build/seven.stage2.self.svbc | awk '{print $1}')
+        cat > build/current-seven/PROVENANCE <<EOF
+        formato seven-current-self-hosted-v1
+        bootstrap_host_sha256 $host_source_hash
+        stage0_sha256 $stage0_hash
+        stage2_sha256 $stage2_hash
+        stage2_self_sha256 $stage2_self_hash
+        stage2_fixed_point sim
+        transition_seed nao
+        EOF
+        cat build/current-seven/PROVENANCE

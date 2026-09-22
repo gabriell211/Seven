@@ -100,7 +100,7 @@ campo web_manifesto_compilacao(entrada: Texto) -> Texto toca disco ::
   guarda precisa_talvez := precisa_mapa
   guarda precisa_convert := usa_convert ou usa_css ou usa_layout ou usa_media ou usa_theme ou usa_animation
   solta manifesto := "pacote seven-web-app\n" +
-    "versao 0.2.0\n" +
+    "versao 1.0.0\n" +
     "criador Gabriel Barcelos\n" +
     "entrada " + entrada + "\n" +
     "alvo webassembly\n" +
@@ -186,7 +186,7 @@ campo web_index_html() -> Texto ::
     "<head>\n" +
     "  <meta charset=\"utf-8\">\n" +
     "  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n" +
-    "  <meta name=\"generator\" content=\"Seven 0.2 WebAssembly\">\n" +
+    "  <meta name=\"generator\" content=\"Seven 1.0 WebAssembly\">\n" +
     "  <title>Seven Web</title>\n" +
     "</head>\n" +
     "<body>\n" +

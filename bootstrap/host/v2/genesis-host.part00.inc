@@ -53,6 +53,8 @@ typedef struct Image { String *names,*texts; uint32_t *nums; Value *consts; Fiel
 typedef struct Frame { uint32_t field, ret_ip; Value *locals; uint32_t local_count; } Frame;
 typedef struct VM { Image *img; Value *stack; size_t sp, stack_cap; Frame *frames; size_t fp, frame_cap; uint32_t field, ip; Value *locals; uint32_t local_count; int arg_count; char **args; int failed; char error[512]; } VM;
 
+static const char *seven_executable_dir = ".";
+
 static void die(const char *msg) { fprintf(stderr,"genesis-host: %s\n",msg); exit(1); }
 static void *xmalloc(size_t n){ void *p=malloc(n?n:1); if(!p) die("out of memory"); return p; }
 static void *xcalloc(size_t n,size_t s){ void *p=calloc(n?n:1,s?s:1); if(!p) die("out of memory"); return p; }

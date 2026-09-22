@@ -90,7 +90,7 @@ fecha
 campo roda_benchmarks(contexto: ContextoToolchain, filtro: Texto) -> Resultado<ResultadoTeste, Falha> toca disco ::
   devolve Falha(nova_falha(
     "SV-TEST-BENCH-PREVIEW",
-    "benchmarks permanecem fora da superficie estavel da Seven 0.1"
+    "benchmarks permanecem em preview na Seven 1.0"
   ))
 fecha
 

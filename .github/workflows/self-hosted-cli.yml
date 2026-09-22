@@ -1,0 +1,157 @@
+name: Seven Self-Hosted CLI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seven-self-hosted-cli-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Exercise portable Linux CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build current self-hosted Seven
+        uses: ./.github/actions/self-hosted-seven
+
+      - name: Exercise stable CLI outside repository root
+        shell: bash
+        run: |
+          set -euo pipefail
+          smoke="$RUNNER_TEMP/seven-selfhost-smoke"
+          rm -rf "$smoke"
+          mkdir -p "$smoke/build"
+          cat > "$smoke/app.sev" <<'EOF'
+          modulo smoke.app
+          campo inicio() -> Num ::
+            devolve 42
+          fecha
+          EOF
+          printf '%s\n' 'app.sev' > "$smoke/app.sources"
+          cat > "$smoke/app.pkg" <<'EOF'
+          pacote smoke-app
+          versao 0.0.1
+          criador Seven CI
+          entrada smoke.app.inicio
+          alvo svbc
+          indice app.sources
+          EOF
+
+          seven="$GITHUB_WORKSPACE/build/current-seven/bin/seven"
+          cd "$smoke"
+
+          "$seven" --version
+          "$seven" doctor
+          "$seven" check app.pkg
+          "$seven" build app.pkg build/app.svbc
+          test -s build/app.svbc
+          test "$(od -An -tx1 -N4 build/app.svbc | tr -d ' \n')" = '53564243'
+
+          set +e
+          "$seven" run app.pkg
+          run_exit=$?
+          set -e
+          test "$run_exit" -eq 42
+
+          "$seven" web build "$GITHUB_WORKSPACE/examples/web_dev.sev" build/web
+          test -s build/web/app.wasm
+          test -s build/web/seven.web.json
+
+      - name: Run conformance through self-hosted CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$GITHUB_WORKSPACE/build/current-seven/bin/seven"
+          cd "$GITHUB_WORKSPACE"
+
+          while IFS= read -r file; do
+            echo "valid: $file"
+            "$seven" check "$file"
+          done < <(find conformance -type f -path '*/valid/*.sev' | LC_ALL=C sort)
+
+          while IFS= read -r file; do
+            echo "invalid-static: $file"
+            if "$seven" check "$file"; then
+              echo "invalid static conformance file accepted: $file"
+              exit 1
+            fi
+          done < <(find conformance -type f -path '*/invalid/*.sev' ! -path 'conformance/runtime/invalid/*' | LC_ALL=C sort)
+
+          while IFS= read -r file; do
+            echo "invalid-runtime: $file"
+            "$seven" check "$file"
+            "$seven" run "$file"
+          done < <(find conformance/runtime/invalid -type f -name '*.sev' | LC_ALL=C sort)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-self-hosted-cli-linux
+          path: build/current-seven/
+          if-no-files-found: error
+
+  windows:
+    name: Exercise portable Windows CLI
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build current self-hosted Seven
+        uses: ./.github/actions/self-hosted-seven
+
+      - name: Exercise stable CLI outside repository root
+        shell: bash
+        run: |
+          set -euo pipefail
+          smoke="$RUNNER_TEMP/seven-selfhost-smoke"
+          rm -rf "$smoke"
+          mkdir -p "$smoke/build"
+          cat > "$smoke/app.sev" <<'EOF'
+          modulo smoke.app
+          campo inicio() -> Num ::
+            devolve 42
+          fecha
+          EOF
+          printf '%s\n' 'app.sev' > "$smoke/app.sources"
+          cat > "$smoke/app.pkg" <<'EOF'
+          pacote smoke-app
+          versao 0.0.1
+          criador Seven CI
+          entrada smoke.app.inicio
+          alvo svbc
+          indice app.sources
+          EOF
+
+          seven="$GITHUB_WORKSPACE/build/current-seven/bin/seven.exe"
+          cd "$smoke"
+
+          "$seven" --version
+          "$seven" doctor
+          "$seven" check app.pkg
+          "$seven" build app.pkg build/app.svbc
+          test -s build/app.svbc
+
+          set +e
+          "$seven" run app.pkg
+          run_exit=$?
+          set -e
+          test "$run_exit" -eq 42
+
+          "$seven" web build "$GITHUB_WORKSPACE/examples/web_dev.sev" build/web
+          test -s build/web/app.wasm
+          test -s build/web/seven.web.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-self-hosted-cli-windows
+          path: build/current-seven/
+          if-no-files-found: error

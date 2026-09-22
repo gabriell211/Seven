@@ -1,70 +1,243 @@
-name: Verify Seven 0.1.0 Release
+name: Seven 1.0.0 Self-Hosted Release
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v1.0.0'
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - '.github/actions/self-hosted-seven/**'
+      - 'bootstrap/**'
+      - 'compiler/**'
+      - 'runtime/**'
+      - 'std/**'
+      - 'packaging/windows/wix/**'
+      - 'editors/vscode/seven-language/**'
+      - 'releases/v1.0.0.md'
 
 permissions:
-  contents: read
+  contents: write
 
 env:
-  SEVEN_TAG: v0.1.0
-  SEED_ARCHIVE_SHA256: a2d09138008ae7223683681443663da8d4c58b39600cbaf3bef11889c2495ad3
-  WINDOWS_COMPILER_SHA256: f9ebcbe747f5646f1f224af0929d19d321a67a241be3844116e42ac2a5207296
-  WINDOWS_INSTALLER_SHA256: e4847375d1e800425e23253d36394bc8d2a2d9a97598f8905a30986310f176ed
-  LINUX_COMPILER_SHA256: 2f073ab8101742006728a491b3093ddb093d202289002d13cc2a6a03dfa55dcb
-  LINUX_INSTALLER_SHA256: 8d5b9c534018d8b8ccca7fcdfaa6f7d40587c8a039d63ae214c62f93d35d533e
+  SEVEN_TAG: v1.0.0
+  SEVEN_VERSION: 1.0.0
 
 jobs:
-  verify:
-    name: Verify immutable release assets
+  metadata:
+    name: Validate Seven 1.0.0 metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify version contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fxq 'versao 1.0.0' seven.pkg
+          grep -q 'Seven 1.0.0' compiler/toolchain/cli.sev
+          grep -q 'const ReleaseSevenVersao: Texto := "1.0.0"' compiler/toolchain/release.sev
+          grep -q '"version": "1.0.0"' editors/vscode/seven-language/package.json
+          grep -q '^## 1.0.0$' CHANGELOG.md
+          grep -q '^# Seven 1.0.0$' releases/v1.0.0.md
+
+  windows:
+    name: Package Windows x64 MSI
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build current self-hosted Seven
+        uses: ./.github/actions/self-hosted-seven
+      - name: Exercise self-hosted Windows compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          seven="$PWD/build/current-seven/bin/seven.exe"
+          "$seven" --version | grep -q "Seven ${SEVEN_VERSION}"
+          "$seven" doctor
+          "$seven" check examples/hello.sev
+          "$seven" build examples/hello.sev build/release-windows-hello.svbc
+          "$seven" web build examples/web_dev.sev build/release-windows-web
+          test -s build/release-windows-hello.svbc
+          test -s build/release-windows-web/app.wasm
+          grep -q '^transition_seed nao$' build/current-seven/PROVENANCE
+      - name: Assemble MSI payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="build/wix-payload"
+          mkdir -p "$payload/bin" "$payload/share" "$payload/std"
+          cp build/current-seven/bin/seven.exe "$payload/bin/seven.exe"
+          cp build/current-seven/bin/seven.stage2.svbc "$payload/bin/"
+          cp build/current-seven/bin/seven.launcher.svbc "$payload/bin/"
+          cp build/current-seven/bin/seven.webbuild.svbc "$payload/bin/"
+          cp build/current-seven/bin/seven.webserve.svbc "$payload/bin/"
+          cp build/current-seven/PROVENANCE "$payload/"
+          cp brand/seven.ico "$payload/share/seven.ico"
+          cp brand/seven-mark.svg "$payload/share/seven-mark.svg"
+          cp LICENSE NOTICE "$payload/"
+          cp -R std/. "$payload/std/"
+      - name: Build and validate MSI
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          dotnet tool install wix --tool-path build/wix-tool --version 7.0.0
+          $wix = Join-Path $PWD 'build/wix-tool/wix.exe'
+          $payload = Join-Path $PWD 'build/wix-payload'
+          $icon = Join-Path $PWD 'brand/seven.ico'
+          $msi = Join-Path $PWD "build/seven-$env:SEVEN_VERSION-windows-x64.msi"
+          & $wix build -acceptEula wix7 -arch x64 packaging/windows/wix/seven-product.wxs -d "SevenVersion=$env:SEVEN_VERSION" -d "PayloadRoot=$payload" -d "SevenIcon=$icon" -out $msi
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $wix msi validate -acceptEula wix7 $msi -intermediateFolder build/wix-validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install, exercise and uninstall MSI
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $msi = Join-Path $PWD "build/seven-$env:SEVEN_VERSION-windows-x64.msi"
+          $install = Start-Process msiexec.exe -ArgumentList @('/i', $msi, '/qn', '/norestart') -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "MSI install failed: $($install.ExitCode)" }
+          $seven = Join-Path $env:ProgramFiles 'Seven/bin/seven.exe'
+          if (-not (Test-Path $seven)) { throw 'Installed Seven executable not found' }
+          & $seven --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $seven doctor
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $uninstall = Start-Process msiexec.exe -ArgumentList @('/x', $msi, '/qn', '/norestart') -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "MSI uninstall failed: $($uninstall.ExitCode)" }
+          if (Test-Path $seven) { throw 'Seven executable remained after uninstall' }
+      - name: Checksum MSI
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd build && sha256sum "seven-${SEVEN_VERSION}-windows-x64.msi" > "seven-${SEVEN_VERSION}-windows-x64.msi.sha256")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-1.0.0-windows-x64-msi
+          path: |
+            build/seven-1.0.0-windows-x64.msi
+            build/seven-1.0.0-windows-x64.msi.sha256
+          if-no-files-found: error
+
+  linux:
+    name: Package Linux x64
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build current self-hosted Seven
+        uses: ./.github/actions/self-hosted-seven
+      - name: Assemble Linux bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="build/release-linux/seven-${SEVEN_VERSION}-linux-x64"
+          mkdir -p "$root/bin" "$root/std" "$root/brand"
+          install -m 0755 build/current-seven/bin/seven "$root/bin/seven"
+          install -m 0644 build/current-seven/bin/seven.stage2.svbc "$root/bin/"
+          install -m 0644 build/current-seven/bin/seven.launcher.svbc "$root/bin/"
+          install -m 0644 build/current-seven/bin/seven.webbuild.svbc "$root/bin/"
+          install -m 0644 build/current-seven/bin/seven.webserve.svbc "$root/bin/"
+          install -m 0644 build/current-seven/PROVENANCE "$root/PROVENANCE"
+          install -m 0644 LICENSE NOTICE "$root/"
+          cp -R std/. "$root/std/"
+          cp brand/seven.ico brand/seven-mark.svg "$root/brand/"
+          (cd "$root" && sha256sum bin/* > SHA256SUMS)
+          tar -C build/release-linux -czf "build/seven-${SEVEN_VERSION}-linux-x64.tar.gz" "seven-${SEVEN_VERSION}-linux-x64"
+          (cd build && sha256sum "seven-${SEVEN_VERSION}-linux-x64.tar.gz" > "seven-${SEVEN_VERSION}-linux-x64.tar.gz.sha256")
+      - name: Exercise packaged Linux compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/release-linux-extracted
+          tar -xzf "build/seven-${SEVEN_VERSION}-linux-x64.tar.gz" -C build/release-linux-extracted
+          seven="$PWD/build/release-linux-extracted/seven-${SEVEN_VERSION}-linux-x64/bin/seven"
+          "$seven" --version | grep -q "Seven ${SEVEN_VERSION}"
+          "$seven" doctor
+          "$seven" check examples/hello.sev
+          "$seven" build examples/hello.sev build/release-linux-hello.svbc
+          "$seven" web build examples/web_dev.sev build/release-linux-web
+          test -s build/release-linux-hello.svbc
+          test -s build/release-linux-web/app.wasm
+          grep -q '^transition_seed nao$' "build/release-linux-extracted/seven-${SEVEN_VERSION}-linux-x64/PROVENANCE"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-1.0.0-linux-x64
+          path: |
+            build/seven-1.0.0-linux-x64.tar.gz
+            build/seven-1.0.0-linux-x64.tar.gz.sha256
+          if-no-files-found: error
+
+  vscode:
+    name: Package Seven VSCode 1.0.0
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
-      - name: Verify audited native seed archive
+      - name: Package VSIX
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p build/native-seeds
-          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo "$SEED_ARCHIVE_SHA256  build/native-seeds.zip" | sha256sum --check
-          unzip -q build/native-seeds.zip -d build/native-seeds
-          echo "$WINDOWS_COMPILER_SHA256  build/native-seeds/seven-windows.exe" | sha256sum --check
-          echo "$WINDOWS_INSTALLER_SHA256  build/native-seeds/seven-installer-windows.exe" | sha256sum --check
-          echo "$LINUX_COMPILER_SHA256  build/native-seeds/seven-linux" | sha256sum --check
-          echo "$LINUX_INSTALLER_SHA256  build/native-seeds/seven-installer-linux" | sha256sum --check
+          cd editors/vscode/seven-language
+          npx --yes @vscode/vsce package --no-dependencies
+          sha256sum "seven-language-${SEVEN_VERSION}.vsix" > "seven-language-${SEVEN_VERSION}.vsix.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seven-language-1.0.0-vsix
+          path: |
+            editors/vscode/seven-language/seven-language-1.0.0.vsix
+            editors/vscode/seven-language/seven-language-1.0.0.vsix.sha256
+          if-no-files-found: error
 
-      - name: Download published release
+  boundary:
+    name: Reject transition compiler in current release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify current release boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'self-hosted-seven' .github/workflows/release.yml
+          ! grep -q 'seed/native/final/v1' .github/workflows/release.yml
+
+  publish:
+    if: github.event_name != 'pull_request'
+    name: Publish Seven 1.0.0
+    runs-on: ubuntu-latest
+    needs: [metadata, windows, linux, vscode, boundary]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: seven-1.0.0-windows-x64-msi
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: seven-1.0.0-linux-x64
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: seven-language-1.0.0-vsix
+          path: dist
+      - name: Verify release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum --check "seven-${SEVEN_VERSION}-windows-x64.msi.sha256"
+          sha256sum --check "seven-${SEVEN_VERSION}-linux-x64.tar.gz.sha256"
+          sha256sum --check "seven-language-${SEVEN_VERSION}.vsix.sha256"
+      - name: Create or update GitHub release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mkdir -p dist
-          gh release download "$SEVEN_TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --dir dist \
-            --pattern 'seven-0.1.0-windows-x64.zip' \
-            --pattern 'seven-0.1.0-windows-x64.zip.sha256' \
-            --pattern 'seven-0.1.0-linux-x64.tar.gz' \
-            --pattern 'seven-0.1.0-linux-x64.tar.gz.sha256'
-
-      - name: Verify published package checksums
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd dist
-          sha256sum --check seven-0.1.0-windows-x64.zip.sha256
-          sha256sum --check seven-0.1.0-linux-x64.tar.gz.sha256
-
-      - name: Verify release publication manifest
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -q '"version": "0.1.0"' releases/v0.1.0.json
-          grep -q '"tag": "v0.1.0"' releases/v0.1.0.json
-          grep -q '"verified": true' releases/v0.1.0.json
-          grep -q "$SEED_ARCHIVE_SHA256" releases/v0.1.0.json
-          grep -q "$WINDOWS_COMPILER_SHA256" releases/v0.1.0.json
-          grep -q "$LINUX_COMPILER_SHA256" releases/v0.1.0.json
+          if gh release view "$SEVEN_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$SEVEN_TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$SEVEN_TAG" dist/*               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "Seven 1.0.0"               --notes-file releases/v1.0.0.md               --latest
+          fi

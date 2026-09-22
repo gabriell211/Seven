@@ -67,7 +67,7 @@ campo svbc0_campo_indice_opcional(imagem: ImagemSvbc0, nome: Texto) -> Talvez<U3
     vira indice := indice + 1
   fecha
 
-  devolve Nada
+  devolve Vazio
 fecha
 
 campo svbc0_campo_indice(imagem: ImagemSvbc0, nome: Texto) -> U32 ::

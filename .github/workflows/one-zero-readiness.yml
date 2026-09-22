@@ -54,13 +54,54 @@ jobs:
             failures=$((failures + 1))
           }
 
-          echo "== transition compiler references =="
-          for workflow in             .github/workflows/foundation.yml             .github/workflows/readiness.yml             .github/workflows/release.yml             .github/workflows/pages.yml             .github/workflows/bootstrap-stage0.yml
+          echo "== current self-hosted toolchain boundary =="
+          for workflow in \
+            .github/workflows/foundation.yml \
+            .github/workflows/readiness.yml \
+            .github/workflows/release.yml \
+            .github/workflows/pages.yml \
+            .github/workflows/bootstrap-stage0.yml
           do
             if grep -n 'seed/native/final/v1' "$workflow"; then
               blocker "$workflow still depends on seed/native/final/v1"
             fi
+            if ! grep -q 'self-hosted-seven' "$workflow"; then
+              blocker "$workflow does not consume the canonical self-hosted Seven chain"
+            fi
           done
+
+          while IFS= read -r workflow; do
+            case "$workflow" in
+              .github/workflows/historical-*|.github/workflows/publish-v0.2.1.yml|.github/workflows/publish-v0.2.2.yml)
+                continue
+                ;;
+            esac
+            if grep -n 'seed/native/final/v1' "$workflow"; then
+              blocker "$workflow reintroduced the archived transition compiler"
+            fi
+          done < <(find .github/workflows -maxdepth 1 -type f -name '*.yml' | LC_ALL=C sort)
+
+          if test ! -f .github/actions/self-hosted-seven/action.yml; then
+            blocker "canonical self-hosted Seven action is missing"
+          else
+            grep -q 'bootstrap/seed/v2' .github/actions/self-hosted-seven/action.yml || blocker "self-hosted chain does not start from bootstrap/seed/v2"
+            grep -q 'seven.stage2.self.svbc' .github/actions/self-hosted-seven/action.yml || blocker "self-hosted chain does not prove Stage2 fixed point"
+            grep -q 'transition_seed nao' .github/actions/self-hosted-seven/action.yml || blocker "self-hosted provenance does not reject transition seed"
+            if grep -q 'seed/native/final/v1' .github/actions/self-hosted-seven/action.yml; then
+              blocker "canonical self-hosted action references archived transition compiler"
+            fi
+          fi
+
+          if test ! -f .github/workflows/self-hosted-cli.yml; then
+            blocker "self-hosted CLI E2E workflow is missing"
+          else
+            for command in '--version' 'doctor' 'check' 'build' 'run' 'web build'; do
+              if ! grep -q -- "$command" .github/workflows/self-hosted-cli.yml; then
+                blocker "self-hosted CLI proof does not exercise $command"
+              fi
+            done
+            grep -q 'conformance' .github/workflows/self-hosted-cli.yml || blocker "self-hosted CLI proof does not execute conformance"
+          fi
 
           echo "== x64 stable stubs =="
           if grep -n 'x64_syscall_stub_nulo' runtime/platform/native/x64.sev; then

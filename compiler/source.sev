@@ -44,14 +44,206 @@ campo fonte_carrega_pacote(pacote: Pacote) -> UnidadeFonte toca disco ::
   fecha
 
   solta arquivos := lista<Fonte>()
+  solta visitados := lista<Texto>()
+
+  fonte_carrega_preludio(arquivos, visitados)
 
   para cada caminho em pacote.fontes ::
     veja texto_contem(caminho, ".sev") ::
-      lista_coloca(arquivos, fonte_carrega_obrigatoria(caminho))
+      fonte_carrega_recursiva(caminho, arquivos, visitados)
     fecha
   fecha
 
   devolve UnidadeFonte { arquivos: arquivos }
+fecha
+
+campo fonte_carrega_preludio(
+  arquivos: Lista<Fonte>,
+  visitados: Lista<Texto>
+) -> Nada toca disco ::
+  fonte_carrega_recursiva("std/base/lista.sev", arquivos, visitados)
+  fonte_carrega_recursiva("std/base/resultado.sev", arquivos, visitados)
+  fonte_carrega_recursiva("std/base/talvez.sev", arquivos, visitados)
+  fonte_carrega_recursiva("std/base/mapa.sev", arquivos, visitados)
+  fonte_carrega_recursiva("std/base/texto.sev", arquivos, visitados)
+  fonte_carrega_recursiva("std/mem/bytes.sev", arquivos, visitados)
+fecha
+
+campo fonte_carrega_recursiva(
+  caminho: Texto,
+  arquivos: Lista<Fonte>,
+  visitados: Lista<Texto>
+) -> Nada toca disco ::
+  guarda resolvido := fonte_resolve_caminho(caminho)
+  veja resolvido == "" ::
+    devolve nulo
+  fecha
+
+  veja fonte_caminho_visitado(visitados, resolvido) ::
+    devolve nulo
+  fecha
+
+  lista_coloca(visitados, resolvido)
+
+  guarda fonte := fonte_carrega_obrigatoria(resolvido)
+  lista_coloca(arquivos, fonte)
+
+  para cada linha em linhas(fonte.texto) ::
+    guarda modulo := fonte_uso_modulo(linha)
+    veja modulo != "" ::
+      fonte_carrega_modulo(modulo, arquivos, visitados)
+    fecha
+  fecha
+fecha
+
+campo fonte_carrega_modulo(
+  modulo: Texto,
+  arquivos: Lista<Fonte>,
+  visitados: Lista<Texto>
+) -> Nada toca disco ::
+  veja modulo == "seven.compiler.parser" ::
+    fonte_carrega_recursiva("compiler/parser_part00.sev", arquivos, visitados)
+    fonte_carrega_recursiva("compiler/parser_part01.sev", arquivos, visitados)
+    fonte_carrega_recursiva("compiler/parser_part02.sev", arquivos, visitados)
+    fonte_carrega_recursiva("compiler/parser_part03.sev", arquivos, visitados)
+    fonte_carrega_recursiva("compiler/parser_part04.sev", arquivos, visitados)
+    fonte_carrega_recursiva("compiler/parser_part05.sev", arquivos, visitados)
+    devolve nulo
+  fecha
+
+  veja modulo == "seven.compiler.types" ::
+    fonte_carrega_recursiva("compiler/types_part00.sev", arquivos, visitados)
+    fonte_carrega_recursiva("compiler/types_part01.sev", arquivos, visitados)
+    fonte_carrega_recursiva("compiler/types_part02.sev", arquivos, visitados)
+    fonte_carrega_recursiva("compiler/types_part03.sev", arquivos, visitados)
+    devolve nulo
+  fecha
+
+  veja modulo == "seven0.emit" ::
+    fonte_carrega_recursiva("compiler0/emit_part00.sev", arquivos, visitados)
+    fonte_carrega_recursiva("compiler0/emit_part01.sev", arquivos, visitados)
+    fonte_carrega_recursiva("compiler0/emit_part02.sev", arquivos, visitados)
+    fonte_carrega_recursiva("compiler0/emit_part03.sev", arquivos, visitados)
+    devolve nulo
+  fecha
+
+  guarda caminho := fonte_modulo_caminho(modulo)
+  veja caminho != "" ::
+    fonte_carrega_recursiva(caminho, arquivos, visitados)
+  fecha
+fecha
+
+campo fonte_resolve_caminho(caminho: Texto) -> Texto toca disco ::
+  veja sys_arquivo_existe(caminho) ::
+    devolve caminho
+  fecha
+
+  guarda raiz := fonte_raiz_instalacao()
+  veja raiz != "" ::
+    guarda instalado := raiz + "/" + caminho
+    veja sys_arquivo_existe(instalado) ::
+      devolve instalado
+    fecha
+  fecha
+
+  devolve ""
+fecha
+
+campo fonte_raiz_instalacao() -> Texto ::
+  guarda bin := sys_executavel_diretorio()
+  solta fim := sys_texto_tamanho(bin)
+
+  gira fim > 0 ::
+    guarda caractere := sys_texto_caractere(bin, fim - 1)
+    veja caractere == "/" ou caractere == "\\" ::
+      devolve sys_texto_fatia(bin, 0, fim - 1)
+    fecha
+    vira fim := fim - 1
+  fecha
+
+  devolve bin
+fecha
+
+campo fonte_modulo_caminho(modulo: Texto) -> Texto toca disco ::
+  solta base := modulo
+
+  veja modulo == "seven0" ::
+    vira base := "compiler0/seven0"
+  outro ::
+    veja texto_comeca(modulo, "seven0.") ::
+      vira base := "compiler0/" + fonte_modulo_para_path(
+        sys_texto_fatia(modulo, 7, sys_texto_tamanho(modulo))
+      )
+    outro ::
+      veja texto_comeca(modulo, "seven.") ::
+        vira base := fonte_modulo_para_path(
+          sys_texto_fatia(modulo, 6, sys_texto_tamanho(modulo))
+        )
+      outro ::
+        vira base := fonte_modulo_para_path(modulo)
+      fecha
+    fecha
+  fecha
+
+  guarda arquivo := fonte_resolve_caminho(base + ".sev")
+  veja arquivo != "" ::
+    devolve arquivo
+  fecha
+
+  guarda entrada := fonte_resolve_caminho(base + "/seven.sev")
+  veja entrada != "" ::
+    devolve entrada
+  fecha
+
+  devolve ""
+fecha
+
+campo fonte_modulo_para_path(modulo: Texto) -> Texto ::
+  solta saida := ""
+  solta indice: U64 := 0
+
+  gira indice < sys_texto_tamanho(modulo) ::
+    guarda caractere := sys_texto_caractere(modulo, indice)
+    veja caractere == "." ::
+      vira saida := saida + "/"
+    outro ::
+      vira saida := saida + caractere
+    fecha
+    vira indice := indice + 1
+  fecha
+
+  devolve saida
+fecha
+
+campo fonte_uso_modulo(linha: Texto) -> Texto ::
+  guarda limpa := texto_apara_manifesto(linha)
+  veja nao texto_comeca(limpa, "usa ") ::
+    devolve ""
+  fecha
+
+  solta modulo := ""
+  solta indice: U64 := 4
+
+  gira indice < sys_texto_tamanho(limpa) ::
+    guarda caractere := sys_texto_caractere(limpa, indice)
+    veja caractere == " " ou caractere == "\t" ::
+      devolve modulo
+    fecha
+    vira modulo := modulo + caractere
+    vira indice := indice + 1
+  fecha
+
+  devolve modulo
+fecha
+
+campo fonte_caminho_visitado(visitados: Lista<Texto>, caminho: Texto) -> Bit ::
+  para cada item em visitados ::
+    veja item == caminho ::
+      devolve sim
+    fecha
+  fecha
+
+  devolve nao
 fecha
 
 campo fonte_carrega_indice(caminho_indice: Texto) -> UnidadeFonte toca disco ::

@@ -1,27 +1,9 @@
-name: Publish Seven 0.2.2 Release
+name: Historical Seven 0.2.2 Release
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/publish-v0.2.2.yml'
-      - 'releases/v0.2.2.md'
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - 'RELEASE.md'
-      - 'editors/vscode/seven-language/package.json'
-      - 'editors/vscode/seven-language/CHANGELOG.md'
-  pull_request:
-    paths:
-      - '.github/workflows/publish-v0.2.2.yml'
-      - 'releases/v0.2.2.md'
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - 'RELEASE.md'
-      - 'docs/1.0-gate.md'
-      - 'editors/vscode/seven-language/package.json'
-      - 'editors/vscode/seven-language/CHANGELOG.md'
+    tags:
+      - v0.2.2
   workflow_dispatch:
 
 permissions:

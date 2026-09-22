@@ -43,7 +43,7 @@ static Value syscall(VM*vm,String name,Value*args,uint32_t argc){
   return v_str_c("linux");
 #endif
  }
- if(IS("sys_executavel_diretorio"))return v_str_c(".");
+ if(IS("sys_executavel_diretorio"))return v_str_c(seven_executable_dir);
  if(IS("sys_args")||IS("sys_svbc_argumentos_virtual")){List*l=list_new();for(int i=0;i<vm->arg_count;i++)list_push(l,v_str_c(vm->args[i]));return v_list(l);}
  if(IS("sys_tempo_agora"))return v_int((int64_t)time(NULL)*1000);
  if(IS("sys_svbc_relogio_virtual_ms"))return v_int((int64_t)time(NULL)*1000);

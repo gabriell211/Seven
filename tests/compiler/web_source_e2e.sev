@@ -24,7 +24,7 @@ campo inicio(argumentos: Lista<Texto>) -> Num toca terminal, disco, ambiente ::
   guarda saida := lista_pega(argumentos, 1)
   guarda pacote := pacote_parse(
     "pacote seven-web-e2e\n" +
-    "versao 0.2.0\n" +
+    "versao 1.0.0\n" +
     "criador Gabriel Barcelos\n" +
     "entrada " + entrada + "\n" +
     "alvo webassembly\n" +
