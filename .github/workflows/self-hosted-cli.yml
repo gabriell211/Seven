@@ -79,12 +79,18 @@ jobs:
           done < <(find conformance -type f -path '*/valid/*.sev' | LC_ALL=C sort)
 
           while IFS= read -r file; do
-            echo "invalid: $file"
+            echo "invalid-static: $file"
             if "$seven" check "$file"; then
-              echo "invalid conformance file accepted: $file"
+              echo "invalid static conformance file accepted: $file"
               exit 1
             fi
-          done < <(find conformance -type f -path '*/invalid/*.sev' | LC_ALL=C sort)
+          done < <(find conformance -type f -path '*/invalid/*.sev' ! -path 'conformance/runtime/invalid/*' | LC_ALL=C sort)
+
+          while IFS= read -r file; do
+            echo "invalid-runtime: $file"
+            "$seven" check "$file"
+            "$seven" run "$file"
+          done < <(find conformance/runtime/invalid -type f -name '*.sev' | LC_ALL=C sort)
 
       - uses: actions/upload-artifact@v4
         with:
