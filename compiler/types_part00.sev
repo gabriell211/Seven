@@ -130,9 +130,7 @@ campo registra_membros(programa: Programa, tabela: TabelaTipos) -> Nada ::
 
         veja mapa_tem(tabela.membros, chave) ::
           guarda existente := mapa_pega(tabela.membros, chave)
-          veja item.valor.nome == "Bytes" e existente e Algo e existente.valor == resolvido ::
-            // compiler0 preserva o molde Bytes bootstrap, estruturalmente igual ao std.
-          outro ::
+          veja nao membro_bootstrap_compativel(item.valor.nome, existente, resolvido) ::
             reporta_tipo(tabela, "SV-TIPO-MEMBRO-DUPLICADO", "membro '" + membro.nome + "' esta duplicado", membro.span)
           fecha
         outro ::
@@ -141,6 +139,18 @@ campo registra_membros(programa: Programa, tabela: TabelaTipos) -> Nada ::
       fecha
     fecha
   fecha
+fecha
+
+campo membro_bootstrap_compativel(nome_molde: Texto, existente: Talvez<Tipo>, resolvido: Tipo) -> Bit ::
+  veja nome_molde != "Bytes" ::
+    devolve nao
+  fecha
+
+  veja existente e Algo ::
+    devolve existente.valor == resolvido
+  fecha
+
+  devolve nao
 fecha
 
 campo registra_genericos(genericos: Lista<Texto>, tabela: TabelaTipos) -> Nada ::
@@ -154,9 +164,7 @@ fecha
 campo registra_tipo_nome(tabela: TabelaTipos, nome: Texto, tipo: Tipo, local: Span) -> Nada ::
   veja mapa_tem(tabela.tipos, nome) ::
     guarda existente := mapa_pega(tabela.tipos, nome)
-    veja nome == "Bytes" e existente e Algo e existente.valor == tipo ::
-      // Compatibilidade do bootstrap: compiler0.Bytes e std.mem.bytes.Bytes
-      // compartilham exatamente o mesmo contrato estrutural.
+    veja tipo_bootstrap_compativel(nome, existente, tipo) ::
       devolve nulo
     fecha
 
@@ -165,6 +173,18 @@ campo registra_tipo_nome(tabela: TabelaTipos, nome: Texto, tipo: Tipo, local: Sp
   fecha
 
   mapa_coloca(tabela.tipos, nome, tipo)
+fecha
+
+campo tipo_bootstrap_compativel(nome: Texto, existente: Talvez<Tipo>, tipo: Tipo) -> Bit ::
+  veja nome != "Bytes" ::
+    devolve nao
+  fecha
+
+  veja existente e Algo ::
+    devolve existente.valor == tipo
+  fecha
+
+  devolve nao
 fecha
 
 campo registra_assinaturas(programa: Programa, tabela: TabelaTipos) -> Nada ::
