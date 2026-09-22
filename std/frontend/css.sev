@@ -1,5 +1,8 @@
 modulo std.frontend.css
 
+usa std.base.lista
+usa std.frontend.intrinsics
+
 molde DeclaracaoCss ::
   nome: Texto
   valor: Texto
