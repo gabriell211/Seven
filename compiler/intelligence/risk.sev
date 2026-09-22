@@ -2,6 +2,7 @@ modulo seven.compiler.intelligence.risk
 
 usa seven.compiler.ast
 usa seven.compiler.ir
+usa seven.compiler.effects
 usa seven.compiler.intelligence.index
 
 selo TipoRisco ::
@@ -30,4 +31,85 @@ campo riscos_programa(indice: IndiceSemantico, ir: UnidadeIr) -> Lista<Risco> ::
   riscos_efeito_publico(indice, riscos)
 
   devolve riscos
+fecha
+
+
+campo riscos_codigo_cru(indice: IndiceSemantico, riscos: Lista<Risco>) -> Nada ::
+  para cada assinatura em indice.efeitos.assinaturas.valores ::
+    veja lista_contem_efeito(assinatura.efeitos, Cru) ::
+      lista_coloca(riscos, Risco {
+        tipo: Seguranca,
+        codigo: "SIA-RISCO-CRU",
+        mensagem: "Campo usa efeito cru; valide memoria, ponteiros e FFI na fronteira.",
+        arquivo: assinatura.span.arquivo,
+        linha: assinatura.span.linha,
+        coluna: assinatura.span.coluna
+      })
+    fecha
+  fecha
+fecha
+
+campo riscos_n_mais_um(indice: IndiceSemantico, riscos: Lista<Risco>) -> Nada ::
+  solta i: U64 := 0
+  gira i < lista_tamanho(indice.arestas) ::
+    guarda atual := lista_pega(indice.arestas, i)
+    veja atual.especie == "chamada" ::
+      solta j := i + 1
+      gira j < lista_tamanho(indice.arestas) ::
+        guarda outra := lista_pega(indice.arestas, j)
+        veja outra.especie == "chamada" e outra.origem == atual.origem e outra.destino == atual.destino ::
+          lista_coloca(riscos, Risco {
+            tipo: Performance,
+            codigo: "SIA-RISCO-N-MAIS-UM",
+            mensagem: "Chamada repetida no mesmo ponto semantico; verifique trabalho N+1.",
+            arquivo: atual.origem,
+            linha: 0,
+            coluna: 0
+          })
+          vira j := lista_tamanho(indice.arestas)
+        outro ::
+          vira j := j + 1
+        fecha
+      fecha
+    fecha
+    vira i := i + 1
+  fecha
+fecha
+
+campo riscos_alocacao_loop(ir: UnidadeIr, riscos: Lista<Risco>) -> Nada ::
+  para cada campo em ir.campos ::
+    para cada bloco em campo.blocos ::
+      guarda repetitivo := sys_texto_contem(bloco.nome, "gira_corpo") ou sys_texto_contem(bloco.nome, "para_corpo")
+      veja repetitivo ::
+        para cada instrucao em bloco.instrucoes ::
+          veja instrucao e IrCaixa ::
+            lista_coloca(riscos, Risco {
+              tipo: Memoria,
+              codigo: "SIA-RISCO-ALOCACAO-LOOP",
+              mensagem: "Alocacao de caixa dentro de loop; considere reutilizar memoria.",
+              arquivo: campo.nome,
+              linha: 0,
+              coluna: 0
+            })
+          fecha
+        fecha
+      fecha
+    fecha
+  fecha
+fecha
+
+campo riscos_efeito_publico(indice: IndiceSemantico, riscos: Lista<Risco>) -> Nada ::
+  para cada assinatura em indice.efeitos.assinaturas.valores ::
+    guarda quantidade := lista_tamanho(assinatura.efeitos)
+    veja quantidade >= 3 ::
+      lista_coloca(riscos, Risco {
+        tipo: Efeito,
+        codigo: "SIA-RISCO-EFEITOS-AMplos",
+        mensagem: "Campo expoe muitos efeitos externos; considere separar responsabilidades.",
+        arquivo: assinatura.span.arquivo,
+        linha: assinatura.span.linha,
+        coluna: assinatura.span.coluna
+      })
+    fecha
+  fecha
 fecha
