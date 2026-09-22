@@ -2,7 +2,7 @@ modulo seven.runtime.launcher
 
 campo seven_launcher(argumentos: Lista<Texto>) -> Num toca terminal, ambiente ::
   veja lista_tamanho(argumentos) == 0 ou lista_pega(argumentos, 0) == "--help" ou lista_pega(argumentos, 0) == "help" ::
-    diga "Seven 0.2.0"
+    diga "Seven 1.0.0"
     diga "usage:"
     diga "  seven --version"
     diga "  seven doctor"
@@ -17,7 +17,7 @@ campo seven_launcher(argumentos: Lista<Texto>) -> Num toca terminal, ambiente ::
   guarda comando := lista_pega(argumentos, 0)
 
   veja comando == "--version" ::
-    diga "Seven 0.2.0"
+    diga "Seven 1.0.0"
     diga "Creator: Gabriel Barcelos"
     devolve 0
   fecha
