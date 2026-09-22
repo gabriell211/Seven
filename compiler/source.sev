@@ -46,6 +46,8 @@ campo fonte_carrega_pacote(pacote: Pacote) -> UnidadeFonte toca disco ::
   solta arquivos := lista<Fonte>()
   solta visitados := lista<Texto>()
 
+  fonte_carrega_preludio(arquivos, visitados)
+
   para cada caminho em pacote.fontes ::
     veja texto_contem(caminho, ".sev") ::
       fonte_carrega_recursiva(caminho, arquivos, visitados)
@@ -55,22 +57,35 @@ campo fonte_carrega_pacote(pacote: Pacote) -> UnidadeFonte toca disco ::
   devolve UnidadeFonte { arquivos: arquivos }
 fecha
 
+campo fonte_carrega_preludio(
+  arquivos: Lista<Fonte>,
+  visitados: Lista<Texto>
+) -> Nada toca disco ::
+  fonte_carrega_recursiva("std/base/lista.sev", arquivos, visitados)
+  fonte_carrega_recursiva("std/base/resultado.sev", arquivos, visitados)
+  fonte_carrega_recursiva("std/base/talvez.sev", arquivos, visitados)
+  fonte_carrega_recursiva("std/base/mapa.sev", arquivos, visitados)
+  fonte_carrega_recursiva("std/base/texto.sev", arquivos, visitados)
+  fonte_carrega_recursiva("std/mem/bytes.sev", arquivos, visitados)
+fecha
+
 campo fonte_carrega_recursiva(
   caminho: Texto,
   arquivos: Lista<Fonte>,
   visitados: Lista<Texto>
 ) -> Nada toca disco ::
-  veja fonte_caminho_visitado(visitados, caminho) ::
+  guarda resolvido := fonte_resolve_caminho(caminho)
+  veja resolvido == "" ::
     devolve nulo
   fecha
 
-  lista_coloca(visitados, caminho)
-
-  veja nao sys_arquivo_existe(caminho) ::
+  veja fonte_caminho_visitado(visitados, resolvido) ::
     devolve nulo
   fecha
 
-  guarda fonte := fonte_carrega_obrigatoria(caminho)
+  lista_coloca(visitados, resolvido)
+
+  guarda fonte := fonte_carrega_obrigatoria(resolvido)
   lista_coloca(arquivos, fonte)
 
   para cada linha em linhas(fonte.texto) ::
@@ -118,6 +133,37 @@ campo fonte_carrega_modulo(
   fecha
 fecha
 
+campo fonte_resolve_caminho(caminho: Texto) -> Texto toca disco ::
+  veja sys_arquivo_existe(caminho) ::
+    devolve caminho
+  fecha
+
+  guarda raiz := fonte_raiz_instalacao()
+  veja raiz != "" ::
+    guarda instalado := raiz + "/" + caminho
+    veja sys_arquivo_existe(instalado) ::
+      devolve instalado
+    fecha
+  fecha
+
+  devolve ""
+fecha
+
+campo fonte_raiz_instalacao() -> Texto ::
+  guarda bin := sys_executavel_diretorio()
+  solta fim := sys_texto_tamanho(bin)
+
+  gira fim > 0 ::
+    guarda caractere := sys_texto_caractere(bin, fim - 1)
+    veja caractere == "/" ou caractere == "\\" ::
+      devolve sys_texto_fatia(bin, 0, fim - 1)
+    fecha
+    vira fim := fim - 1
+  fecha
+
+  devolve bin
+fecha
+
 campo fonte_modulo_caminho(modulo: Texto) -> Texto toca disco ::
   solta base := modulo
 
@@ -139,13 +185,13 @@ campo fonte_modulo_caminho(modulo: Texto) -> Texto toca disco ::
     fecha
   fecha
 
-  guarda arquivo := base + ".sev"
-  veja sys_arquivo_existe(arquivo) ::
+  guarda arquivo := fonte_resolve_caminho(base + ".sev")
+  veja arquivo != "" ::
     devolve arquivo
   fecha
 
-  guarda entrada := base + "/seven.sev"
-  veja sys_arquivo_existe(entrada) ::
+  guarda entrada := fonte_resolve_caminho(base + "/seven.sev")
+  veja entrada != "" ::
     devolve entrada
   fecha
 
