@@ -34,37 +34,62 @@ fecha
 
 campo fmt_texto(fonte: Texto) -> Texto ::
   solta saida := ""
-  solta nivel := 0
+  solta nivel: U64 := 0
 
   para cada linha em linhas(fonte) ::
-    guarda limpa := texto_trim(linha)
+    guarda limpa := fmt_trim(linha)
 
-    veja limpa == "fecha" ::
-      vira nivel := max(0, nivel - 1)
+    veja (limpa == "fecha" ou texto_comeca(limpa, "outro")) e nivel > 0 ::
+      vira nivel := nivel - 1
     fecha
 
-    vira saida := saida + repete("  ", nivel) + limpa + "\n"
+    vira saida := saida + fmt_repete("  ", nivel) + limpa + "\n"
 
-    veja texto_comeca(limpa, "campo ") ::
-      vira nivel := nivel + 1
-    fecha
-
-    veja texto_comeca(limpa, "molde ") ::
-      vira nivel := nivel + 1
-    fecha
-
-    veja texto_comeca(limpa, "selo ") ::
-      vira nivel := nivel + 1
-    fecha
-
-    veja texto_comeca(limpa, "veja ") ::
-      vira nivel := nivel + 1
-    fecha
-
-    veja texto_comeca(limpa, "para ") ::
+    veja fmt_abre_bloco(limpa) ::
       vira nivel := nivel + 1
     fecha
   fecha
 
+  devolve saida
+fecha
+
+campo fmt_abre_bloco(linha: Texto) -> Bit ::
+  devolve texto_comeca(linha, "campo ") ou
+    texto_comeca(linha, "molde ") ou
+    texto_comeca(linha, "selo ") ou
+    texto_comeca(linha, "veja ") ou
+    texto_comeca(linha, "outro") ou
+    texto_comeca(linha, "para ") ou
+    texto_comeca(linha, "gira ") ou
+    texto_comeca(linha, "zona ")
+fecha
+
+campo fmt_trim(valor: Texto) -> Texto ::
+  guarda total := sys_texto_tamanho(valor)
+  solta inicio: U64 := 0
+  solta fim := total
+
+  gira inicio < fim e fmt_espaco(sys_texto_caractere(valor, inicio)) ::
+    vira inicio := inicio + 1
+  fecha
+
+  gira fim > inicio e fmt_espaco(sys_texto_caractere(valor, fim - 1)) ::
+    vira fim := fim - 1
+  fecha
+
+  devolve sys_texto_fatia(valor, inicio, fim)
+fecha
+
+campo fmt_espaco(valor: Texto) -> Bit ::
+  devolve valor == " " ou valor == "\t" ou valor == "\r" ou valor == "\n"
+fecha
+
+campo fmt_repete(valor: Texto, quantidade: U64) -> Texto ::
+  solta saida := ""
+  solta indice: U64 := 0
+  gira indice < quantidade ::
+    vira saida := saida + valor
+    vira indice := indice + 1
+  fecha
   devolve saida
 fecha
