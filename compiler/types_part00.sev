@@ -126,10 +126,17 @@ campo registra_membros(programa: Programa, tabela: TabelaTipos) -> Nada ::
     veja item e ItemMolde ::
       para cada membro em item.valor.membros ::
         guarda chave := item.valor.nome + "." + membro.nome
+        guarda resolvido := resolve_tipo(membro.tipo, item.valor.genericos, tabela)
+
         veja mapa_tem(tabela.membros, chave) ::
-          reporta_tipo(tabela, "SV-TIPO-MEMBRO-DUPLICADO", "membro '" + membro.nome + "' esta duplicado", membro.span)
+          guarda existente := mapa_pega(tabela.membros, chave)
+          veja item.valor.nome == "Bytes" e existente e Algo e existente.valor == resolvido ::
+            // compiler0 preserva o molde Bytes bootstrap, estruturalmente igual ao std.
+          outro ::
+            reporta_tipo(tabela, "SV-TIPO-MEMBRO-DUPLICADO", "membro '" + membro.nome + "' esta duplicado", membro.span)
+          fecha
         outro ::
-          mapa_coloca(tabela.membros, chave, resolve_tipo(membro.tipo, item.valor.genericos, tabela))
+          mapa_coloca(tabela.membros, chave, resolvido)
         fecha
       fecha
     fecha
@@ -146,10 +153,18 @@ fecha
 
 campo registra_tipo_nome(tabela: TabelaTipos, nome: Texto, tipo: Tipo, local: Span) -> Nada ::
   veja mapa_tem(tabela.tipos, nome) ::
+    guarda existente := mapa_pega(tabela.tipos, nome)
+    veja nome == "Bytes" e existente e Algo e existente.valor == tipo ::
+      // Compatibilidade do bootstrap: compiler0.Bytes e std.mem.bytes.Bytes
+      // compartilham exatamente o mesmo contrato estrutural.
+      devolve nulo
+    fecha
+
     reporta_tipo(tabela, "SV-TIPO-DUPLICADO", "tipo '" + nome + "' ja existe", local)
-  outro ::
-    mapa_coloca(tabela.tipos, nome, tipo)
+    devolve nulo
   fecha
+
+  mapa_coloca(tabela.tipos, nome, tipo)
 fecha
 
 campo registra_assinaturas(programa: Programa, tabela: TabelaTipos) -> Nada ::
