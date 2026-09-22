@@ -283,6 +283,9 @@ campo efeito_por_texto(nome: Texto) -> Talvez<Efeito> ::
 fecha
 
 campo efeito_intrinseco(nome: Texto) -> Talvez<Efeito> ::
+  veja nome == "sys_frontend_empacota" ou nome == "sys_css_renderiza" ou nome == "sys_css_media_declaracoes" ou nome == "sys_css_animacao_declaracoes" ou nome == "sys_html_renderiza" ::
+    devolve Vazio
+  fecha
   veja texto_comeca(nome, "terminal_") ou texto_comeca(nome, "sys_terminal_") ::
     devolve Algo(Terminal)
   fecha
