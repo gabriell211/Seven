@@ -198,10 +198,14 @@ fecha
 
 campo registra_assinatura(tabela: TabelaTipos, assinatura: AssinaturaCampo) -> Nada ::
   veja mapa_tem(tabela.campos, assinatura.nome) ::
-    reporta_tipo(tabela, "SV-TIPO-CAMPO-DUPLICADO", "campo '" + assinatura.nome + "' ja possui assinatura", assinatura.span)
-  outro ::
-    mapa_coloca(tabela.campos, assinatura.nome, assinatura)
+    guarda existente := mapa_pega(tabela.campos, assinatura.nome)
+    veja existente e Algo e existente.valor.span.arquivo == assinatura.span.arquivo ::
+      reporta_tipo(tabela, "SV-TIPO-CAMPO-DUPLICADO", "campo '" + assinatura.nome + "' ja possui assinatura", assinatura.span)
+    fecha
+    devolve nulo
   fecha
+
+  mapa_coloca(tabela.campos, assinatura.nome, assinatura)
 fecha
 
 campo confere_programa(programa: Programa, simbolos: TabelaSimbolos, tabela: TabelaTipos) -> Nada ::
