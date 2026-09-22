@@ -84,12 +84,18 @@ jobs:
           done < <(find conformance -type f -path '*/valid/*.sev' | LC_ALL=C sort)
 
           while IFS= read -r file; do
-            echo "invalid: $file"
+            echo "invalid-static: $file"
             if "$seven" check "$file"; then
-              echo "ERROR: invalid conformance file was accepted: $file"
+              echo "ERROR: invalid static conformance file was accepted: $file"
               failures=$((failures + 1))
             fi
-          done < <(find conformance -type f -path '*/invalid/*.sev' | LC_ALL=C sort)
+          done < <(find conformance -type f -path '*/invalid/*.sev' ! -path 'conformance/runtime/invalid/*' | LC_ALL=C sort)
+
+          while IFS= read -r file; do
+            echo "invalid-runtime: $file"
+            "$seven" check "$file" || failures=$((failures + 1))
+            "$seven" run "$file" || failures=$((failures + 1))
+          done < <(find conformance/runtime/invalid -type f -name '*.sev' | LC_ALL=C sort)
 
           test -s build/readiness-hello.svbc || failures=$((failures + 1))
           test -s build/readiness-web/app.wasm || failures=$((failures + 1))
