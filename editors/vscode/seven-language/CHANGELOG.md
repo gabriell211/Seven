@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.0
+
+- Promotes the official Seven VSCode extension to the stable 1.0 language surface.
+- Aligns syntax and editor configuration with the self-hosted Seven 1.0.0 toolchain.
+
 ## 0.2.2
 
 - Aligns the VSIX package with the Seven 0.2.2 runtime hardening release.
