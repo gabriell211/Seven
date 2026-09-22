@@ -137,5 +137,4 @@ jobs:
           grep -q 'uninstall' compiler/toolchain/installer.sev
           grep -q '\.sev' compiler/toolchain/installer.sev
           grep -q 'Seven 1.0.0' compiler/toolchain/cli.sev
-          grep -q '^versao 1.0.0
- seven.pkg
+          grep -Fxq 'versao 1.0.0' seven.pkg
