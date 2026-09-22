@@ -34,6 +34,7 @@ campo indice_vazio() -> IndiceSemantico ::
     arestas: lista<ArestaIndice>(),
     simbolos: TabelaSimbolos {
       simbolos: mapa<Texto, Simbolo>(),
+      modulos: mapa<Texto, Bit>(),
       diagnosticos: lista<Diagnostico>()
     },
     tipos: tabela_tipos_base(),
