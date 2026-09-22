@@ -23,12 +23,167 @@ campo autofix_calcula(sugestao: Sugestao, fonte: Fonte) -> Talvez<Autofix> ::
   fecha
 
   veja sugestao.codigo == "SIA-MUTAVEL" ::
-    devolve Algo(autofix_troca_guarda_por_solta(sugestao, fonte))
+    devolve autofix_troca_guarda_por_solta(sugestao, fonte)
   fecha
 
   veja sugestao.codigo == "SIA-EFEITO-DECLARAR" ::
-    devolve Algo(autofix_adiciona_efeito(sugestao, fonte))
+    devolve autofix_adiciona_efeito(sugestao, fonte)
   fecha
 
   devolve Vazio
+fecha
+
+
+campo autofix_troca_guarda_por_solta(sugestao: Sugestao, fonte: Fonte) -> Talvez<Autofix> ::
+  guarda inicio := autofix_inicio_linha(fonte, sugestao.linha)
+  guarda fim := autofix_fim_linha(fonte, sugestao.linha)
+  guarda posicao := autofix_busca(fonte.texto, "guarda", inicio, fim)
+
+  veja posicao == fim ::
+    devolve Vazio
+  fecha
+
+  solta edicoes := lista<EdicaoTexto>()
+  lista_coloca(edicoes, EdicaoTexto {
+    arquivo: fonte.caminho,
+    inicio: posicao,
+    fim: posicao + 6,
+    texto: "solta"
+  })
+
+  devolve Algo(Autofix {
+    titulo: "Tornar vinculo mutavel",
+    sugestao: sugestao,
+    edicoes: edicoes
+  })
+fecha
+
+campo autofix_adiciona_efeito(sugestao: Sugestao, fonte: Fonte) -> Talvez<Autofix> ::
+  veja sugestao.correcao == "" ::
+    devolve Vazio
+  fecha
+
+  guarda chamada := autofix_inicio_linha(fonte, sugestao.linha)
+  guarda declaracao := autofix_campo_anterior(fonte, chamada)
+  veja declaracao == sys_texto_tamanho(fonte.texto) ::
+    devolve Vazio
+  fecha
+
+  guarda dois_pontos := autofix_busca(
+    fonte.texto,
+    "::",
+    declaracao,
+    chamada + 1
+  )
+  veja dois_pontos == chamada + 1 ::
+    devolve Vazio
+  fecha
+
+  guarda assinatura := sys_texto_fatia(fonte.texto, declaracao, dois_pontos)
+  solta insercao := " toca " + sugestao.correcao
+  veja sys_texto_contem(assinatura, " toca ") ::
+    vira insercao := ", " + sugestao.correcao
+  fecha
+
+  solta edicoes := lista<EdicaoTexto>()
+  lista_coloca(edicoes, EdicaoTexto {
+    arquivo: fonte.caminho,
+    inicio: dois_pontos,
+    fim: dois_pontos,
+    texto: insercao
+  })
+
+  devolve Algo(Autofix {
+    titulo: "Declarar efeito '" + sugestao.correcao + "'",
+    sugestao: sugestao,
+    edicoes: edicoes
+  })
+fecha
+
+campo autofix_inicio_linha(fonte: Fonte, linha: U32) -> U64 ::
+  veja linha == 0 ou lista_tamanho(fonte.linhas) == 0 ::
+    devolve 0
+  fecha
+
+  guarda indice := U64(linha - 1)
+  veja indice >= lista_tamanho(fonte.linhas) ::
+    devolve sys_texto_tamanho(fonte.texto)
+  fecha
+
+  devolve lista_pega(fonte.linhas, indice)
+fecha
+
+campo autofix_fim_linha(fonte: Fonte, linha: U32) -> U64 ::
+  veja linha == 0 ::
+    devolve 0
+  fecha
+
+  guarda proxima := U64(linha)
+  veja proxima < lista_tamanho(fonte.linhas) ::
+    guarda valor := lista_pega(fonte.linhas, proxima)
+    veja valor > 0 ::
+      devolve valor - 1
+    fecha
+  fecha
+
+  devolve sys_texto_tamanho(fonte.texto)
+fecha
+
+campo autofix_campo_anterior(fonte: Fonte, limite: U64) -> U64 ::
+  solta linha: U64 := 0
+  solta melhor := sys_texto_tamanho(fonte.texto)
+
+  para cada inicio em fonte.linhas ::
+    veja inicio > limite ::
+      devolve melhor
+    fecha
+
+    guarda fim := sys_texto_tamanho(fonte.texto)
+    veja linha + 1 < lista_tamanho(fonte.linhas) ::
+      vira fim := lista_pega(fonte.linhas, linha + 1)
+    fecha
+
+    guarda trecho := sys_texto_fatia(fonte.texto, inicio, fim)
+    veja sys_texto_contem(trecho, "campo ") ::
+      vira melhor := inicio
+    fecha
+
+    vira linha := linha + 1
+  fecha
+
+  devolve melhor
+fecha
+
+campo autofix_busca(valor: Texto, trecho: Texto, inicio: U64, limite: U64) -> U64 ::
+  guarda tv := sys_texto_tamanho(valor)
+  guarda tt := sys_texto_tamanho(trecho)
+  solta fim := limite
+  veja fim > tv ::
+    vira fim := tv
+  fecha
+
+  veja tt == 0 ::
+    devolve inicio
+  fecha
+  veja inicio >= fim ou tt > fim - inicio ::
+    devolve fim
+  fecha
+
+  solta i := inicio
+  gira i + tt <= fim ::
+    solta igual := sim
+    solta j: U64 := 0
+    gira j < tt ::
+      veja sys_texto_caractere(valor, i + j) != sys_texto_caractere(trecho, j) ::
+        vira igual := nao
+      fecha
+      vira j := j + 1
+    fecha
+    veja igual ::
+      devolve i
+    fecha
+    vira i := i + 1
+  fecha
+
+  devolve fim
 fecha
