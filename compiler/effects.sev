@@ -64,11 +64,19 @@ campo registra_efeitos_programa(programa: Programa, tabela: TabelaEfeitos) -> Na
         fecha
       fecha
 
-      mapa_coloca(tabela.assinaturas, item.valor.nome, AssinaturaEfeitos {
+      guarda assinatura := AssinaturaEfeitos {
         campo: item.valor.nome,
         efeitos: efeitos,
         span: item.valor.span
-      })
+      }
+      solta chave := item.valor.nome
+      veja programa.modulo != "" ::
+        vira chave := programa.modulo + "." + item.valor.nome
+      fecha
+      mapa_coloca(tabela.assinaturas, chave, assinatura)
+      veja chave != item.valor.nome e nao mapa_tem(tabela.assinaturas, item.valor.nome) ::
+        mapa_coloca(tabela.assinaturas, item.valor.nome, assinatura)
+      fecha
     fecha
   fecha
 fecha
@@ -76,57 +84,57 @@ fecha
 campo confere_efeitos_programa(programa: Programa, simbolos: TabelaSimbolos, tabela: TabelaEfeitos) -> Nada ::
   para cada item em programa.itens ::
     veja item e ItemCampo ::
-      guarda assinatura := mapa_pega(tabela.assinaturas, item.valor.nome)
+      guarda assinatura := assinatura_efeitos_busca(tabela, programa, item.valor.nome)
       veja assinatura e Algo ::
         para cada comando em item.valor.corpo ::
-          confere_efeitos_comando(comando, assinatura.valor, tabela)
+          confere_efeitos_comando(comando, programa, assinatura.valor, tabela)
         fecha
       fecha
     fecha
   fecha
 fecha
 
-campo confere_efeitos_comando(comando: Comando, atual: AssinaturaEfeitos, tabela: TabelaEfeitos) -> Nada ::
+campo confere_efeitos_comando(comando: Comando, programa: Programa, atual: AssinaturaEfeitos, tabela: TabelaEfeitos) -> Nada ::
   veja comando e CmdCria ::
-    confere_efeitos_expressao(comando.valor.valor, atual, tabela)
+    confere_efeitos_expressao(comando.valor.valor, programa, atual, tabela)
   fecha
 
   veja comando e CmdVira ::
-    confere_efeitos_expressao(comando.valor.alvo, atual, tabela)
-    confere_efeitos_expressao(comando.valor.valor, atual, tabela)
+    confere_efeitos_expressao(comando.valor.alvo, programa, atual, tabela)
+    confere_efeitos_expressao(comando.valor.valor, programa, atual, tabela)
   fecha
 
   veja comando e CmdDiga ::
     exige_efeito(atual, Terminal, "diga escreve no terminal", comando.valor.span, tabela)
-    confere_efeitos_expressao(comando.valor.valor, atual, tabela)
+    confere_efeitos_expressao(comando.valor.valor, programa, atual, tabela)
   fecha
 
   veja comando e CmdVeja ::
-    confere_efeitos_expressao(comando.valor.condicao, atual, tabela)
+    confere_efeitos_expressao(comando.valor.condicao, programa, atual, tabela)
     para cada interno em comando.valor.entao ::
-      confere_efeitos_comando(interno, atual, tabela)
+      confere_efeitos_comando(interno, programa, atual, tabela)
     fecha
     para cada interno em comando.valor.senao ::
-      confere_efeitos_comando(interno, atual, tabela)
+      confere_efeitos_comando(interno, programa, atual, tabela)
     fecha
   fecha
 
   veja comando e CmdGira ::
-    confere_efeitos_expressao(comando.valor.condicao, atual, tabela)
+    confere_efeitos_expressao(comando.valor.condicao, programa, atual, tabela)
     para cada interno em comando.valor.corpo ::
-      confere_efeitos_comando(interno, atual, tabela)
+      confere_efeitos_comando(interno, programa, atual, tabela)
     fecha
   fecha
 
   veja comando e CmdParaCada ::
-    confere_efeitos_expressao(comando.valor.colecao, atual, tabela)
+    confere_efeitos_expressao(comando.valor.colecao, programa, atual, tabela)
     para cada interno em comando.valor.corpo ::
-      confere_efeitos_comando(interno, atual, tabela)
+      confere_efeitos_comando(interno, programa, atual, tabela)
     fecha
   fecha
 
   veja comando e CmdDevolve ::
-    confere_efeitos_expressao(comando.valor.valor, atual, tabela)
+    confere_efeitos_expressao(comando.valor.valor, programa, atual, tabela)
   fecha
 
   veja comando e CmdZona ::
@@ -135,25 +143,25 @@ campo confere_efeitos_comando(comando: Comando, atual: AssinaturaEfeitos, tabela
       exige_efeito(atual, necessario.valor, "zona exige efeito declarado", comando.valor.span, tabela)
     fecha
     para cada interno em comando.valor.corpo ::
-      confere_efeitos_comando(interno, atual, tabela)
+      confere_efeitos_comando(interno, programa, atual, tabela)
     fecha
   fecha
 
   veja comando e CmdExpressao ::
-    confere_efeitos_expressao(comando.valor.valor, atual, tabela)
+    confere_efeitos_expressao(comando.valor.valor, programa, atual, tabela)
   fecha
 fecha
 
-campo confere_efeitos_expressao(expressao: Expressao, atual: AssinaturaEfeitos, tabela: TabelaEfeitos) -> Nada ::
+campo confere_efeitos_expressao(expressao: Expressao, programa: Programa, atual: AssinaturaEfeitos, tabela: TabelaEfeitos) -> Nada ::
   veja expressao e ExprChamada ::
-    confere_efeitos_expressao(expressao.valor.alvo, atual, tabela)
+    confere_efeitos_expressao(expressao.valor.alvo, programa, atual, tabela)
     para cada argumento em expressao.valor.argumentos ::
-      confere_efeitos_expressao(argumento, atual, tabela)
+      confere_efeitos_expressao(argumento, programa, atual, tabela)
     fecha
 
     guarda nome := nome_chamada(expressao.valor.alvo)
     veja nome != "" ::
-      guarda assinatura := mapa_pega(tabela.assinaturas, nome)
+      guarda assinatura := assinatura_efeitos_busca(tabela, programa, nome)
       veja assinatura e Algo ::
         para cada efeito em assinatura.valor.efeitos ::
           exige_efeito(atual, efeito, "chamada de " + nome + " propaga efeito", expressao.valor.span, tabela)
@@ -168,30 +176,30 @@ campo confere_efeitos_expressao(expressao: Expressao, atual: AssinaturaEfeitos, 
   fecha
 
   veja expressao e ExprBinaria ::
-    confere_efeitos_expressao(expressao.valor.esquerda, atual, tabela)
-    confere_efeitos_expressao(expressao.valor.direita, atual, tabela)
+    confere_efeitos_expressao(expressao.valor.esquerda, programa, atual, tabela)
+    confere_efeitos_expressao(expressao.valor.direita, programa, atual, tabela)
   fecha
 
   veja expressao e ExprUnaria ::
-    confere_efeitos_expressao(expressao.valor.direita, atual, tabela)
+    confere_efeitos_expressao(expressao.valor.direita, programa, atual, tabela)
   fecha
 
   veja expressao e ExprAcesso ::
-    confere_efeitos_expressao(expressao.valor.base, atual, tabela)
+    confere_efeitos_expressao(expressao.valor.base, programa, atual, tabela)
   fecha
 
   veja expressao e ExprIndice ::
-    confere_efeitos_expressao(expressao.valor.base, atual, tabela)
-    confere_efeitos_expressao(expressao.valor.indice, atual, tabela)
+    confere_efeitos_expressao(expressao.valor.base, programa, atual, tabela)
+    confere_efeitos_expressao(expressao.valor.indice, programa, atual, tabela)
   fecha
 
   veja expressao e ExprEspecializa ::
-    confere_efeitos_expressao(expressao.valor.alvo, atual, tabela)
+    confere_efeitos_expressao(expressao.valor.alvo, programa, atual, tabela)
   fecha
 
   veja expressao e ExprConstrucao ::
     para cada campo em expressao.valor.campos ::
-      confere_efeitos_expressao(campo.valor, atual, tabela)
+      confere_efeitos_expressao(campo.valor, programa, atual, tabela)
     fecha
   fecha
 
@@ -202,9 +210,27 @@ campo confere_efeitos_expressao(expressao: Expressao, atual: AssinaturaEfeitos, 
       span: expressao.valor.span
     }
     para cada comando em expressao.valor.corpo ::
-      confere_efeitos_comando(comando, anonima, tabela)
+      confere_efeitos_comando(comando, programa, anonima, tabela)
     fecha
   fecha
+fecha
+
+campo assinatura_efeitos_busca(tabela: TabelaEfeitos, programa: Programa, nome: Texto) -> Talvez<AssinaturaEfeitos> ::
+  veja programa.modulo != "" ::
+    guarda local := mapa_pega(tabela.assinaturas, programa.modulo + "." + nome)
+    veja local e Algo ::
+      devolve local
+    fecha
+  fecha
+
+  para cada uso em programa.usos ::
+    guarda importada := mapa_pega(tabela.assinaturas, uso.caminho + "." + nome)
+    veja importada e Algo ::
+      devolve importada
+    fecha
+  fecha
+
+  devolve mapa_pega(tabela.assinaturas, nome)
 fecha
 
 campo exige_efeito(
