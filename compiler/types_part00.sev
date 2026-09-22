@@ -190,11 +190,11 @@ fecha
 campo registra_assinaturas(programa: Programa, tabela: TabelaTipos) -> Nada ::
   para cada item em programa.itens ::
     veja item e ItemCampo ::
-      registra_campo(item.valor.nome, item.valor.parametros, item.valor.retorno, item.valor.efeitos, item.valor.genericos, item.valor.span, tabela)
+      registra_campo(programa.modulo, item.valor.nome, item.valor.parametros, item.valor.retorno, item.valor.efeitos, item.valor.genericos, item.valor.span, tabela)
     fecha
 
     veja item e ItemExterno ::
-      registra_campo(item.valor.nome, item.valor.parametros, item.valor.retorno, lista<Texto>(), lista<Texto>(), item.valor.span, tabela)
+      registra_campo(programa.modulo, item.valor.nome, item.valor.parametros, item.valor.retorno, lista<Texto>(), lista<Texto>(), item.valor.span, tabela)
     fecha
 
     veja item e ItemSelo ::
@@ -203,7 +203,7 @@ campo registra_assinaturas(programa: Programa, tabela: TabelaTipos) -> Nada ::
         para cada carga em variante.carga ::
           lista_coloca(parametros, resolve_tipo(carga.tipo, item.valor.genericos, tabela))
         fecha
-        registra_assinatura(tabela, AssinaturaCampo {
+        registra_assinatura(tabela, programa.modulo, AssinaturaCampo {
           nome: variante.nome,
           parametros: parametros,
           retorno: TipoSelo(item.valor.nome),
@@ -216,6 +216,7 @@ campo registra_assinaturas(programa: Programa, tabela: TabelaTipos) -> Nada ::
 fecha
 
 campo registra_campo(
+  modulo: Texto,
   nome: Texto,
   parametros_sintaxe: Lista<Parametro>,
   retorno_sintaxe: TipoSintaxe,
@@ -229,7 +230,7 @@ campo registra_campo(
     lista_coloca(parametros, resolve_tipo(parametro.tipo, genericos, tabela))
   fecha
 
-  registra_assinatura(tabela, AssinaturaCampo {
+  registra_assinatura(tabela, modulo, AssinaturaCampo {
     nome: nome,
     parametros: parametros,
     retorno: resolve_tipo(retorno_sintaxe, genericos, tabela),
@@ -238,16 +239,22 @@ campo registra_campo(
   })
 fecha
 
-campo registra_assinatura(tabela: TabelaTipos, assinatura: AssinaturaCampo) -> Nada ::
-  veja mapa_tem(tabela.campos, assinatura.nome) ::
-    guarda existente := mapa_pega(tabela.campos, assinatura.nome)
-    veja existente e Algo e existente.valor.span.arquivo == assinatura.span.arquivo ::
-      reporta_tipo(tabela, "SV-TIPO-CAMPO-DUPLICADO", "campo '" + assinatura.nome + "' ja possui assinatura", assinatura.span)
-    fecha
+campo registra_assinatura(tabela: TabelaTipos, modulo: Texto, assinatura: AssinaturaCampo) -> Nada ::
+  solta chave := assinatura.nome
+  veja modulo != "" ::
+    vira chave := modulo + "." + assinatura.nome
+  fecha
+
+  veja mapa_tem(tabela.campos, chave) ::
+    reporta_tipo(tabela, "SV-TIPO-CAMPO-DUPLICADO", "campo '" + chave + "' ja possui assinatura", assinatura.span)
     devolve nulo
   fecha
 
-  mapa_coloca(tabela.campos, assinatura.nome, assinatura)
+  mapa_coloca(tabela.campos, chave, assinatura)
+
+  veja chave != assinatura.nome e nao mapa_tem(tabela.campos, assinatura.nome) ::
+    mapa_coloca(tabela.campos, assinatura.nome, assinatura)
+  fecha
 fecha
 
 campo confere_programa(programa: Programa, simbolos: TabelaSimbolos, tabela: TabelaTipos) -> Nada ::
