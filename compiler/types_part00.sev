@@ -49,6 +49,10 @@ campo mede_tipos(programas: Lista<Programa>, simbolos: TabelaSimbolos) -> Tabela
   fecha
 
   para cada programa em programas ::
+    registra_membros(programa, tabela)
+  fecha
+
+  para cada programa em programas ::
     registra_assinaturas(programa, tabela)
   fecha
 
@@ -115,6 +119,9 @@ campo registra_declaracoes(programa: Programa, tabela: TabelaTipos) -> Nada ::
     fecha
   fecha
 
+fecha
+
+campo registra_membros(programa: Programa, tabela: TabelaTipos) -> Nada ::
   para cada item em programa.itens ::
     veja item e ItemMolde ::
       para cada membro em item.valor.membros ::
