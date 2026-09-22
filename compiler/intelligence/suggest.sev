@@ -15,6 +15,9 @@ molde Sugestao ::
   codigo: Texto
   severidade: SeveridadeSugestao
   aplicavel: Bit
+  arquivo: Texto
+  linha: U32
+  correcao: Texto
 fecha
 
 campo sugestoes_para(diag: Diagnostico, indice: IndiceSemantico) -> Lista<Sugestao> ::
@@ -30,7 +33,10 @@ campo sugestoes_para(diag: Diagnostico, indice: IndiceSemantico) -> Lista<Sugest
       detalhe: "O campo chama codigo que toca mundo externo. Adicione o efeito em `toca` ou isole a chamada.",
       codigo: "SIA-EFEITO-DECLARAR",
       severidade: Alta,
-      aplicavel: sim
+      aplicavel: sim,
+      arquivo: diag.arquivo,
+      linha: diag.linha,
+      correcao: sugestao_efeito(diag.ajuda)
     })
   fecha
 
@@ -40,9 +46,112 @@ campo sugestoes_para(diag: Diagnostico, indice: IndiceSemantico) -> Lista<Sugest
       detalhe: "O valor foi criado imutavel, mas depois recebe nova atribuicao.",
       codigo: "SIA-MUTAVEL",
       severidade: Media,
-      aplicavel: sim
+      aplicavel: sim,
+      arquivo: diag.arquivo,
+      linha: diag.linha,
+      correcao: "solta"
     })
   fecha
 
   devolve sugestoes
+fecha
+
+
+campo adiciona_nome_parecido(sugestoes: Lista<Sugestao>, diag: Diagnostico, indice: IndiceSemantico) -> Nada ::
+  guarda procurado := sugestao_nome_inexistente(diag.mensagem)
+  veja procurado == "" ::
+    devolve nulo
+  fecha
+
+  para cada no em indice.nos ::
+    veja sugestao_nome_parece(procurado, no.nome) ::
+      lista_coloca(sugestoes, Sugestao {
+        titulo: "Talvez voce quis dizer '" + no.nome + "'",
+        detalhe: "Existe um simbolo semanticamente indexado com nome parecido.",
+        codigo: "SIA-NOME-PARECIDO",
+        severidade: Baixa,
+        aplicavel: nao,
+        arquivo: diag.arquivo,
+        linha: diag.linha,
+        correcao: no.nome
+      })
+      devolve nulo
+    fecha
+  fecha
+fecha
+
+campo sugestao_nome_inexistente(mensagem: Texto) -> Texto ::
+  guarda inicio := sugestao_busca(mensagem, "'", 0)
+  veja inicio == sys_texto_tamanho(mensagem) ::
+    devolve ""
+  fecha
+
+  guarda fim := sugestao_busca(mensagem, "'", inicio + 1)
+  veja fim == sys_texto_tamanho(mensagem) ou fim <= inicio + 1 ::
+    devolve ""
+  fecha
+
+  devolve sys_texto_fatia(mensagem, inicio + 1, fim)
+fecha
+
+campo sugestao_efeito(ajuda: Texto) -> Texto ::
+  guarda marca := sugestao_busca(ajuda, "toca ", 0)
+  veja marca == sys_texto_tamanho(ajuda) ::
+    devolve ""
+  fecha
+
+  guarda inicio := marca + 5
+  guarda fim := sugestao_busca(ajuda, "'", inicio)
+  veja fim == sys_texto_tamanho(ajuda) ::
+    devolve sys_texto_fatia(ajuda, inicio, sys_texto_tamanho(ajuda))
+  fecha
+
+  devolve sys_texto_fatia(ajuda, inicio, fim)
+fecha
+
+campo sugestao_nome_parece(a: Texto, b: Texto) -> Bit ::
+  guarda ta := sys_texto_tamanho(a)
+  guarda tb := sys_texto_tamanho(b)
+  veja ta == 0 ou tb == 0 ::
+    devolve nao
+  fecha
+
+  veja sys_texto_caractere(a, 0) != sys_texto_caractere(b, 0) ::
+    devolve nao
+  fecha
+
+  veja ta > tb ::
+    devolve ta - tb <= 2
+  fecha
+
+  devolve tb - ta <= 2
+fecha
+
+campo sugestao_busca(valor: Texto, trecho: Texto, inicio: U64) -> U64 ::
+  guarda tv := sys_texto_tamanho(valor)
+  guarda tt := sys_texto_tamanho(trecho)
+  veja tt == 0 ::
+    devolve inicio
+  fecha
+  veja tt > tv ou inicio >= tv ::
+    devolve tv
+  fecha
+
+  solta i := inicio
+  gira i + tt <= tv ::
+    solta igual := sim
+    solta j: U64 := 0
+    gira j < tt ::
+      veja sys_texto_caractere(valor, i + j) != sys_texto_caractere(trecho, j) ::
+        vira igual := nao
+      fecha
+      vira j := j + 1
+    fecha
+    veja igual ::
+      devolve i
+    fecha
+    vira i := i + 1
+  fecha
+
+  devolve tv
 fecha
