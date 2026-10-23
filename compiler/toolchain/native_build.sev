@@ -40,6 +40,7 @@ campo gera_compiladores_nativos(contexto: ContextoToolchain) -> Resultado<Compil
   veja d2 e Falha :: devolve Falha(d2.valor) fecha
 
   guarda alvo_windows := alvo_win_x64()
+  vira alvo_windows.entrada := "seven_host_inicio"
   lista_coloca(alvo_windows.recursos, RecursoNativo {
     tipo: "icon",
     nome: "SEVEN_ICON",
@@ -51,7 +52,9 @@ campo gera_compiladores_nativos(contexto: ContextoToolchain) -> Resultado<Compil
     devolve Falha(nativo_windows.valor)
   fecha
 
-  guarda nativo_linux := baixa_nativo(imagem.valor, alvo_linux_x64())
+  guarda alvo_linux := alvo_linux_x64()
+  vira alvo_linux.entrada := "seven_host_inicio"
+  guarda nativo_linux := baixa_nativo(imagem.valor, alvo_linux)
   veja nativo_linux e Falha ::
     devolve Falha(nativo_linux.valor)
   fecha
