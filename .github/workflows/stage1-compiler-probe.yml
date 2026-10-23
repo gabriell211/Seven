@@ -4,6 +4,7 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -190,6 +191,75 @@ jobs:
           set -e
           test "$proof_exit" -eq 42
 
+      - name: Materialize the self-hosted CLI and native release payload
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          build/genesis-host build/seven.stage2.svbc seven.pkg build/seven.svbc
+          build/genesis-host build/seven.stage2.svbc seven.pkg build/seven.installer.svbc
+
+          cat > build/seven-host.pkg <<'EOF'
+          pacote seven-host
+          versao 1.0.0
+          criador Gabriel Barcelos
+          entrada seven.runtime.host.inicio
+          alvo svbc
+          indice seven.sources
+          EOF
+
+          cat > build/seven-launcher.pkg <<'EOF'
+          pacote seven-launcher
+          versao 1.0.0
+          criador Gabriel Barcelos
+          entrada seven.runtime.launcher.inicio
+          alvo svbc
+          indice seven.sources
+          EOF
+
+          cat > build/native-release.pkg <<'EOF'
+          pacote seven-native-release
+          versao 1.0.0
+          criador Gabriel Barcelos
+          entrada bootstrap.native_release.inicio
+          alvo svbc
+          indice seven.sources
+          EOF
+
+          build/genesis-host build/seven.stage2.svbc build/seven-host.pkg build/seven.host.svbc
+          build/genesis-host build/seven.stage2.svbc build/seven-launcher.pkg build/seven.launcher.svbc
+          build/genesis-host build/seven.stage2.svbc runtime/webbuild/seven.pkg build/seven.webbuild.svbc
+          build/genesis-host build/seven.stage2.svbc runtime/webserve/seven.pkg build/seven.webserve.svbc
+          build/genesis-host build/seven.stage2.svbc build/native-release.pkg build/seven.native-release.svbc
+
+          for image in             build/seven.svbc             build/seven.installer.svbc             build/seven.host.svbc             build/seven.launcher.svbc             build/seven.webbuild.svbc             build/seven.webserve.svbc             build/seven.native-release.svbc
+          do
+            test -s "$image"
+            test "$(od -An -tx1 -N4 "$image" | tr -d ' \n')" = '53564243'
+          done
+
+          build/genesis-host build/seven.svbc --version
+          build/genesis-host build/seven.svbc doctor
+          build/genesis-host build/seven.svbc check examples/hello.sev
+
+          set +e
+          build/genesis-host build/seven.svbc run build/stage1-proof.sev
+          run_exit=$?
+          set -e
+          test "$run_exit" -eq 42
+
+          build/genesis-host build/seven.svbc web build examples/web_dev.sev build/cli-web
+          test -s build/cli-web/app.wasm
+          test "$(od -An -tx1 -N4 build/cli-web/app.wasm | tr -d ' \n')" = '0061736d'
+
+          build/genesis-host build/seven.native-release.svbc
+          test -s build/native/windows/seven.exe
+          test -s build/native/linux/seven
+          test "$(od -An -tx1 -N2 build/native/windows/seven.exe | tr -d ' \n')" = '4d5a'
+          test "$(od -An -tx1 -N4 build/native/linux/seven | tr -d ' \n')" = '7f454c46'
+          test -s build/installers/seven-0.1.0-windows-x64/seven-installer.exe
+          test -s build/installers/seven-0.1.0-linux-x64/seven-installer
+
       - name: Compile and exercise self-hosted Web API with Stage 2
         shell: bash
         run: |
@@ -272,20 +342,20 @@ jobs:
           test "$(od -An -tx1 -N4 build/seven.webbuild.svbc | tr -d ' \n')" = '53564243'
           test "$(od -An -tx1 -N4 build/seven.webserve.svbc | tr -d ' \n')" = '53564243'
 
-          build/genesis-host web build examples/web_dev.sev build/web-stage2-native
+          build/genesis-host build/seven.webbuild.svbc examples/web_dev.sev build/web-stage2-native
           test -s build/web-stage2-native/app.wasm
           test -s build/web-stage2-native/seven.web.json
           grep -q '"target": "webassembly"' build/web-stage2-native/seven.web.json
           test "$(od -An -tx1 -N4 build/web-stage2-native/app.wasm | tr -d ' \n')" = '0061736d'
 
-          build/genesis-host web build examples/frontend-counter/app.sev build/frontend-counter-stage2
+          build/genesis-host build/seven.webbuild.svbc examples/frontend-counter/app.sev build/frontend-counter-stage2
           test -s build/frontend-counter-stage2/app.wasm
           test -s build/frontend-counter-stage2/seven.web.json
           grep -q '"number-format"' build/frontend-counter-stage2/seven.web.json
           grep -q '"applicationLanguageDependency": false' build/frontend-counter-stage2/seven.web.json
           test "$(od -An -tx1 -N4 build/frontend-counter-stage2/app.wasm | tr -d ' \n')" = '0061736d'
 
-          build/genesis-host web build examples/frontend-rich/app.sev build/frontend-rich-stage2
+          build/genesis-host build/seven.webbuild.svbc examples/frontend-rich/app.sev build/frontend-rich-stage2
           test -s build/frontend-rich-stage2/app.wasm
           test -s build/frontend-rich-stage2/seven.web.json
           test -s build/frontend-rich-stage2/seven-loader.mjs
@@ -301,7 +371,7 @@ jobs:
           grep -q 'sys_css_animacao_declaracoes' build/frontend-rich-stage2/seven-loader.mjs
           test "$(od -An -tx1 -N4 build/frontend-rich-stage2/app.wasm | tr -d ' \n')" = '0061736d'
 
-          build/genesis-host web serve build/web-stage2-native 18081 > build/web-stage2-serve.stdout 2> build/web-stage2-serve.stderr &
+          build/genesis-host build/seven.webserve.svbc build/web-stage2-native 18081 > build/web-stage2-serve.stdout 2> build/web-stage2-serve.stderr &
           serve_pid=$!
           cleanup_serve() {
             if kill -0 "$serve_pid" 2>/dev/null; then
@@ -370,6 +440,15 @@ jobs:
             build/seven.stage1.svbc
             build/seven.stage2.svbc
             build/seven.stage2.self.svbc
+            build/seven.svbc
+            build/seven.installer.svbc
+            build/seven.host.svbc
+            build/seven.launcher.svbc
+            build/seven.webbuild.svbc
+            build/seven.webserve.svbc
+            build/seven.native-release.svbc
+            build/native/
+            build/installers/
             build/stage1-proof.svbc
             build/stage2-proof.svbc
             build/api-server.stage2.svbc
