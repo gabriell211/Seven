@@ -193,8 +193,54 @@ jobs:
         run: |
           set -euo pipefail
 
-          build/genesis-host build/seven.stage2.svbc seven.pkg build/seven.svbc
-          build/genesis-host build/seven.stage2.svbc seven.pkg build/seven.installer.svbc
+          cat > build/executable-entry-sources <<'EOF'
+          bootstrap/native-release.sev
+          bootstrap/stage0.sev
+          compiler/seven.sev
+          compiler0/seven0.sev
+          runtime/host/seven.sev
+          runtime/installer/seven.sev
+          runtime/launcher/seven.sev
+          runtime/webbuild/seven.sev
+          runtime/webserve/seven.sev
+          EOF
+
+          grep -v -x -F -f build/executable-entry-sources seven.sources > build/seven-libraries.sources
+
+          make_entry_index() {
+            saida="$1"
+            entrada="$2"
+            cp build/seven-libraries.sources "$saida"
+            printf '%s\n' "$entrada" >> "$saida"
+            LC_ALL=C sort -u "$saida" -o "$saida"
+
+            entradas=0
+            while IFS= read -r arquivo; do
+              if grep -q '^campo inicio' "$arquivo"; then
+                entradas=$((entradas + 1))
+              fi
+            done < "$saida"
+
+            if test "$entradas" -ne 1; then
+              echo "indice executavel invalido: $saida possui $entradas campos inicio"
+              exit 1
+            fi
+          }
+
+          make_entry_index build/seven-cli.sources compiler/seven.sev
+          make_entry_index build/seven-host.sources runtime/host/seven.sev
+          make_entry_index build/seven-launcher.sources runtime/launcher/seven.sev
+          make_entry_index build/seven-installer.sources runtime/installer/seven.sev
+          make_entry_index build/native-release.sources bootstrap/native-release.sev
+
+          cat > build/seven-cli.pkg <<'EOF'
+          pacote seven-cli
+          versao 1.0.0
+          criador Gabriel Barcelos
+          entrada seven.compiler.inicio
+          alvo svbc
+          indice build/seven-cli.sources
+          EOF
 
           cat > build/seven-host.pkg <<'EOF'
           pacote seven-host
@@ -202,7 +248,7 @@ jobs:
           criador Gabriel Barcelos
           entrada seven.runtime.host.inicio
           alvo svbc
-          indice seven.sources
+          indice build/seven-host.sources
           EOF
 
           cat > build/seven-launcher.pkg <<'EOF'
@@ -211,7 +257,16 @@ jobs:
           criador Gabriel Barcelos
           entrada seven.runtime.launcher.inicio
           alvo svbc
-          indice seven.sources
+          indice build/seven-launcher.sources
+          EOF
+
+          cat > build/seven-installer.pkg <<'EOF'
+          pacote seven-installer
+          versao 1.0.0
+          criador Gabriel Barcelos
+          entrada seven.runtime.installer.inicio
+          alvo svbc
+          indice build/seven-installer.sources
           EOF
 
           cat > build/native-release.pkg <<'EOF'
@@ -220,16 +275,25 @@ jobs:
           criador Gabriel Barcelos
           entrada bootstrap.native_release.inicio
           alvo svbc
-          indice seven.sources
+          indice build/native-release.sources
           EOF
 
+          build/genesis-host build/seven.stage2.svbc build/seven-cli.pkg build/seven.svbc
           build/genesis-host build/seven.stage2.svbc build/seven-host.pkg build/seven.host.svbc
           build/genesis-host build/seven.stage2.svbc build/seven-launcher.pkg build/seven.launcher.svbc
+          build/genesis-host build/seven.stage2.svbc build/seven-installer.pkg build/seven.installer.svbc
           build/genesis-host build/seven.stage2.svbc runtime/webbuild/seven.pkg build/seven.webbuild.svbc
           build/genesis-host build/seven.stage2.svbc runtime/webserve/seven.pkg build/seven.webserve.svbc
           build/genesis-host build/seven.stage2.svbc build/native-release.pkg build/seven.native-release.svbc
 
-          for image in             build/seven.svbc             build/seven.installer.svbc             build/seven.host.svbc             build/seven.launcher.svbc             build/seven.webbuild.svbc             build/seven.webserve.svbc             build/seven.native-release.svbc
+          for image in \
+            build/seven.svbc \
+            build/seven.installer.svbc \
+            build/seven.host.svbc \
+            build/seven.launcher.svbc \
+            build/seven.webbuild.svbc \
+            build/seven.webserve.svbc \
+            build/seven.native-release.svbc
           do
             test -s "$image"
             test "$(od -An -tx1 -N4 "$image" | tr -d ' \n')" = '53564243'
