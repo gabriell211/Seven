@@ -1,0 +1,70 @@
+name: Verify Seven 0.1.0 Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SEVEN_TAG: v0.1.0
+  SEED_ARCHIVE_SHA256: a2d09138008ae7223683681443663da8d4c58b39600cbaf3bef11889c2495ad3
+  WINDOWS_COMPILER_SHA256: f9ebcbe747f5646f1f224af0929d19d321a67a241be3844116e42ac2a5207296
+  WINDOWS_INSTALLER_SHA256: e4847375d1e800425e23253d36394bc8d2a2d9a97598f8905a30986310f176ed
+  LINUX_COMPILER_SHA256: 2f073ab8101742006728a491b3093ddb093d202289002d13cc2a6a03dfa55dcb
+  LINUX_INSTALLER_SHA256: 8d5b9c534018d8b8ccca7fcdfaa6f7d40587c8a039d63ae214c62f93d35d533e
+
+jobs:
+  verify:
+    name: Verify immutable release assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify audited native seed archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-seeds
+          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
+          echo "$SEED_ARCHIVE_SHA256  build/native-seeds.zip" | sha256sum --check
+          unzip -q build/native-seeds.zip -d build/native-seeds
+          echo "$WINDOWS_COMPILER_SHA256  build/native-seeds/seven-windows.exe" | sha256sum --check
+          echo "$WINDOWS_INSTALLER_SHA256  build/native-seeds/seven-installer-windows.exe" | sha256sum --check
+          echo "$LINUX_COMPILER_SHA256  build/native-seeds/seven-linux" | sha256sum --check
+          echo "$LINUX_INSTALLER_SHA256  build/native-seeds/seven-installer-linux" | sha256sum --check
+
+      - name: Download published release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh release download "$SEVEN_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir dist \
+            --pattern 'seven-0.1.0-windows-x64.zip' \
+            --pattern 'seven-0.1.0-windows-x64.zip.sha256' \
+            --pattern 'seven-0.1.0-linux-x64.tar.gz' \
+            --pattern 'seven-0.1.0-linux-x64.tar.gz.sha256'
+
+      - name: Verify published package checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum --check seven-0.1.0-windows-x64.zip.sha256
+          sha256sum --check seven-0.1.0-linux-x64.tar.gz.sha256
+
+      - name: Verify release publication manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '"version": "0.1.0"' releases/v0.1.0.json
+          grep -q '"tag": "v0.1.0"' releases/v0.1.0.json
+          grep -q '"verified": true' releases/v0.1.0.json
+          grep -q "$SEED_ARCHIVE_SHA256" releases/v0.1.0.json
+          grep -q "$WINDOWS_COMPILER_SHA256" releases/v0.1.0.json
+          grep -q "$LINUX_COMPILER_SHA256" releases/v0.1.0.json

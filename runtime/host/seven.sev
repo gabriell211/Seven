@@ -1,11 +1,31 @@
 modulo seven.runtime.host
 
 usa seven.runtime.svbc.runner
+usa std.fs.file
 
 campo seven_host(argumentos: Lista<Texto>) -> Num toca disco, terminal, rede, tempo, ambiente, frontend ::
-  devolve roda_svbc_com_args("build/seven.launcher.svbc", argumentos)
+  devolve roda_svbc_com_args(seven_launcher_caminho(), argumentos)
+fecha
+
+campo seven_host_inicio() -> Num toca disco, terminal, rede, tempo, ambiente, frontend ::
+  devolve seven_host(sys_args())
 fecha
 
 campo inicio() -> Num toca disco, terminal, rede, tempo, ambiente, frontend ::
-  devolve seven_host(sys_args())
+  devolve seven_host_inicio()
+fecha
+
+campo seven_launcher_caminho() -> Texto toca disco, ambiente ::
+  guarda raiz := sys_executavel_diretorio()
+  guarda irmao := raiz + "/seven.launcher.svbc"
+
+  veja arquivo_existe(irmao) ::
+    devolve irmao
+  fecha
+
+  veja arquivo_existe("build/seven.launcher.svbc") ::
+    devolve "build/seven.launcher.svbc"
+  fecha
+
+  devolve "seven.launcher.svbc"
 fecha

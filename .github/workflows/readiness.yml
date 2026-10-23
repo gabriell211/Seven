@@ -13,8 +13,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  selfhost:
+    name: Materialize self-hosted Seven toolchain
+    uses: ./.github/workflows/stage1-compiler-probe.yml
+
   readiness:
     name: Compiler, conformance and source contracts
+    needs: selfhost
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -62,24 +67,25 @@ jobs:
           grep -q '^indice seven.sources$' seven.pkg
           grep -q 'fonte_carrega_indice' compiler/source.sev
 
-      - name: Reconstruct audited Seven 0.2 transition seeds
+      - uses: actions/download-artifact@v4
+        with:
+          name: seven-stage1-self-hosting
+          path: build
+
+      - name: Prepare self-hosted Linux compiler
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p build/native-seeds
-          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
-          unzip -t build/native-seeds.zip
-          unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
-          echo '80f1948e83b1c58c719c2ae0579a4b03edd1ccc1bf1e4e52091e2c66478feba5  build/native-seeds/seven-windows.exe' | sha256sum --check
-          chmod +x build/native-seeds/seven-linux
+          chmod +x build/native/linux/seven
+          test -s build/seven.svbc
+          test -s build/seven.stage2.svbc
+          cmp build/seven.stage2.svbc build/seven.stage2.self.svbc
 
       - name: Exercise compiler, WebAssembly and conformance behavior
         shell: bash
         run: |
           set -uo pipefail
-          seven="$PWD/build/native-seeds/seven-linux"
+          seven="$PWD/build/native/linux/seven"
           failures=0
 
           "$seven" --version || failures=$((failures + 1))
@@ -114,7 +120,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          seven="$PWD/build/native-seeds/seven-linux"
+          seven="$PWD/build/native/linux/seven"
           while IFS= read -r file; do
             echo "source: $file"
             "$seven" check "$file"
