@@ -9,9 +9,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: seven-stage0-fixed-point-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   fixed-point:
