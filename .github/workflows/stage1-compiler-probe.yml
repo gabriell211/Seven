@@ -9,9 +9,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: seven-stage1-self-hosting-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   self-host:
