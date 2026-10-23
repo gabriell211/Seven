@@ -38,14 +38,14 @@ molde CodigoX64 ::
 fecha
 
 campo x64_compila(imagem: ImagemSvbc, alvo: AlvoNativo) -> Resultado<CodigoX64, Falha> ::
-  guarda indice_inicio := x64_campo_inicio(imagem)
+  guarda indice_inicio := x64_campo_entrada(imagem, alvo.entrada)
   veja indice_inicio < 0 ::
-    devolve Falha(nova_falha("SV-NATIVE-ENTRADA", "campo inicio ausente"))
+    devolve Falha(nova_falha("SV-NATIVE-ENTRADA", "campo de entrada nativo ausente: " + alvo.entrada))
   fecha
 
   guarda entrada := lista_pega(imagem.campos, U64(indice_inicio))
   veja entrada.parametros != 0 ::
-    devolve Falha(nova_falha("SV-NATIVE-ARGS", "o campo inicio nativo nao recebe parametros"))
+    devolve Falha(nova_falha("SV-NATIVE-ARGS", "o campo de entrada nativo nao recebe parametros: " + alvo.entrada))
   fecha
 
   guarda alcancaveis := x64_campos_alcancaveis(imagem, U32(indice_inicio))
@@ -179,10 +179,10 @@ campo x64_campos_alcancaveis(imagem: ImagemSvbc, inicio: U32) -> Lista<Bit> ::
   devolve alcancaveis
 fecha
 
-campo x64_campo_inicio(imagem: ImagemSvbc) -> Num ::
+campo x64_campo_entrada(imagem: ImagemSvbc, nome: Texto) -> Num ::
   solta indice: U64 := 0
   para cada campo em imagem.campos ::
-    veja campo.nome == "inicio" :: devolve Num(indice) fecha
+    veja campo.nome == nome :: devolve Num(indice) fecha
     vira indice := indice + 1
   fecha
   devolve -1
