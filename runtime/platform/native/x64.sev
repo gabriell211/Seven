@@ -360,7 +360,7 @@ campo x64_emite_instrucao(
 
   veja instr.opcode e Volta ::
     bytes_coloca_byte(saida.bytes, 88)
-    guarda indice_inicio := x64_campo_inicio(imagem)
+    guarda indice_inicio := x64_campo_entrada(imagem, alvo.entrada)
     veja Num(campo_atual) == indice_inicio ::
       x64_emite_saida(saida, alvo)
     outro ::
