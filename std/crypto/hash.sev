@@ -8,7 +8,7 @@ molde Hash ::
   valor: Bytes
 fecha
 
-campo sha256(dados: Bytes) -> Hash toca ambiente ::
+campo sha256(dados: Bytes) -> Hash ::
   devolve Hash {
     algoritmo: "sha256",
     valor: sys_sha256(dados)
@@ -19,7 +19,7 @@ campo hash_texto(hash: Hash) -> Texto ::
   devolve bytes_hex(hash.valor)
 fecha
 
-campo sha256_arquivo(caminho: Texto) -> Texto toca disco, ambiente ::
+campo sha256_arquivo(caminho: Texto) -> Texto toca disco ::
   guarda dados := arquivo_bytes(caminho)
 
   veja dados e Falha ::
