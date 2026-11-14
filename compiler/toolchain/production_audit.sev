@@ -63,17 +63,35 @@ campo ci_sete_nativo() -> Bit toca disco ::
     devolve nao
   fecha
 
-  devolve producao_texto_contem(workflow.valor, "seven.exe") e
-    producao_texto_contem(workflow.valor, "pwsh") == nao e
-    producao_texto_contem(workflow.valor, ".ps1") == nao e
-    producao_texto_contem(workflow.valor, ".psm1") == nao
+  veja nao producao_texto_contem(workflow.valor, "seven.exe") ::
+    devolve nao
+  fecha
+  veja producao_texto_contem(workflow.valor, "pwsh") ::
+    devolve nao
+  fecha
+  veja producao_texto_contem(workflow.valor, ".ps1") ::
+    devolve nao
+  fecha
+  veja producao_texto_contem(workflow.valor, ".psm1") ::
+    devolve nao
+  fecha
+  devolve sim
 fecha
 
 campo ponte_powershell_ausente() -> Bit toca disco ::
-  devolve arquivo_existe("tools/seven-dev.ps1") == nao e
-    arquivo_existe("tools/seven-lsp.ps1") == nao e
-    arquivo_existe("tools/verify-foundation.ps1") == nao e
-    arquivo_existe("tools/Seven.Foundation.psm1") == nao
+  veja arquivo_existe("tools/seven-dev.ps1") ::
+    devolve nao
+  fecha
+  veja arquivo_existe("tools/seven-lsp.ps1") ::
+    devolve nao
+  fecha
+  veja arquivo_existe("tools/verify-foundation.ps1") ::
+    devolve nao
+  fecha
+  veja arquivo_existe("tools/Seven.Foundation.psm1") ::
+    devolve nao
+  fecha
+  devolve sim
 fecha
 
 campo producao_texto_contem(valor: Texto, trecho: Texto) -> Bit ::
@@ -112,14 +130,31 @@ campo producao_bytes_tem_svbc_v1(dados: Bytes) -> Bit ::
     devolve nao
   fecha
 
-  devolve bytes_pega(dados, 0) == 83 e
-    bytes_pega(dados, 1) == 86 e
-    bytes_pega(dados, 2) == 66 e
-    bytes_pega(dados, 3) == 67 e
-    bytes_pega(dados, 4) == 0 e
-    bytes_pega(dados, 5) == 0 e
-    bytes_pega(dados, 6) == 0 e
-    bytes_pega(dados, 7) == 1
+  veja bytes_pega(dados, 0) != 83 ::
+    devolve nao
+  fecha
+  veja bytes_pega(dados, 1) != 86 ::
+    devolve nao
+  fecha
+  veja bytes_pega(dados, 2) != 66 ::
+    devolve nao
+  fecha
+  veja bytes_pega(dados, 3) != 67 ::
+    devolve nao
+  fecha
+  veja bytes_pega(dados, 4) != 0 ::
+    devolve nao
+  fecha
+  veja bytes_pega(dados, 5) != 0 ::
+    devolve nao
+  fecha
+  veja bytes_pega(dados, 6) != 0 ::
+    devolve nao
+  fecha
+  veja bytes_pega(dados, 7) != 1 ::
+    devolve nao
+  fecha
+  devolve sim
 fecha
 
 campo runtime_verify_foundation_ok() -> Bit toca disco, terminal, rede, tempo, ambiente, frontend ::
