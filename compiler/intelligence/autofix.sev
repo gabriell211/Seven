@@ -22,13 +22,5 @@ campo autofix_calcula(sugestao: Sugestao, fonte: Fonte) -> Talvez<Autofix> ::
     devolve Vazio
   fecha
 
-  veja sugestao.codigo == "SIA-MUTAVEL" ::
-    devolve Algo(autofix_troca_guarda_por_solta(sugestao, fonte))
-  fecha
-
-  veja sugestao.codigo == "SIA-EFEITO-DECLARAR" ::
-    devolve Algo(autofix_adiciona_efeito(sugestao, fonte))
-  fecha
-
   devolve Vazio
 fecha

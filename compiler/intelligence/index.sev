@@ -36,6 +36,7 @@ campo indice_vazio() -> IndiceSemantico ::
     arestas: lista<ArestaIndice>(),
     simbolos: TabelaSimbolos {
       simbolos: mapa<Texto, Simbolo>(),
+      modulos: mapa<Texto, Bit>(),
       diagnosticos: lista<Diagnostico>()
     },
     tipos: tabela_tipos_base(),
@@ -72,4 +73,34 @@ campo indice_busca(indice: IndiceSemantico, nome: Texto) -> Lista<NoIndice> ::
   fecha
 
   devolve achados
+fecha
+
+campo indice_programa(indice: IndiceSemantico, programa: Programa) -> Nada ::
+  para cada item em programa.itens ::
+    veja item e ItemCampo ::
+      indice_adiciona_no(indice, programa.modulo, item.valor.nome, "campo", item.valor.retorno.nome)
+    fecha
+    veja item e ItemMolde ::
+      indice_adiciona_no(indice, programa.modulo, item.valor.nome, "molde", item.valor.nome)
+    fecha
+    veja item e ItemSelo ::
+      indice_adiciona_no(indice, programa.modulo, item.valor.nome, "selo", item.valor.nome)
+    fecha
+    veja item e ItemConst ::
+      indice_adiciona_no(indice, programa.modulo, item.valor.nome, "constante", item.valor.tipo.nome)
+    fecha
+    veja item e ItemExterno ::
+      indice_adiciona_no(indice, programa.modulo, item.valor.nome, "externo", item.valor.retorno.nome)
+    fecha
+  fecha
+fecha
+
+campo indice_adiciona_no(indice: IndiceSemantico, modulo: Texto, nome: Texto, especie: Texto, tipo: Texto) -> Nada ::
+  lista_coloca(indice.nos, NoIndice {
+    id: modulo + "." + nome,
+    nome: nome,
+    especie: especie,
+    modulo: modulo,
+    tipo: tipo
+  })
 fecha
