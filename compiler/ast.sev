@@ -182,7 +182,7 @@ fecha
 
 molde FalhaCmd ::
   codigo: Texto
-  mensagem: Texto
+  mensagem: Expressao
   span: Span
 fecha
 

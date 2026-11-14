@@ -1,5 +1,7 @@
 modulo seven.compiler.types
 
+usa std.base.mapa
+
 usa seven.compiler.ast
 usa seven.compiler.symbols
 usa seven.compiler.source
@@ -46,6 +48,12 @@ campo mede_tipos(programas: Lista<Programa>, simbolos: TabelaSimbolos) -> Tabela
 
   para cada programa em programas ::
     registra_declaracoes(programa, tabela)
+  fecha
+
+  // Two passes ensure that forward-referenced named types are registered
+  // before inspecting the fields of any model in the compilation unit.
+  para cada programa em programas ::
+    registra_membros_declaracoes(programa, tabela)
   fecha
 
   para cada programa em programas ::
@@ -114,7 +122,9 @@ campo registra_declaracoes(programa: Programa, tabela: TabelaTipos) -> Nada ::
       registra_genericos(item.valor.genericos, tabela)
     fecha
   fecha
+fecha
 
+campo registra_membros_declaracoes(programa: Programa, tabela: TabelaTipos) -> Nada ::
   para cada item em programa.itens ::
     veja item e ItemMolde ::
       para cada membro em item.valor.membros ::

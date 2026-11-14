@@ -4,13 +4,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
-concurrency:
-  group: seven-stage0-fixed-point-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   fixed-point:

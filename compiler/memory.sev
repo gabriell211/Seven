@@ -1,5 +1,7 @@
 modulo seven.compiler.memory
 
+usa std.base.mapa
+
 
 
 molde CaixaMemoria ::

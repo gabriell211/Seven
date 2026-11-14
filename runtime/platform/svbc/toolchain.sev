@@ -139,7 +139,7 @@ campo svbc_produtivo(caminho: Texto) -> Bit toca disco ::
     devolve nao
   fecha
 
-  devolve bytes_tem_svbc_v1(dados.valor)
+  devolve plataforma_bytes_tem_svbc_v1(dados.valor)
 fecha
 
 campo svbc_arquivos_iguais(a: Texto, b: Texto) -> Bit toca disco ::
@@ -170,7 +170,7 @@ campo svbc_arquivos_iguais(a: Texto, b: Texto) -> Bit toca disco ::
   devolve sim
 fecha
 
-campo bytes_tem_svbc_v1(dados: Bytes) -> Bit ::
+campo plataforma_bytes_tem_svbc_v1(dados: Bytes) -> Bit ::
   veja dados.tamanho < 8 ::
     devolve nao
   fecha

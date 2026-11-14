@@ -30,6 +30,6 @@ campo pacote_asset(pacote: PacoteFrontend, item: Asset) -> PacoteFrontend ::
   devolve pacote
 fecha
 
-campo pacote_emite(pacote: PacoteFrontend) -> Resultado<Bytes, Falha> ::
+campo pacote_emite(pacote: PacoteFrontend) -> Resultado<Bytes, Falha> toca frontend ::
   devolve sys_frontend_empacota(pacote)
 fecha

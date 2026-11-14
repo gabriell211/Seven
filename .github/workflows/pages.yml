@@ -7,13 +7,11 @@ on:
     paths:
       - 'website/**'
       - 'brand/**'
-      - 'seed/native/final/v1/**'
       - '.github/workflows/pages.yml'
   pull_request:
     paths:
       - 'website/**'
       - 'brand/**'
-      - 'seed/native/final/v1/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -27,8 +25,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  selfhost:
+    name: Materialize self-hosted Seven toolchain
+    uses: ./.github/workflows/stage1-compiler-probe.yml
+
   build:
     name: Generate official website with Seven
+    needs: selfhost
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -36,28 +39,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Reconstruct audited Seven compiler
+      - uses: actions/download-artifact@v4
+        with:
+          name: seven-stage1-self-hosting
+          path: build
+
+      - name: Prepare self-hosted Pages compiler
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p build/native-seeds
-          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
-          unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
-          chmod +x build/native-seeds/seven-linux
+          chmod +x build/native/linux/seven
+          test -s build/seven.svbc
+          cmp build/seven.stage2.svbc build/seven.stage2.self.svbc
 
       - name: Check Seven website generator
         shell: bash
         run: |
           set -euo pipefail
-          build/native-seeds/seven-linux check website/pages.sev
+          build/native/linux/seven check website/pages.sev
 
       - name: Generate static Pages artifact with Seven
         shell: bash
         run: |
           set -euo pipefail
-          seven=build/native-seeds/seven-linux
+          seven=build/native/linux/seven
           mkdir -p build/pages/assets
 
           "$seven" run website/pages.sev > build/pages/raw-output.txt

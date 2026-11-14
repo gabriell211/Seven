@@ -21,7 +21,7 @@ campo sugestoes_para(diag: Diagnostico, indice: IndiceSemantico) -> Lista<Sugest
   solta sugestoes := lista<Sugestao>()
 
   veja diag.codigo == "SV-NOME-INEXISTENTE" ::
-    adiciona_nome_parecido(sugestoes, diag, indice)
+    adiciona_dica_nome_inexistente(sugestoes, diag, indice)
   fecha
 
   veja diag.codigo == "SV-EFEITO-VAZOU" ::
@@ -30,7 +30,7 @@ campo sugestoes_para(diag: Diagnostico, indice: IndiceSemantico) -> Lista<Sugest
       detalhe: "O campo chama codigo que toca mundo externo. Adicione o efeito em `toca` ou isole a chamada.",
       codigo: "SIA-EFEITO-DECLARAR",
       severidade: Alta,
-      aplicavel: sim
+      aplicavel: nao
     })
   fecha
 
@@ -40,9 +40,24 @@ campo sugestoes_para(diag: Diagnostico, indice: IndiceSemantico) -> Lista<Sugest
       detalhe: "O valor foi criado imutavel, mas depois recebe nova atribuicao.",
       codigo: "SIA-MUTAVEL",
       severidade: Media,
-      aplicavel: sim
+      aplicavel: nao
     })
   fecha
 
   devolve sugestoes
+fecha
+
+campo adiciona_dica_nome_inexistente(sugestoes: Lista<Sugestao>, diag: Diagnostico, indice: IndiceSemantico) -> Nada ::
+  solta detalhe := "Revise a grafia e as importacoes do modulo: " + diag.mensagem
+  veja lista_tamanho(indice.nos) == 0 ::
+    vira detalhe := detalhe + ". O indice semantico esta vazio."
+  fecha
+
+  lista_coloca(sugestoes, Sugestao {
+    titulo: "Verifique o nome e os imports",
+    detalhe: detalhe,
+    codigo: "SIA-NOME-REVISAO",
+    severidade: Baixa,
+    aplicavel: nao
+  })
 fecha

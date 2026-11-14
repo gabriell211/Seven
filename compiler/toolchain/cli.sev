@@ -15,6 +15,7 @@ usa seven.compiler.toolchain.verify
 usa seven.compiler.toolchain.bootstrap_chain
 usa seven.compiler.toolchain.production_audit
 usa seven.compiler.toolchain.web_build
+usa seven.runtime.svbc.runner
 usa std.base.lista
 usa std.io.console
 
@@ -148,7 +149,7 @@ campo executa_comando(contexto: ContextoToolchain, comando: ComandoSeven) -> Sai
   fecha
 
   veja comando e CmdRun ::
-    devolve executa_build_like(contexto, "run", comando.entrada, "")
+    devolve executa_run(contexto, comando.entrada)
   fecha
 
   veja comando e CmdInstall ::
@@ -290,6 +291,25 @@ campo executa_build_like(
       diga(saida.caminho)
     fecha
     devolve ToolchainOk(0)
+  outro ::
+    mostra_diagnosticos(saida.diagnosticos)
+    devolve ToolchainErro(1, "compilacao falhou")
+  fecha
+fecha
+
+campo executa_run(
+  contexto: ContextoToolchain,
+  entrada: Texto
+) -> SaidaToolchain toca terminal, disco, ambiente, rede, tempo, frontend ::
+  solta argumentos := lista<Texto>()
+  lista_coloca(argumentos, entrada)
+
+  guarda pedido := pedido_de_compilacao(argumentos)
+  guarda saida := compila(pedido)
+
+  veja saida e Sucesso ::
+    guarda codigo := roda_svbc(saida.caminho)
+    devolve ToolchainOk(codigo)
   outro ::
     mostra_diagnosticos(saida.diagnosticos)
     devolve ToolchainErro(1, "compilacao falhou")
