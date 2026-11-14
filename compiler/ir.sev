@@ -1,5 +1,7 @@
 modulo seven.compiler.ir
 
+usa std.base.mapa
+
 usa seven.compiler.ast
 usa seven.compiler.types
 usa seven.compiler.effects

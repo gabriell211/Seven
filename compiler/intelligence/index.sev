@@ -1,5 +1,7 @@
 modulo seven.compiler.intelligence.index
 
+usa std.base.mapa
+
 usa seven.compiler.ast
 usa seven.compiler.diagnostic
 usa seven.compiler.symbols

@@ -63,10 +63,10 @@ campo ci_sete_nativo() -> Bit toca disco ::
     devolve nao
   fecha
 
-  devolve texto_contem(workflow.valor, "seven.exe") e
-    texto_contem(workflow.valor, "pwsh") == nao e
-    texto_contem(workflow.valor, ".ps1") == nao e
-    texto_contem(workflow.valor, ".psm1") == nao
+  devolve producao_texto_contem(workflow.valor, "seven.exe") e
+    producao_texto_contem(workflow.valor, "pwsh") == nao e
+    producao_texto_contem(workflow.valor, ".ps1") == nao e
+    producao_texto_contem(workflow.valor, ".psm1") == nao
 fecha
 
 campo ponte_powershell_ausente() -> Bit toca disco ::
@@ -76,7 +76,7 @@ campo ponte_powershell_ausente() -> Bit toca disco ::
     arquivo_existe("tools/Seven.Foundation.psm1") == nao
 fecha
 
-campo texto_contem(valor: Texto, trecho: Texto) -> Bit ::
+campo producao_texto_contem(valor: Texto, trecho: Texto) -> Bit ::
   devolve sys_texto_contem(valor, trecho)
 fecha
 
@@ -104,10 +104,10 @@ campo artefato_svbc_produtivo(caminho: Texto) -> Bit toca disco ::
     devolve nao
   fecha
 
-  devolve bytes_tem_svbc_v1(dados.valor)
+  devolve producao_bytes_tem_svbc_v1(dados.valor)
 fecha
 
-campo bytes_tem_svbc_v1(dados: Bytes) -> Bit ::
+campo producao_bytes_tem_svbc_v1(dados: Bytes) -> Bit ::
   veja dados.tamanho < 8 ::
     devolve nao
   fecha

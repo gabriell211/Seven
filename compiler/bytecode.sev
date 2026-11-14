@@ -7,30 +7,30 @@ usa std.mem.bytes
 const SvbcMagic: Texto := "SVBC"
 const SvbcVersao: U32 := 1
 
-selo Opcode ::
-  Pare
-  Const
-  Carrega
-  Guarda
-  Soma
-  Sub
-  Mul
-  Div
-  Igual
-  Diferente
-  Menor
-  MenorIgual
-  Maior
-  MaiorIgual
-  Salta
-  SaltaSeNao
-  Chama
-  Volta
-  Caixa
-  MarcaByte
-  PegaByte
-  Efeito
-  Syscall
+selo OpcodeBytecode ::
+  BcPare
+  BcConst
+  BcCarrega
+  BcGuarda
+  BcSoma
+  BcSub
+  BcMul
+  BcDiv
+  BcIgual
+  BcDiferente
+  BcMenor
+  BcMenorIgual
+  BcMaior
+  BcMaiorIgual
+  BcSalta
+  BcSaltaSeNao
+  BcChama
+  BcVolta
+  BcCaixa
+  BcMarcaByte
+  BcPegaByte
+  BcEfeito
+  BcSyscall
 fecha
 
 campo emite_svbc(unidade: UnidadeIr) -> Bytes ::
@@ -144,7 +144,7 @@ campo emite_codigo(bytes: Bytes, unidade: UnidadeIr) -> Nada ::
 
   veja total == 0 ::
     bytes_coloca_u32(bytes, 1)
-    emite_instrucao_svbc(bytes, Pare, 0, 0, 0, 0)
+    emite_instrucao_svbc(bytes, BcPare, 0, 0, 0, 0)
     devolve nulo
   fecha
 
@@ -221,22 +221,22 @@ campo emite_ir(
   ip: U64
 ) -> Nada ::
   veja instrucao e IrConst ::
-    emite_instrucao_svbc(bytes, Const, indice_constante(unidade.constantes, instrucao.valor), 0, 0, ip)
-    emite_instrucao_svbc(bytes, Guarda, instrucao.destino, 0, 0, ip + 1)
+    emite_instrucao_svbc(bytes, BcConst, indice_constante(unidade.constantes, instrucao.valor), 0, 0, ip)
+    emite_instrucao_svbc(bytes, BcGuarda, instrucao.destino, 0, 0, ip + 1)
     devolve nulo
   fecha
 
   veja instrucao e IrMove ::
-    emite_instrucao_svbc(bytes, Carrega, instrucao.origem, 0, 0, ip)
-    emite_instrucao_svbc(bytes, Guarda, instrucao.destino, 0, 0, ip + 1)
+    emite_instrucao_svbc(bytes, BcCarrega, instrucao.origem, 0, 0, ip)
+    emite_instrucao_svbc(bytes, BcGuarda, instrucao.destino, 0, 0, ip + 1)
     devolve nulo
   fecha
 
   veja instrucao e IrBin ::
-    emite_instrucao_svbc(bytes, Carrega, instrucao.esquerda, 0, 0, ip)
-    emite_instrucao_svbc(bytes, Carrega, instrucao.direita, 0, 0, ip + 1)
+    emite_instrucao_svbc(bytes, BcCarrega, instrucao.esquerda, 0, 0, ip)
+    emite_instrucao_svbc(bytes, BcCarrega, instrucao.direita, 0, 0, ip + 1)
     emite_instrucao_svbc(bytes, opcode_binario(instrucao.operador), 0, 0, 0, ip + 2)
-    emite_instrucao_svbc(bytes, Guarda, instrucao.destino, 0, 0, ip + 3)
+    emite_instrucao_svbc(bytes, BcGuarda, instrucao.destino, 0, 0, ip + 3)
     devolve nulo
   fecha
 
@@ -244,13 +244,13 @@ campo emite_ir(
     guarda deslocamento_chamada := emite_argumentos(bytes, instrucao.argumentos, ip)
     emite_instrucao_svbc(
       bytes,
-      Chama,
+      BcChama,
       indice_campo(unidade.campos, instrucao.campo),
       U32(lista_tamanho(instrucao.argumentos)),
       0,
       ip + deslocamento_chamada
     )
-    emite_instrucao_svbc(bytes, Guarda, instrucao.destino, 0, 0, ip + deslocamento_chamada + 1)
+    emite_instrucao_svbc(bytes, BcGuarda, instrucao.destino, 0, 0, ip + deslocamento_chamada + 1)
     devolve nulo
   fecha
 
@@ -258,63 +258,63 @@ campo emite_ir(
     guarda deslocamento_syscall := emite_argumentos(bytes, instrucao.argumentos, ip)
     emite_instrucao_svbc(
       bytes,
-      Syscall,
+      BcSyscall,
       indice_nome(unidade.nomes, instrucao.nome),
       U32(lista_tamanho(instrucao.argumentos)),
       0,
       ip + deslocamento_syscall
     )
-    emite_instrucao_svbc(bytes, Guarda, instrucao.destino, 0, 0, ip + deslocamento_syscall + 1)
+    emite_instrucao_svbc(bytes, BcGuarda, instrucao.destino, 0, 0, ip + deslocamento_syscall + 1)
     devolve nulo
   fecha
 
   veja instrucao e IrSalta ::
-    emite_instrucao_svbc(bytes, Salta, ip_do_bloco(unidade, campo_atual.nome, instrucao.bloco), 0, 0, ip)
+    emite_instrucao_svbc(bytes, BcSalta, ip_do_bloco(unidade, campo_atual.nome, instrucao.bloco), 0, 0, ip)
     devolve nulo
   fecha
 
   veja instrucao e IrSaltaSeNao ::
-    emite_instrucao_svbc(bytes, Carrega, instrucao.condicao, 0, 0, ip)
-    emite_instrucao_svbc(bytes, SaltaSeNao, ip_do_bloco(unidade, campo_atual.nome, instrucao.bloco), 0, 0, ip + 1)
+    emite_instrucao_svbc(bytes, BcCarrega, instrucao.condicao, 0, 0, ip)
+    emite_instrucao_svbc(bytes, BcSaltaSeNao, ip_do_bloco(unidade, campo_atual.nome, instrucao.bloco), 0, 0, ip + 1)
     devolve nulo
   fecha
 
   veja instrucao e IrRetorna ::
-    emite_instrucao_svbc(bytes, Carrega, instrucao.origem, 0, 0, ip)
-    emite_instrucao_svbc(bytes, Volta, 0, 0, 0, ip + 1)
+    emite_instrucao_svbc(bytes, BcCarrega, instrucao.origem, 0, 0, ip)
+    emite_instrucao_svbc(bytes, BcVolta, 0, 0, 0, ip + 1)
     devolve nulo
   fecha
 
   veja instrucao e IrCaixa ::
-    emite_instrucao_svbc(bytes, Carrega, instrucao.tamanho, 0, 0, ip)
-    emite_instrucao_svbc(bytes, Caixa, 0, 0, 0, ip + 1)
-    emite_instrucao_svbc(bytes, Guarda, instrucao.destino, 0, 0, ip + 2)
+    emite_instrucao_svbc(bytes, BcCarrega, instrucao.tamanho, 0, 0, ip)
+    emite_instrucao_svbc(bytes, BcCaixa, 0, 0, 0, ip + 1)
+    emite_instrucao_svbc(bytes, BcGuarda, instrucao.destino, 0, 0, ip + 2)
     devolve nulo
   fecha
 
   veja instrucao e IrMarcaByte ::
-    emite_instrucao_svbc(bytes, Carrega, instrucao.bloco, 0, 0, ip)
-    emite_instrucao_svbc(bytes, Carrega, instrucao.indice, 0, 0, ip + 1)
-    emite_instrucao_svbc(bytes, Carrega, instrucao.valor, 0, 0, ip + 2)
-    emite_instrucao_svbc(bytes, MarcaByte, 0, 0, 0, ip + 3)
+    emite_instrucao_svbc(bytes, BcCarrega, instrucao.bloco, 0, 0, ip)
+    emite_instrucao_svbc(bytes, BcCarrega, instrucao.indice, 0, 0, ip + 1)
+    emite_instrucao_svbc(bytes, BcCarrega, instrucao.valor, 0, 0, ip + 2)
+    emite_instrucao_svbc(bytes, BcMarcaByte, 0, 0, 0, ip + 3)
     devolve nulo
   fecha
 
   veja instrucao e IrPegaByte ::
-    emite_instrucao_svbc(bytes, Carrega, instrucao.bloco, 0, 0, ip)
-    emite_instrucao_svbc(bytes, Carrega, instrucao.indice, 0, 0, ip + 1)
-    emite_instrucao_svbc(bytes, PegaByte, 0, 0, 0, ip + 2)
-    emite_instrucao_svbc(bytes, Guarda, instrucao.destino, 0, 0, ip + 3)
+    emite_instrucao_svbc(bytes, BcCarrega, instrucao.bloco, 0, 0, ip)
+    emite_instrucao_svbc(bytes, BcCarrega, instrucao.indice, 0, 0, ip + 1)
+    emite_instrucao_svbc(bytes, BcPegaByte, 0, 0, 0, ip + 2)
+    emite_instrucao_svbc(bytes, BcGuarda, instrucao.destino, 0, 0, ip + 3)
     devolve nulo
   fecha
 
-  emite_instrucao_svbc(bytes, Pare, 0, 0, 0, ip)
+  emite_instrucao_svbc(bytes, BcPare, 0, 0, 0, ip)
 fecha
 
 campo emite_argumentos(bytes: Bytes, argumentos: Lista<U32>, ip: U64) -> U64 ::
   solta deslocamento: U64 := 0
   para cada argumento em argumentos ::
-    emite_instrucao_svbc(bytes, Carrega, argumento, 0, 0, ip + deslocamento)
+    emite_instrucao_svbc(bytes, BcCarrega, argumento, 0, 0, ip + deslocamento)
     vira deslocamento := deslocamento + 1
   fecha
   devolve deslocamento
@@ -373,49 +373,49 @@ campo indice_constante(constantes: Lista<ConstanteIr>, valor: ValorIr) -> U32 ::
   devolve 0
 fecha
 
-campo opcode_binario(operador: Texto) -> Opcode ::
-  veja operador == "+" :: devolve Soma fecha
-  veja operador == "-" :: devolve Sub fecha
-  veja operador == "*" :: devolve Mul fecha
-  veja operador == "/" :: devolve Div fecha
-  veja operador == "==" :: devolve Igual fecha
-  veja operador == "!=" :: devolve Diferente fecha
-  veja operador == "<" :: devolve Menor fecha
-  veja operador == "<=" :: devolve MenorIgual fecha
-  veja operador == ">" :: devolve Maior fecha
-  veja operador == ">=" :: devolve MaiorIgual fecha
-  guarda padrao: Opcode := Pare
+campo opcode_binario(operador: Texto) -> OpcodeBytecode ::
+  veja operador == "+" :: devolve BcSoma fecha
+  veja operador == "-" :: devolve BcSub fecha
+  veja operador == "*" :: devolve BcMul fecha
+  veja operador == "/" :: devolve BcDiv fecha
+  veja operador == "==" :: devolve BcIgual fecha
+  veja operador == "!=" :: devolve BcDiferente fecha
+  veja operador == "<" :: devolve BcMenor fecha
+  veja operador == "<=" :: devolve BcMenorIgual fecha
+  veja operador == ">" :: devolve BcMaior fecha
+  veja operador == ">=" :: devolve BcMaiorIgual fecha
+  guarda padrao: OpcodeBytecode := BcPare
   devolve padrao
 fecha
 
-campo opcode_byte(opcode: Opcode) -> Byte ::
-  veja opcode e Pare :: devolve 0 fecha
-  veja opcode e Const :: devolve 1 fecha
-  veja opcode e Carrega :: devolve 2 fecha
-  veja opcode e Guarda :: devolve 3 fecha
-  veja opcode e Soma :: devolve 4 fecha
-  veja opcode e Sub :: devolve 5 fecha
-  veja opcode e Mul :: devolve 6 fecha
-  veja opcode e Div :: devolve 7 fecha
-  veja opcode e Igual :: devolve 8 fecha
-  veja opcode e Diferente :: devolve 9 fecha
-  veja opcode e Menor :: devolve 10 fecha
-  veja opcode e MenorIgual :: devolve 11 fecha
-  veja opcode e Maior :: devolve 12 fecha
-  veja opcode e MaiorIgual :: devolve 13 fecha
-  veja opcode e Salta :: devolve 14 fecha
-  veja opcode e SaltaSeNao :: devolve 15 fecha
-  veja opcode e Chama :: devolve 16 fecha
-  veja opcode e Volta :: devolve 17 fecha
-  veja opcode e Caixa :: devolve 18 fecha
-  veja opcode e MarcaByte :: devolve 19 fecha
-  veja opcode e PegaByte :: devolve 20 fecha
-  veja opcode e Efeito :: devolve 21 fecha
-  veja opcode e Syscall :: devolve 22 fecha
+campo opcode_byte(opcode: OpcodeBytecode) -> Byte ::
+  veja opcode e BcPare :: devolve 0 fecha
+  veja opcode e BcConst :: devolve 1 fecha
+  veja opcode e BcCarrega :: devolve 2 fecha
+  veja opcode e BcGuarda :: devolve 3 fecha
+  veja opcode e BcSoma :: devolve 4 fecha
+  veja opcode e BcSub :: devolve 5 fecha
+  veja opcode e BcMul :: devolve 6 fecha
+  veja opcode e BcDiv :: devolve 7 fecha
+  veja opcode e BcIgual :: devolve 8 fecha
+  veja opcode e BcDiferente :: devolve 9 fecha
+  veja opcode e BcMenor :: devolve 10 fecha
+  veja opcode e BcMenorIgual :: devolve 11 fecha
+  veja opcode e BcMaior :: devolve 12 fecha
+  veja opcode e BcMaiorIgual :: devolve 13 fecha
+  veja opcode e BcSalta :: devolve 14 fecha
+  veja opcode e BcSaltaSeNao :: devolve 15 fecha
+  veja opcode e BcChama :: devolve 16 fecha
+  veja opcode e BcVolta :: devolve 17 fecha
+  veja opcode e BcCaixa :: devolve 18 fecha
+  veja opcode e BcMarcaByte :: devolve 19 fecha
+  veja opcode e BcPegaByte :: devolve 20 fecha
+  veja opcode e BcEfeito :: devolve 21 fecha
+  veja opcode e BcSyscall :: devolve 22 fecha
   devolve 0
 fecha
 
-campo emite_instrucao_svbc(bytes: Bytes, opcode: Opcode, a: U32, b: U32, c: U32, ip: U64) -> Nada ::
+campo emite_instrucao_svbc(bytes: Bytes, opcode: OpcodeBytecode, a: U32, b: U32, c: U32, ip: U64) -> Nada ::
   bytes_coloca_byte(bytes, opcode_byte(opcode))
   bytes_coloca_u32(bytes, a)
   bytes_coloca_u32(bytes, b)
