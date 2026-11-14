@@ -1,0 +1,10 @@
+modulo conformance.invalid.frontend_effect_leak
+
+campo faz_interface() -> Num toca frontend ::
+  devolve 1
+fecha
+
+// espera: SV-EFEITO-VAZOU
+campo sem_frontend() -> Num ::
+  devolve faz_interface()
+fecha
