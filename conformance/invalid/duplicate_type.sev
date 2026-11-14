@@ -1,0 +1,10 @@
+modulo conformance.invalid.duplicate_type
+
+molde Identidade ::
+  id: U64
+fecha
+
+// espera: SV-TIPO-DUPLICADO
+molde Identidade ::
+  nome: Texto
+fecha

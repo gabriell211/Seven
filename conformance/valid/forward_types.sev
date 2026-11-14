@@ -1,0 +1,13 @@
+modulo conformance.valid.forward_types
+
+molde Primeiro ::
+  proximo: Segundo
+fecha
+
+molde Segundo ::
+  id: U64
+fecha
+
+campo novo() -> Segundo ::
+  devolve Segundo { id: 1 }
+fecha

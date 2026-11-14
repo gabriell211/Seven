@@ -193,26 +193,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          cat > build/executable-entry-sources <<'EOF'
-          bootstrap/native-release.sev
-          bootstrap/stage0.sev
-          compiler/seven.sev
-          compiler0/seven0.sev
-          runtime/host/seven.sev
-          runtime/installer/seven.sev
-          runtime/launcher/seven.sev
-          runtime/webbuild/seven.sev
-          runtime/webserve/seven.sev
-          EOF
-
-          grep -v -x -F -f build/executable-entry-sources seven.sources > build/seven-libraries.sources
+          # Resolve only the transitive imports of each executable, not every
+          # compiler0/runtime/stdlib source in the repository.
+          .github/scripts/test-seven-source-closure.sh
 
           make_entry_index() {
             saida="$1"
             entrada="$2"
-            cp build/seven-libraries.sources "$saida"
-            printf '%s\n' "$entrada" >> "$saida"
-            LC_ALL=C sort -u "$saida" -o "$saida"
+            .github/scripts/seven-source-closure.sh seven.sources "$entrada" "$saida"
 
             entradas=0
             while IFS= read -r arquivo; do
@@ -225,6 +213,7 @@ jobs:
               echo "indice executavel invalido: $saida possui $entradas campos inicio"
               exit 1
             fi
+            echo "$saida: $(wc -l < "$saida") fontes"
           }
 
           make_entry_index build/seven-cli.sources compiler/seven.sev
