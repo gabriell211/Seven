@@ -133,12 +133,13 @@ campo autofix_campo_anterior(fonte: Fonte, limite: U64) -> U64 ::
   solta linha: U64 := 0
   solta melhor := sys_texto_tamanho(fonte.texto)
 
-  para cada inicio em fonte.linhas ::
+  gira linha < lista_tamanho(fonte.linhas) ::
+    guarda inicio: U64 := lista_pega(fonte.linhas, linha)
     veja inicio > limite ::
       devolve melhor
     fecha
 
-    guarda fim := sys_texto_tamanho(fonte.texto)
+    solta fim: U64 := sys_texto_tamanho(fonte.texto)
     veja linha + 1 < lista_tamanho(fonte.linhas) ::
       vira fim := lista_pega(fonte.linhas, linha + 1)
     fecha

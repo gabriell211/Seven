@@ -48,6 +48,7 @@ jobs:
         run: |
           set -uo pipefail
           failures=0
+          forbidden='seed/native/final/'"v1"
 
           blocker() {
             echo "::warning::$1"
@@ -62,8 +63,8 @@ jobs:
             .github/workflows/pages.yml \
             .github/workflows/bootstrap-stage0.yml
           do
-            if grep -n 'seed/native/final/v1' "$workflow"; then
-              blocker "$workflow still depends on seed/native/final/v1"
+            if grep -Fn -- "$forbidden" "$workflow"; then
+              blocker "$workflow still depends on $forbidden"
             fi
             if ! grep -q 'self-hosted-seven' "$workflow"; then
               blocker "$workflow does not consume the canonical self-hosted Seven chain"
@@ -76,7 +77,7 @@ jobs:
                 continue
                 ;;
             esac
-            if grep -n 'seed/native/final/v1' "$workflow"; then
+            if grep -Fn -- "$forbidden" "$workflow"; then
               blocker "$workflow reintroduced the archived transition compiler"
             fi
           done < <(find .github/workflows -maxdepth 1 -type f -name '*.yml' | LC_ALL=C sort)
@@ -87,7 +88,7 @@ jobs:
             grep -q 'bootstrap/seed/v2' .github/actions/self-hosted-seven/action.yml || blocker "self-hosted chain does not start from bootstrap/seed/v2"
             grep -q 'seven.stage2.self.svbc' .github/actions/self-hosted-seven/action.yml || blocker "self-hosted chain does not prove Stage2 fixed point"
             grep -q 'transition_seed nao' .github/actions/self-hosted-seven/action.yml || blocker "self-hosted provenance does not reject transition seed"
-            if grep -q 'seed/native/final/v1' .github/actions/self-hosted-seven/action.yml; then
+            if grep -Fq -- "$forbidden" .github/actions/self-hosted-seven/action.yml; then
               blocker "canonical self-hosted action references archived transition compiler"
             fi
           fi

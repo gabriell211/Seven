@@ -200,7 +200,11 @@ jobs:
         run: |
           set -euo pipefail
           grep -q 'self-hosted-seven' .github/workflows/release.yml
-          ! grep -q 'seed/native/final/v1' .github/workflows/release.yml
+          forbidden='seed/native/final/'"v1"
+          if grep -Fn -- "$forbidden" .github/workflows/release.yml; then
+            echo 'Archived transition compiler found in current release workflow' >&2
+            exit 1
+          fi
 
   publish:
     if: github.event_name != 'pull_request'
