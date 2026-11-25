@@ -1,5 +1,6 @@
 modulo seven.runtime.platform.svbc.pure
 
+usa std.base.texto
 usa seven.runtime.svbc.value
 
 campo intr_lista_coloca(args: Lista<ValorVm>) -> Resultado<ValorVm, Falha> ::

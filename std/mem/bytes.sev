@@ -1,5 +1,6 @@
 modulo std.mem.bytes
 
+usa std.base.texto
 usa std.base.resultado
 
 molde Bytes ::

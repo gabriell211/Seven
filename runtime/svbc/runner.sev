@@ -1,5 +1,6 @@
 modulo seven.runtime.svbc.runner
 
+usa std.base.texto
 usa std.fs.file
 usa std.mem.bytes
 usa seven.runtime.platform.capability
