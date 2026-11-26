@@ -80,10 +80,16 @@ campo x64_compila(imagem: ImagemSvbc, alvo: AlvoNativo) -> Resultado<CodigoX64, 
         devolve Falha(nova_falha("SV-NATIVE-LOCAIS", "campo possui menos locais que parametros: " + campo.nome))
       fecha
 
-      lista_define(offsets_campo, indice_campo, saida.bytes.tamanho)
       veja Num(indice_campo) == indice_inicio ::
         vira saida.entrada := saida.bytes.tamanho
+        // ELF starts at the kernel stack, not a normal call frame.
+        // Terminate the frame chain for sys_args called in nested fields.
+        veja alvo.formato == "elf" ::
+          bytes_coloca_byte(saida.bytes, 49)
+          bytes_coloca_byte(saida.bytes, 237)
+        fecha
       fecha
+      lista_define(offsets_campo, indice_campo, saida.bytes.tamanho)
 
       x64_prologo(saida.bytes, campo.locais, campo.parametros)
 

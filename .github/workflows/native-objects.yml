@@ -168,7 +168,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          chmod +x build/native-object-proof build/native-iterator-proof
+          chmod +x build/native-object-proof build/native-iterator-proof build/native-args-proof
           set +e
           ./build/native-object-proof
           object_code=$?
@@ -177,6 +177,17 @@ jobs:
           set -e
           test "$object_code" -eq 42
           test "$iterator_code" -eq 42
+          set -e
+          ./build/native-args-proof
+          set +e
+          ./build/native-args-proof alpha "dois termos" "" "ação"
+          args_code=$?
+          ./build/native-args-proof wrong
+          wrong_code=$?
+          set -e
+          test "$args_code" -eq 42
+          test "$wrong_code" -eq 1
+
 
       - uses: actions/upload-artifact@v4
         with:
@@ -185,6 +196,8 @@ jobs:
             build/native-object-proof.exe
             build/native-object-proof
             build/native-iterator-proof.exe
+            build/native-args-proof.exe
+            build/native-args-proof
             build/native-iterator-proof
             build/native-objects-test.svbc
             build/native-iterator-test.svbc
@@ -212,3 +225,14 @@ jobs:
           set -e
           test "$object_code" -eq 42
           test "$iterator_code" -eq 42
+          set -e
+          ./build/native-args-proof.exe
+          set +e
+          ./build/native-args-proof.exe alpha "dois termos" "" "ação"
+          args_code=$?
+          ./build/native-args-proof.exe wrong
+          wrong_code=$?
+          set -e
+          test "$args_code" -eq 42
+          test "$wrong_code" -eq 1
+

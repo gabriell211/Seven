@@ -21,6 +21,11 @@ campo x64_runtime_dispatch(
   nome: Texto,
   aridade: U32
 ) -> Bit ::
+  veja nome == "sys_args" e aridade == 0 ::
+    x64_runtime_args(codigo, virtual_alloc_patches, imports_windows, alvo)
+    devolve sim
+  fecha
+
   veja x64_syscall_console_emite(codigo, imports_windows, alvo, nome, aridade) ::
     devolve sim
   fecha
