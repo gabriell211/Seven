@@ -143,6 +143,10 @@ campo registra_simbolo(tabela: TabelaSimbolos, novo: Simbolo) -> Nada ::
   fecha
 
   mapa_coloca(tabela.simbolos, novo.caminho, novo)
+
+  veja novo.caminho != novo.nome e nao mapa_tem(tabela.simbolos, novo.nome) ::
+    mapa_coloca(tabela.simbolos, novo.nome, novo)
+  fecha
 fecha
 
 campo resolve_usos(tabela: TabelaSimbolos, programa: Programa, pacote: Pacote) -> Nada ::

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 1.0.0
+
+- Completes the self-hosted compiler cutover through Seven-0, Stage 1, Stage 2 and Stage 2 self fixed point.
+- Removes the transition compiler from the current CI and release path.
+- Validates the portable stable CLI on Windows x64 and Linux x64.
+- Runs canonical static and runtime conformance through the self-hosted compiler.
+- Qualifies type/effect signatures by module and import resolution.
+- Completes compiler intelligence suggestions, autofixes and risk analyzers.
+- Publishes Windows MSI, Linux tar.gz and the Seven 1.0.0 VSIX with SHA-256 checksums.
+
 ## 0.2.2
 
 - Adds the Seven 1.0 readiness audit and formal hardening gates.

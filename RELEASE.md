@@ -1,5 +1,19 @@
 # Seven Release Notes
 
+## Seven 1.0.0 Release Notes
+
+Seven 1.0.0 conclui o cutover da linguagem para a cadeia self-hosted corrente.
+
+- bootstrap minimo auditavel -> Seven-0 -> Stage 1 -> Stage 2 -> Stage 2 self em fixed point;
+- CLI estavel `check`, `build`, `run`, `web build` e `doctor` exercitada sem o compilador de transicao;
+- conformance canonica valid/invalid executada pela CLI self-hosted, separando erros estaticos de casos de runtime;
+- bundle portatil validado em Linux x64 e Windows x64 com biblioteca padrao incluida;
+- release corrente Windows/Linux produzida a partir do Stage 2 self-hosted;
+- backend AOT, WebAssembly, Bytes, objetos, console, filesystem, TCP e HTTP E2E permanecem verdes;
+- `seed/native/final/v1` fica restrito a verificacao historica das releases antigas;
+- versao publica e manifests promovidos para 1.0.0.
+
+
 ## Seven 0.2.2 Release Notes
 
 Seven 0.2.2 endurece o runtime AOT x64, fecha primitivas centrais de Texto e

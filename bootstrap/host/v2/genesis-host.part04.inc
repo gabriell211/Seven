@@ -299,18 +299,40 @@ static const char *default_webserve_image(const char *executable_path) {
 }
 
 int main(int argc, char **argv) {
+  seven_executable_dir = dirname_dup_c(argc > 0 && argv[0] ? argv[0] : ".");
+
   const char *image_path = NULL;
   int program_argc = 0;
   char **program_argv = NULL;
+  int check_mode = 0;
+  int run_mode = 0;
+  const char *temporary_image = NULL;
+  char *compiler_args[2] = { NULL, NULL };
 
   if (argc >= 2 && has_suffix(argv[1], ".svbc")) {
     image_path = argv[1];
     program_argc = argc - 2;
     program_argv = argv + 2;
+  } else if (argc >= 2 && strcmp(argv[1], "check") == 0) {
+    image_path = default_compiler_image(argv[0]);
+    compiler_args[0] = argc >= 3 ? argv[2] : (char*)"seven.pkg";
+    compiler_args[1] = (char*)".seven-check.svbc";
+    program_argc = 2;
+    program_argv = compiler_args;
+    check_mode = 1;
+    temporary_image = compiler_args[1];
   } else if (argc >= 2 && strcmp(argv[1], "build") == 0) {
     image_path = default_compiler_image(argv[0]);
     program_argc = argc - 2;
     program_argv = argv + 2;
+  } else if (argc >= 2 && strcmp(argv[1], "run") == 0) {
+    image_path = default_compiler_image(argv[0]);
+    compiler_args[0] = argc >= 3 ? argv[2] : (char*)"seven.pkg";
+    compiler_args[1] = (char*)".seven-run.svbc";
+    program_argc = 2;
+    program_argv = compiler_args;
+    run_mode = 1;
+    temporary_image = compiler_args[1];
   } else if (argc >= 3 && strcmp(argv[1], "web") == 0 && strcmp(argv[2], "build") == 0) {
     image_path = default_webbuild_image(argv[0]);
     program_argc = argc - 3;
@@ -330,5 +352,24 @@ int main(int argc, char **argv) {
   }
 
   Image im = load_image(image_path);
-  return vm_run(&im, program_argc, program_argv);
+  int code = vm_run(&im, program_argc, program_argv);
+
+  if (check_mode) {
+    if (temporary_image) remove(temporary_image);
+    return code;
+  }
+
+  if (run_mode) {
+    if (code != 0) {
+      if (temporary_image) remove(temporary_image);
+      return code;
+    }
+
+    Image program = load_image(temporary_image);
+    int run_code = vm_run(&program, 0, NULL);
+    remove(temporary_image);
+    return run_code;
+  }
+
+  return code;
 }

@@ -1,0 +1,6 @@
+pacote seven-launcher
+versao 0.2.0
+criador Gabriel Barcelos
+entrada seven.runtime.launcher.inicio
+alvo svbc
+indice runtime/launcher/seven.sources

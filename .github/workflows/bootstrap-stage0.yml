@@ -14,69 +14,47 @@ concurrency:
 
 jobs:
   audit:
-    name: Genesis audit (${{ matrix.os }})
+    name: Current bootstrap audit (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-            seed: seven-linux
-          - os: windows-latest
-            seed: seven-windows.exe
+        os:
+          - ubuntu-latest
+          - windows-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Reconstruct audited transition executables
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p build/native-seeds
-          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
-          unzip -q build/native-seeds.zip -d build/native-seeds
-          chmod +x "build/native-seeds/${{ matrix.seed }}" || true
+      - name: Build current self-hosted Seven
+        uses: ./.github/actions/self-hosted-seven
 
-      - name: Check the Genesis implementation surface
+      - name: Verify current bootstrap boundary
         shell: bash
         run: |
           set -euo pipefail
-          seven="$PWD/build/native-seeds/${{ matrix.seed }}"
-          "$seven" check runtime/seed/svs0.sev
-          "$seven" check runtime/seed/runner.sev
-          "$seven" check bootstrap/provenance.sev
-          "$seven" check bootstrap/stage0.sev
+          cmp build/seven0.svbc build/seven0.self.svbc
+          cmp build/seven.stage2.svbc build/seven.stage2.self.svbc
+          grep -q '^transition_seed nao$' build/current-seven/PROVENANCE
+          test "$(od -An -tx1 -N4 build/seven0.svbc | tr -d ' \n')" = '53564230'
+          test "$(od -An -tx1 -N4 build/seven.stage2.svbc | tr -d ' \n')" = '53564243'
 
-      - name: Audit the current transition output
+      - name: Record current bootstrap audit
         shell: bash
         run: |
           set -euo pipefail
-          seven="$PWD/build/native-seeds/${{ matrix.seed }}"
-          "$seven" check compiler0/seven0.sev
-          "$seven" build compiler0/seven0.sev build/seven0.transition.svbc
-          test -s build/seven0.transition.svbc
-          test "$(wc -c < build/seven0.transition.svbc | tr -d ' ')" = '373'
-          test "$(od -An -tx1 -N4 build/seven0.transition.svbc | tr -d ' \n')" = '53564243'
-          echo 'cfd129ec6a11b9ccc83e42bc73a4f479bf86294a0fd07b1fc26a5359d119c0b9  build/seven0.transition.svbc' | sha256sum --check
-          grep -a -q 'modulo seven0' build/seven0.transition.svbc
-          if test -e build/seven0.svbc; then
-            echo 'transition output was incorrectly promoted to autonomous Seven-0'
-            exit 1
-          fi
-
-      - name: Record the audited blocker
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat > build/genesis-audit.txt <<'EOF'
-          formato seven-genesis-audit-v1
-          status bloqueado
-          motivo transition-output-contains-source-text
-          tamanho 373
-          sha256 cfd129ec6a11b9ccc83e42bc73a4f479bf86294a0fd07b1fc26a5359d119c0b9
-          proximo_gate real-svbc0-emitter-and-vm
+          stage0_hash=$(sha256sum build/seven0.svbc | awk '{print $1}')
+          stage2_hash=$(sha256sum build/seven.stage2.svbc | awk '{print $1}')
+          cat > build/genesis-audit.txt <<EOF
+          formato seven-genesis-audit-v2
+          status self-hosted
+          bootstrap bootstrap/seed/v2
+          stage0_sha256 $stage0_hash
+          stage2_sha256 $stage2_hash
+          stage0_fixed_point sim
+          stage2_fixed_point sim
+          transition_seed nao
           EOF
           cat build/genesis-audit.txt
 
@@ -84,6 +62,10 @@ jobs:
         with:
           name: seven-genesis-audit-${{ matrix.os }}
           path: |
-            build/seven0.transition.svbc
+            build/seven0.svbc
+            build/seven0.self.svbc
+            build/seven.stage2.svbc
+            build/seven.stage2.self.svbc
+            build/current-seven/PROVENANCE
             build/genesis-audit.txt
           if-no-files-found: error

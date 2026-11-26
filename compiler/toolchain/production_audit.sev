@@ -63,17 +63,11 @@ campo ci_sete_nativo() -> Bit toca disco ::
     devolve nao
   fecha
 
-  devolve texto_contem(workflow.valor, "seven.exe") e
-    texto_contem(workflow.valor, "pwsh") == nao e
-    texto_contem(workflow.valor, ".ps1") == nao e
-    texto_contem(workflow.valor, ".psm1") == nao
+  devolve texto_contem(workflow.valor, "seven.exe") e texto_contem(workflow.valor, "pwsh") == nao e texto_contem(workflow.valor, ".ps1") == nao e texto_contem(workflow.valor, ".psm1") == nao
 fecha
 
 campo ponte_powershell_ausente() -> Bit toca disco ::
-  devolve arquivo_existe("tools/seven-dev.ps1") == nao e
-    arquivo_existe("tools/seven-lsp.ps1") == nao e
-    arquivo_existe("tools/verify-foundation.ps1") == nao e
-    arquivo_existe("tools/Seven.Foundation.psm1") == nao
+  devolve arquivo_existe("tools/seven-dev.ps1") == nao e arquivo_existe("tools/seven-lsp.ps1") == nao e arquivo_existe("tools/verify-foundation.ps1") == nao e arquivo_existe("tools/Seven.Foundation.psm1") == nao
 fecha
 
 campo texto_contem(valor: Texto, trecho: Texto) -> Bit ::
@@ -112,14 +106,7 @@ campo bytes_tem_svbc_v1(dados: Bytes) -> Bit ::
     devolve nao
   fecha
 
-  devolve bytes_pega(dados, 0) == 83 e
-    bytes_pega(dados, 1) == 86 e
-    bytes_pega(dados, 2) == 66 e
-    bytes_pega(dados, 3) == 67 e
-    bytes_pega(dados, 4) == 0 e
-    bytes_pega(dados, 5) == 0 e
-    bytes_pega(dados, 6) == 0 e
-    bytes_pega(dados, 7) == 1
+  devolve bytes_pega(dados, 0) == 83 e bytes_pega(dados, 1) == 86 e bytes_pega(dados, 2) == 66 e bytes_pega(dados, 3) == 67 e bytes_pega(dados, 4) == 0 e bytes_pega(dados, 5) == 0 e bytes_pega(dados, 6) == 0 e bytes_pega(dados, 7) == 1
 fecha
 
 campo runtime_verify_foundation_ok() -> Bit toca disco, terminal, rede, tempo, ambiente, frontend ::

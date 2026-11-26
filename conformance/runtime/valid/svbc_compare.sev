@@ -2,5 +2,9 @@ modulo conformance.runtime.valid.svbc_compare
 
 campo inicio() -> Num ::
   solta maior: Bit := 9 > 3
-  devolve maior
+  veja maior ::
+    devolve 1
+  outro ::
+    devolve 0
+  fecha
 fecha

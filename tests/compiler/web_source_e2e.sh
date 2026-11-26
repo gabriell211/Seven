@@ -163,7 +163,7 @@ EOF
 printf '%s\n' 'build/web-e2e.monolith.sev' > build/web-e2e.sources
 cat > build/web-e2e.pkg <<'EOF'
 pacote seven-web-source-e2e
-versao 0.2.0
+versao 1.0.0
 criador Gabriel Barcelos
 entrada seven_web_e2e_monolith.inicio
 alvo svbc

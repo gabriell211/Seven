@@ -24,7 +24,7 @@ campo cria_imagem() -> ImagemSvbc0 ::
   devolve img
 fecha
 
-campo inicio() -> Num ::
+campo inicio() -> Num toca rede, disco, terminal, tempo, ambiente, frontend ::
   guarda saida := vm0_executa(cria_imagem())
 
   veja saida e Falha ::

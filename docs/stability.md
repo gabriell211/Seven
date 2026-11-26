@@ -17,8 +17,9 @@ Linux x64:
 - text and binary filesystem I/O already covered by native CI;
 - the AOT ELF64 and PE32+ formats;
 - the SVBC contracts exercised by the self-hosting chain;
-- TCP primitives listed in `runtime/platform/native/target.sev` once #40
-  completes.
+- TCP primitives `sys_tcp_escuta`, `sys_tcp_aceita`, `sys_tcp_le`,
+  `sys_tcp_escreve` and `sys_tcp_fecha`, with Linux x64 and Windows x64
+  AOT execution proofs and HTTP health E2E.
 
 A stable syscall is never allowed to silently emulate success. If its native
 implementation is unavailable, AOT compilation must fail explicitly with

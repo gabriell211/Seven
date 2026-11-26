@@ -131,7 +131,7 @@ campo executa_comando(contexto: ContextoToolchain, comando: ComandoSeven) -> Sai
   fecha
 
   veja comando e CmdVersao ::
-    diga("Seven 0.2.0")
+    diga("Seven 1.0.0")
     devolve ToolchainOk(0)
   fecha
 

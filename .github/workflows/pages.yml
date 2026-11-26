@@ -7,13 +7,15 @@ on:
     paths:
       - 'website/**'
       - 'brand/**'
-      - 'seed/native/final/v1/**'
+      - 'bootstrap/**'
+      - '.github/actions/self-hosted-seven/**'
       - '.github/workflows/pages.yml'
   pull_request:
     paths:
       - 'website/**'
       - 'brand/**'
-      - 'seed/native/final/v1/**'
+      - 'bootstrap/**'
+      - '.github/actions/self-hosted-seven/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -28,41 +30,32 @@ concurrency:
 
 jobs:
   build:
-    name: Generate official website with Seven
+    name: Generate official website with self-hosted Seven
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Reconstruct audited Seven compiler
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p build/native-seeds
-          cat seed/native/final/v1/part*.b64 | tr -d '\r\n\t ' | base64 --decode > build/native-seeds.zip
-          echo '670646ab39df2f2a111c664e16023af3ddc3b203982945609193da99d8c4bac7  build/native-seeds.zip' | sha256sum --check
-          unzip -q build/native-seeds.zip -d build/native-seeds
-          echo '156bb5f78286431db7813d932bdf2835029ee706e1de61829ca42be81abf5802  build/native-seeds/seven-linux' | sha256sum --check
-          chmod +x build/native-seeds/seven-linux
+      - name: Build current self-hosted Seven
+        uses: ./.github/actions/self-hosted-seven
 
       - name: Check Seven website generator
         shell: bash
         run: |
           set -euo pipefail
-          build/native-seeds/seven-linux check website/pages.sev
+          build/current-seven/bin/seven check website/pages.sev
 
       - name: Generate static Pages artifact with Seven
         shell: bash
         run: |
           set -euo pipefail
-          seven=build/native-seeds/seven-linux
+          seven="$GITHUB_WORKSPACE/build/current-seven/bin/seven"
           mkdir -p build/pages/assets
 
           "$seven" run website/pages.sev > build/pages/raw-output.txt
-          awk '/^<!doctype html>/{emit=1} emit{print} /^<\/html>/{exit}' \
-            build/pages/raw-output.txt > build/pages/index.html
+          awk '/^<!doctype html>/{emit=1} emit{print} /^<\/html>/{exit}'             build/pages/raw-output.txt > build/pages/index.html
 
           cp brand/seven-logo.svg build/pages/assets/seven-logo.svg
           touch build/pages/.nojekyll

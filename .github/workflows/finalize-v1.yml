@@ -1,0 +1,64 @@
+name: Finalize Seven 1.0
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  finalize:
+    if: contains(github.event.head_commit.message, 'Seven 1.0 self-hosting cutover')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify 1.0 candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fxq 'versao 1.0.0' seven.pkg
+          grep -q 'Seven 1.0.0' compiler/toolchain/cli.sev
+          grep -q '^# Seven 1.0.0$' releases/v1.0.0.md
+
+      - name: Create v1.0.0 tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "gabriell211"
+          git config user.email "102088315+gabriell211@users.noreply.github.com"
+          if git ls-remote --exit-code --tags origin refs/tags/v1.0.0 >/dev/null 2>&1; then
+            echo "v1.0.0 already exists"
+          else
+            git tag -a v1.0.0 "$GITHUB_SHA" -m "Seven 1.0.0"
+            git push origin refs/tags/v1.0.0
+          fi
+
+      - name: Dispatch self-hosted release publication
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref v1.0.0
+
+      - name: Remove all non-main branches
+        shell: bash
+        run: |
+          set -euo pipefail
+          failed=0
+          while IFS= read -r branch; do
+            test -n "$branch" || continue
+            if test "$branch" = "main"; then
+              continue
+            fi
+            echo "deleting branch: $branch"
+            git push origin --delete "$branch" || failed=1
+          done < <(git ls-remote --heads origin | awk '{sub("refs/heads/", "", $2); print $2}')
+          exit "$failed"

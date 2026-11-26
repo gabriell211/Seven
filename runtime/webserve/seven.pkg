@@ -1,5 +1,5 @@
 pacote seven-webserve
-versao 0.2.0
+versao 1.0.0
 criador Gabriel Barcelos
 entrada seven.runtime.webserve.inicio
 alvo svbc

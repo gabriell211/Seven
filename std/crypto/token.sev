@@ -1,27 +1,137 @@
 modulo std.crypto.token
 
 usa std.base.resultado
+usa std.base.convert
 usa std.crypto.hash
 usa std.mem.bytes
+usa std.time.clock
 
 molde TokenSeguro ::
   valor: Texto
   expira_em: U64
 fecha
 
-campo token_novo(carga: Texto, segredo: Texto, expira_em: U64) -> TokenSeguro toca tempo ::
-  guarda assinatura := hash_texto(sha256(texto_bytes(carga + "." + segredo)))
-
-  devolve TokenSeguro {
-    valor: carga + "." + assinatura,
-    expira_em: expira_em
-  }
+// HMAC-SHA256 (RFC 2104), using existing byte and SHA-256 primitives.
+campo token_xor_byte(a: Byte, b: Byte) -> Byte ::
+  solta x: U64 := U64(a)
+  solta y: U64 := U64(b)
+  solta peso: U64 := 1
+  solta saida: U64 := 0
+  gira peso < 256 ::
+    guarda bit_x: U64 := x - (x / 2) * 2
+    guarda bit_y: U64 := y - (y / 2) * 2
+    veja bit_x != bit_y :: vira saida := saida + peso fecha
+    vira x := x / 2
+    vira y := y / 2
+    vira peso := peso * 2
+  fecha
+  devolve Byte(saida)
 fecha
 
-campo token_confere(token: TokenSeguro, segredo: Texto) -> Resultado<Texto, Falha> toca tempo ::
-  veja tempo_agora() > token.expira_em ::
+campo token_mac(carga: Texto, segredo: Texto) -> Texto toca ambiente ::
+  solta chave := texto_bytes(segredo)
+  veja chave.tamanho > 64 ::
+    vira chave := sha256(chave).valor
+  fecha
+  solta interno := bytes_novo()
+  solta externo := bytes_novo()
+  solta i: U64 := 0
+  gira i < 64 ::
+    solta b: Byte := 0
+    veja i < chave.tamanho :: vira b := bytes_pega(chave, i) fecha
+    bytes_coloca_byte(interno, token_xor_byte(b, 54))
+    bytes_coloca_byte(externo, token_xor_byte(b, 92))
+    vira i := i + 1
+  fecha
+  bytes_coloca_texto(interno, carga)
+  guarda digest := sha256(interno)
+  veja digest.valor.tamanho != 32 :: devolve "" fecha
+  vira i := 0
+  gira i < 32 ::
+    bytes_coloca_byte(externo, bytes_pega(digest.valor, i))
+    vira i := i + 1
+  fecha
+  guarda final_hash := sha256(externo)
+  veja final_hash.valor.tamanho != 32 :: devolve "" fecha
+  devolve hash_texto(final_hash)
+fecha
+
+campo token_novo(carga: Texto, segredo: Texto, expira_em: U64) -> TokenSeguro toca tempo, ambiente ::
+  guarda corpo := texto_u64(expira_em) + "." + carga
+  solta valor := ""
+  veja segredo != "" ::
+    guarda assinatura := token_mac(corpo, segredo)
+    veja sys_texto_tamanho(assinatura) == 64 ::
+      vira valor := corpo + "." + assinatura
+    fecha
+  fecha
+  devolve TokenSeguro { valor: valor, expira_em: expira_em }
+fecha
+
+// The first dot separates the signed expiry; the last separates the MAC.
+// Bound the decimal representation to prevent integer overflow.
+campo token_expiracao(valor: Texto) -> U64 ::
+  solta i: U64 := 0
+  solta expiracao: U64 := 0
+  gira i < sys_texto_tamanho(valor) e i < 16 ::
+    guarda ch: Texto := sys_texto_caractere(valor, i)
+    veja ch == "." ::
+      veja i == 0 :: devolve 0 fecha
+      devolve expiracao
+    fecha
+    veja sys_texto_tamanho(ch) != 1 :: devolve 0 fecha
+    veja sys_texto_contem("0123456789", ch) == nao :: devolve 0 fecha
+    vira expiracao := expiracao * 10 + U64(numero(ch))
+    vira i := i + 1
+  fecha
+  devolve 0
+fecha
+
+campo token_confere_assinatura(token: TokenSeguro, segredo: Texto) -> Resultado<Texto, Falha> toca ambiente ::
+  guarda total := sys_texto_tamanho(token.valor)
+  guarda expiracao := token_expiracao(token.valor)
+  veja segredo == "" ou expiracao == 0 ou total < 67 ::
+    devolve Falha(nova_falha("SV-CRYPTO-TOKEN", "token invalido"))
+  fecha
+  guarda separador := total - 65
+  veja sys_texto_caractere(token.valor, separador) != "." ::
+    devolve Falha(nova_falha("SV-CRYPTO-TOKEN", "token invalido"))
+  fecha
+  guarda corpo := sys_texto_fatia(token.valor, 0, separador)
+  guarda assinatura := sys_texto_fatia(token.valor, separador + 1, total)
+  guarda esperada := token_mac(corpo, segredo)
+  veja sys_texto_tamanho(esperada) != 64 ::
+    devolve Falha(nova_falha("SV-CRYPTO-ASSINATURA", "assinatura indisponivel"))
+  fecha
+  solta diferencas: U64 := 0
+  solta i: U64 := 0
+  gira i < 64 ::
+    veja sys_texto_caractere(assinatura, i) != sys_texto_caractere(esperada, i) ::
+      vira diferencas := diferencas + 1
+    fecha
+    vira i := i + 1
+  fecha
+  veja diferencas != 0 ::
+    devolve Falha(nova_falha("SV-CRYPTO-ASSINATURA", "assinatura invalida"))
+  fecha
+  guarda prefixo := texto_u64(expiracao) + "."
+  guarda inicio := sys_texto_tamanho(prefixo)
+  veja inicio > separador ::
+    devolve Falha(nova_falha("SV-CRYPTO-TOKEN", "token invalido"))
+  fecha
+  veja sys_texto_fatia(corpo, 0, inicio) != prefixo ::
+    devolve Falha(nova_falha("SV-CRYPTO-TOKEN", "expiracao invalida"))
+  fecha
+  devolve Valor(sys_texto_fatia(corpo, inicio, separador))
+fecha
+
+campo token_confere(token: TokenSeguro, segredo: Texto) -> Resultado<Texto, Falha> toca tempo, ambiente ::
+  guarda carga := token_confere_assinatura(token, segredo)
+  veja carga e Falha :: devolve carga fecha
+  guarda agora := tempo_agora()
+  guarda expiracao := token_expiracao(token.valor)
+  veja agora >= expiracao ou (token.expira_em != 0 e agora >= token.expira_em) ::
     devolve Falha(nova_falha("SV-CRYPTO-EXPIRADO", "token expirado"))
   fecha
-
-  devolve token_confere_assinatura(token, segredo)
+  devolve carga
 fecha

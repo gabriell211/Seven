@@ -25,7 +25,7 @@ campo infere_expressao(
       devolve local.valor.tipo
     fecha
 
-    guarda assinatura := mapa_pega(tabela.campos, expressao.valor.nome)
+    guarda assinatura := assinatura_busca(tabela, programa, expressao.valor.nome)
     veja assinatura e Algo ::
       veja lista_tamanho(assinatura.valor.parametros) == 0 e nome_tipo_maiusculo(expressao.valor.nome) ::
         devolve assinatura.valor.retorno
@@ -156,6 +156,24 @@ campo infere_expressao(
   fecha
 
   devolve TipoDesconhecido
+fecha
+
+campo assinatura_busca(tabela: TabelaTipos, programa: Programa, nome: Texto) -> Talvez<AssinaturaCampo> ::
+  veja programa.modulo != "" ::
+    guarda local := mapa_pega(tabela.campos, programa.modulo + "." + nome)
+    veja local e Algo ::
+      devolve local
+    fecha
+  fecha
+
+  para cada uso em programa.usos ::
+    guarda importada := mapa_pega(tabela.campos, uso.caminho + "." + nome)
+    veja importada e Algo ::
+      devolve importada
+    fecha
+  fecha
+
+  devolve mapa_pega(tabela.campos, nome)
 fecha
 
 campo chamada_intrinseca(nome: Texto) -> Bit ::

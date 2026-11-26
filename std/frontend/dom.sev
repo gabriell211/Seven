@@ -1,5 +1,8 @@
 modulo std.frontend.dom
 
+usa std.base.mapa
+usa std.frontend.intrinsics
+
 molde Evento ::
   nome: Texto
   alvo: Texto

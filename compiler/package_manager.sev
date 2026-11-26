@@ -2,6 +2,8 @@ modulo seven.compiler.package_manager
 
 usa seven.compiler.package
 usa seven.compiler.diagnostic
+usa std.fs.file
+usa std.os.install
 
 molde RequisicaoPacote ::
   manifesto: Texto
@@ -23,8 +25,14 @@ campo pacote_add(req: RequisicaoPacote) -> ResultadoPacote toca disco ::
   guarda dep := dependencia_pacote(req.nome, req.versao, req.fonte)
   guarda atualizado := pacote_adiciona_dependencia(pacote, dep)
 
-  arquivo_grava(req.manifesto, pacote_manifesto(atualizado))
-  arquivo_grava("seven.lock", pacote_lock(atualizado))
+  guarda grava_manifesto := arquivo_salva_texto(req.manifesto, pacote_manifesto(atualizado))
+  veja grava_manifesto e Falha ::
+    devolve PacoteFalhou(lista_de(erro("SV-PKG-GRAVA", grava_manifesto.valor.mensagem, req.manifesto, 1, 1)))
+  fecha
+  guarda grava_lock := arquivo_salva_texto("seven.lock", pacote_lock(atualizado))
+  veja grava_lock e Falha ::
+    devolve PacoteFalhou(lista_de(erro("SV-PKG-GRAVA", grava_lock.valor.mensagem, "seven.lock", 1, 1)))
+  fecha
 
   devolve PacoteAtualizado(atualizado)
 fecha
@@ -47,8 +55,14 @@ campo pacote_remove(manifesto: Texto, nome: Texto) -> ResultadoPacote toca disco
   fecha
 
   vira pacote.dependencias := deps
-  arquivo_grava(manifesto, pacote_manifesto(pacote))
-  arquivo_grava("seven.lock", pacote_lock(pacote))
+  guarda grava_manifesto := arquivo_salva_texto(manifesto, pacote_manifesto(pacote))
+  veja grava_manifesto e Falha ::
+    devolve PacoteFalhou(lista_de(erro("SV-PKG-GRAVA", grava_manifesto.valor.mensagem, manifesto, 1, 1)))
+  fecha
+  guarda grava_lock := arquivo_salva_texto("seven.lock", pacote_lock(pacote))
+  veja grava_lock e Falha ::
+    devolve PacoteFalhou(lista_de(erro("SV-PKG-GRAVA", grava_lock.valor.mensagem, "seven.lock", 1, 1)))
+  fecha
 
   devolve PacoteRemovido(pacote)
 fecha
@@ -71,8 +85,14 @@ campo pacote_install(manifesto: Texto, cache: Texto) -> ResultadoPacote toca dis
 
   para cada dep em pacote.dependencias ::
     guarda caminho := cache + "/" + dep.nome + "/" + dep.versao
-    diretorio_cria(caminho)
-    arquivo_grava(caminho + "/package.txt", "nome " + dep.nome + "\nversao " + dep.versao + "\nfonte " + dep.fonte + "\n")
+    guarda criado := diretorio_cria(caminho)
+    veja criado e Falha ::
+      devolve PacoteFalhou(lista_de(erro("SV-PKG-DIRETORIO", criado.valor.mensagem, caminho, 1, 1)))
+    fecha
+    guarda gravado := arquivo_salva_texto(caminho + "/package.txt", "nome " + dep.nome + "\nversao " + dep.versao + "\nfonte " + dep.fonte + "\n")
+    veja gravado e Falha ::
+      devolve PacoteFalhou(lista_de(erro("SV-PKG-GRAVA", gravado.valor.mensagem, caminho, 1, 1)))
+    fecha
     lista_coloca(instalados, caminho)
   fecha
 
@@ -85,6 +105,9 @@ campo pacote_manifesto(pacote: Pacote) -> Texto ::
   vira texto := texto + "criador " + pacote.criador + "\n"
   vira texto := texto + "entrada " + pacote.entrada + "\n"
   vira texto := texto + "alvo " + pacote.alvo + "\n"
+  veja pacote.indice_fontes != "" ::
+    vira texto := texto + "indice " + pacote.indice_fontes + "\n"
+  fecha
 
   para cada raiz em pacote.fontes ::
     vira texto := texto + "fonte " + raiz + "\n"

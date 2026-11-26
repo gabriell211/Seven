@@ -34,6 +34,7 @@ campo indice_vazio() -> IndiceSemantico ::
     arestas: lista<ArestaIndice>(),
     simbolos: TabelaSimbolos {
       simbolos: mapa<Texto, Simbolo>(),
+      modulos: mapa<Texto, Bit>(),
       diagnosticos: lista<Diagnostico>()
     },
     tipos: tabela_tipos_base(),
@@ -58,6 +59,60 @@ campo indice_cria(programas: Lista<Programa>, simbolos: TabelaSimbolos, tipos: T
   fecha
 
   devolve indice
+fecha
+
+campo indice_programa(indice: IndiceSemantico, programa: Programa) -> Nada ::
+  para cada item em programa.itens ::
+    veja item e ItemCampo ::
+      lista_coloca(indice.nos, NoIndice {
+        id: programa.modulo + "." + item.valor.nome,
+        nome: item.valor.nome,
+        especie: "campo",
+        modulo: programa.modulo,
+        tipo: "campo"
+      })
+    fecha
+
+    veja item e ItemMolde ::
+      lista_coloca(indice.nos, NoIndice {
+        id: programa.modulo + "." + item.valor.nome,
+        nome: item.valor.nome,
+        especie: "molde",
+        modulo: programa.modulo,
+        tipo: item.valor.nome
+      })
+    fecha
+
+    veja item e ItemSelo ::
+      lista_coloca(indice.nos, NoIndice {
+        id: programa.modulo + "." + item.valor.nome,
+        nome: item.valor.nome,
+        especie: "selo",
+        modulo: programa.modulo,
+        tipo: item.valor.nome
+      })
+    fecha
+
+    veja item e ItemConst ::
+      lista_coloca(indice.nos, NoIndice {
+        id: programa.modulo + "." + item.valor.nome,
+        nome: item.valor.nome,
+        especie: "constante",
+        modulo: programa.modulo,
+        tipo: "constante"
+      })
+    fecha
+
+    veja item e ItemExterno ::
+      lista_coloca(indice.nos, NoIndice {
+        id: programa.modulo + "." + item.valor.nome,
+        nome: item.valor.nome,
+        especie: "externo",
+        modulo: programa.modulo,
+        tipo: "campo"
+      })
+    fecha
+  fecha
 fecha
 
 campo indice_busca(indice: IndiceSemantico, nome: Texto) -> Lista<NoIndice> ::

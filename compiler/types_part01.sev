@@ -133,6 +133,12 @@ campo confere_comando(
 
   veja comando e CmdCaixa ::
     infere_expressao(comando.valor.tamanho, locais, programa, simbolos, tabela)
+    registra_local(locais, VinculoTipo {
+      nome: comando.valor.nome,
+      tipo: TipoPonteiro(TipoBase("Byte")),
+      mutavel: sim,
+      span: comando.valor.span
+    }, tabela)
     devolve nao
   fecha
 
@@ -144,6 +150,12 @@ campo confere_comando(
 
   veja comando e CmdPega ::
     infere_expressao(comando.valor.indice, locais, programa, simbolos, tabela)
+    registra_local(locais, VinculoTipo {
+      nome: comando.valor.destino,
+      tipo: TipoBase("Byte"),
+      mutavel: nao,
+      span: comando.valor.span
+    }, tabela)
     devolve nao
   fecha
 

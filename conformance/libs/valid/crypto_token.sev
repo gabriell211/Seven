@@ -1,0 +1,26 @@
+modulo conformance.libs.valid.crypto_token
+
+usa std.crypto.token
+usa std.time.clock
+
+campo inicio() -> Num toca tempo, ambiente ::
+  veja token_mac("The quick brown fox jumps over the lazy dog", "key") != "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8" ::
+    devolve 1
+  fecha
+  guarda agora := tempo_agora()
+  guarda token := token_novo("usuario.com.pontos", "segredo", agora + 60000)
+  guarda resultado := token_confere(token, "segredo")
+  veja resultado e Falha :: devolve 2 fecha
+  veja resultado.valor != "usuario.com.pontos" :: devolve 3 fecha
+  guarda incorreto := token_confere(token, "outro")
+  veja incorreto e Valor :: devolve 4 fecha
+  guarda expirado := token_novo("usuario", "segredo", agora - 1)
+  guarda expirado_resultado := token_confere(expirado, "segredo")
+  veja expirado_resultado e Valor :: devolve 5 fecha
+  guarda alterado := TokenSeguro { valor: token.valor + "0", expira_em: 0 }
+  guarda alterado_resultado := token_confere(alterado, "segredo")
+  veja alterado_resultado e Valor :: devolve 6 fecha
+  guarda sem_segredo := token_confere(token, "")
+  veja sem_segredo e Valor :: devolve 7 fecha
+  devolve 0
+fecha

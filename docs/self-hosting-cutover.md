@@ -8,22 +8,39 @@ A release `v0.1.0` continua imutavel e pode continuar verificando os artefatos a
 
 ## Estado atual
 
-A cadeia atual ja prova:
+A cadeia corrente do hardening 1.0 prova:
 
-- Seven-0 reconstruido deterministicamente a partir do bootstrap auditado;
+- Seven-0 reconstruido deterministicamente a partir de `bootstrap/seed/v2`;
 - fixed point de Seven-0;
 - Stage 1 gerado por Seven-0;
 - Stage 2 reconstruindo a si proprio byte a byte;
 - compilacao e execucao de pacote novo com retorno `42`;
 - backend AOT gerando ELF64 e PE32+;
-- runtime nativo com memoria, objetos, iteradores, Bytes, console e filesystem;
-- gates separados para WebAssembly, Stage 0, Stage 1, runtime nativo e production readiness.
+- runtime nativo com memoria, objetos, iteradores, Bytes, console, filesystem e TCP;
+- HTTP AOT real validado em Linux x64 e Windows x64;
+- CLI portatil montada com Stage 2, launcher e imagens Web geradas pela cadeia corrente;
+- `check`, `build`, `run`, `web build` e `doctor` exercitados fora da raiz do repositorio;
+- conformance valid/invalid exercitada pela CLI self-hosted;
+- workflows correntes de foundation, readiness, Pages, bootstrap e release migrados para a cadeia self-hosted.
 
-Ainda existe dependencia do compilador nativo de transicao em partes do CI, principalmente onde a suite usa a CLI completa para `check`, `build`, `run`, `web build` e `doctor`.
+O host em `bootstrap/host/v2` permanece como raiz minima auditavel que executa
+SVBC e fornece capacidades de plataforma ao bootstrap. Ele nao e o compilador
+Seven distribuido: o compilador corrente e `seven.stage2.svbc`, produzido por
+Seven-0 -> Stage 1 -> Stage 2 e fechado em fixed point.
+
+Os executaveis arquivados em `seed/native/final/v1` permanecem somente como
+evidencia historica para workflows explicitamente versionados de releases 0.x.
 
 ## Regra de cutover
 
-O compilador de transicao deixa de ser dependencia do CI ativo somente quando uma cadeia produzida pela propria Seven conseguir substituir, com cobertura equivalente, todos os usos de `seed/native/final/v1` fora dos workflows dedicados a verificacao de releases historicas.
+O compilador de transicao deixa de ser dependencia do CI ativo quando uma cadeia
+produzida pela propria Seven substitui, com cobertura equivalente, todos os usos
+de `seed/native/final/v1` fora dos workflows dedicados a releases historicas.
+
+A raiz minima de bootstrap pode continuar contendo um host auditavel em outra
+linguagem. Esse host deve apenas executar a representacao bootstrap/SVBC e ligar
+capacidades primitivas; ele nao pode fornecer parser, type checker, emissor,
+WebAssembly ou logica da toolchain que substitua o compilador Stage 2.
 
 Nao vale substituir uma dependencia por outra prova mais fraca. Cada comando removido do compilador de transicao precisa ter uma prova equivalente ou superior executada pela cadeia self-hosted.
 
@@ -107,14 +124,16 @@ Excecao permanente: workflows destinados exclusivamente a verificar releases his
 
 ## Ordem de migracao
 
-1. manter os gates atuais verdes;
-2. fazer Stage 2 compilar a superficie canonica completa;
-3. mover conformance para o compilador self-hosted;
-4. provar a CLI usada pelo readiness;
-5. provar `web build` pela mesma cadeia;
-6. substituir a execucao do compilador de transicao no readiness;
-7. adicionar um gate que rejeite novas referencias a `seed/native/final/v1` em workflows ativos;
-8. manter somente os workflows de verificacao de release historica com acesso ao seed arquivado.
+Estado do cutover neste branch:
+
+1. Stage 2 fixed point preservado;
+2. `foundation.yml`, `readiness.yml`, `release.yml`, `pages.yml` e `bootstrap-stage0.yml` usam a acao self-hosted canonica;
+3. release historica v0.1.0 foi separada para `historical-v0.1.0-release.yml`;
+4. workflows 0.2.1/0.2.2 permanecem historicos e fora do CI corrente;
+5. o gate 1.0 rejeita reintroducao do seed de transicao em qualquer workflow corrente;
+6. o bundle corrente registra `transition_seed nao` na proveniencia;
+7. o E2E `self-hosted-cli.yml` valida a CLI portatil em Linux e Windows;
+8. o cutover so e declarado concluido quando todos esses gates estiverem verdes no mesmo commit.
 
 ## Criterio de conclusao
 
