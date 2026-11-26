@@ -1,6 +1,7 @@
 modulo std.web.cookie
 
 usa std.web.http
+usa std.base.texto
 
 molde Cookie ::
   nome: Texto
@@ -34,7 +35,7 @@ campo cookie_header(c: Cookie) -> Cabecalho ::
   fecha
 
   veja c.max_idade > 0 ::
-    vira valor := valor + "; Max-Age=" + texto(c.max_idade)
+    vira valor := valor + "; Max-Age=" + texto_u64(c.max_idade)
   fecha
 
   devolve cabecalho("set-cookie", valor)

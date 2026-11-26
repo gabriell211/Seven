@@ -97,6 +97,7 @@ jobs:
             "$seven" run "$file" || failures=$((failures + 1))
           done < <(find conformance/runtime/invalid -type f -name '*.sev' | LC_ALL=C sort)
 
+          "$seven" run conformance/libs/valid/crypto_token.sev || failures=$((failures + 1))
           test -s build/readiness-hello.svbc || failures=$((failures + 1))
           test -s build/readiness-web/app.wasm || failures=$((failures + 1))
           test -s build/readiness-web/seven.web.json || failures=$((failures + 1))

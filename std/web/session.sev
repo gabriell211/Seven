@@ -4,6 +4,7 @@ usa std.base.resultado
 usa std.crypto.token
 usa std.web.cookie
 usa std.web.http
+usa std.time.clock
 
 molde Sessao ::
   id: Texto
@@ -11,14 +12,17 @@ molde Sessao ::
   expira_em: U64
 fecha
 
-campo sessao_cookie(sessao: Sessao, segredo: Texto) -> Cookie toca tempo ::
+campo sessao_cookie(sessao: Sessao, segredo: Texto) -> Cookie toca tempo, ambiente ::
   guarda token := token_novo(sessao.id + ":" + sessao.usuario, segredo, sessao.expira_em)
   guarda c := cookie("seven_session", token.valor)
-  vira c.max_idade := sessao.expira_em - tempo_agora()
+  guarda agora := tempo_agora()
+  veja sessao.expira_em > agora ::
+    vira c.max_idade := (sessao.expira_em - agora) / 1000
+  fecha
   devolve c
 fecha
 
-campo sessao_ler(req: Requisicao, segredo: Texto) -> Resultado<Sessao, Falha> toca tempo ::
+campo sessao_ler(req: Requisicao, segredo: Texto) -> Resultado<Sessao, Falha> toca tempo, ambiente ::
   guarda valor := cookie_requisicao(req, "seven_session")
 
   veja valor e Falha ::
@@ -27,7 +31,7 @@ campo sessao_ler(req: Requisicao, segredo: Texto) -> Resultado<Sessao, Falha> to
 
   guarda token := TokenSeguro {
     valor: valor.valor,
-    expira_em: tempo_agora() + 1
+    expira_em: 0
   }
 
   guarda carga := token_confere(token, segredo)

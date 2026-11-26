@@ -10,12 +10,12 @@ molde Jwt ::
   assinatura: Texto
 fecha
 
-campo jwt_assina(payload: Json, segredo: Texto, expira_em: U64) -> TokenSeguro toca tempo ::
+campo jwt_assina(payload: Json, segredo: Texto, expira_em: U64) -> TokenSeguro toca tempo, ambiente ::
   guarda carga := json_codifica(payload)
   devolve token_novo(carga, segredo, expira_em)
 fecha
 
-campo jwt_confere(token: TokenSeguro, segredo: Texto) -> Resultado<Json, Falha> toca tempo ::
+campo jwt_confere(token: TokenSeguro, segredo: Texto) -> Resultado<Json, Falha> toca tempo, ambiente ::
   guarda carga := token_confere(token, segredo)
 
   veja carga e Falha ::

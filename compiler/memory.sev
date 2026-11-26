@@ -1,5 +1,11 @@
 modulo seven.compiler.memory
 
+usa seven.compiler.ast
+usa seven.compiler.source
+usa seven.compiler.diagnostic
+usa std.base.mapa
+usa std.base.talvez
+
 
 
 molde CaixaMemoria ::
