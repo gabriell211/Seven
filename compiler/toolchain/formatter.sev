@@ -2,6 +2,7 @@ modulo seven.compiler.toolchain.formatter
 
 usa std.base.resultado
 usa std.fs.file
+usa std.base.texto
 
 molde ResultadoFmt ::
   caminho: Texto
@@ -37,13 +38,13 @@ campo fmt_texto(fonte: Texto) -> Texto ::
   solta nivel := 0
 
   para cada linha em linhas(fonte) ::
-    guarda limpa := texto_trim(linha)
+    guarda limpa := fmt_apara(linha)
 
-    veja limpa == "fecha" ::
-      vira nivel := max(0, nivel - 1)
+    veja limpa == "fecha" e nivel > 0 ::
+      vira nivel := nivel - 1
     fecha
 
-    vira saida := saida + repete("  ", nivel) + limpa + "\n"
+    vira saida := saida + fmt_indenta(nivel) + limpa + "\n"
 
     veja texto_comeca(limpa, "campo ") ::
       vira nivel := nivel + 1
@@ -66,5 +67,40 @@ campo fmt_texto(fonte: Texto) -> Texto ::
     fecha
   fecha
 
+  devolve saida
+fecha
+
+campo fmt_apara(valor: Texto) -> Texto ::
+  solta inicio: U64 := 0
+  solta fim := sys_texto_tamanho(valor)
+
+  gira inicio < fim e fmt_espaco(sys_texto_caractere(valor, inicio)) ::
+    vira inicio := inicio + 1
+  fecha
+
+  gira fim > inicio e fmt_espaco(sys_texto_caractere(valor, fim - 1)) ::
+    vira fim := fim - 1
+  fecha
+
+  solta saida := ""
+  solta indice := inicio
+  gira indice < fim ::
+    vira saida := saida + sys_texto_caractere(valor, indice)
+    vira indice := indice + 1
+  fecha
+  devolve saida
+fecha
+
+campo fmt_espaco(caractere: Texto) -> Bit ::
+  devolve caractere == " " ou caractere == "\t" ou caractere == "\r" ou caractere == "\n"
+fecha
+
+campo fmt_indenta(nivel: Num) -> Texto ::
+  solta saida := ""
+  solta indice: Num := 0
+  gira indice < nivel ::
+    vira saida := saida + "  "
+    vira indice := indice + 1
+  fecha
   devolve saida
 fecha

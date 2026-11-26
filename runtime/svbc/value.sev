@@ -1,5 +1,6 @@
 modulo seven.runtime.svbc.value
 
+usa std.base.texto
 usa std.base.resultado
 
 selo ValorVm ::

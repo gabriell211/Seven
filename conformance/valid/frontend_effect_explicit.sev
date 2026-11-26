@@ -1,0 +1,9 @@
+modulo conformance.valid.frontend_effect_explicit
+
+campo faz_interface() -> Num toca frontend ::
+  devolve 1
+fecha
+
+campo usa_interface() -> Num toca frontend ::
+  devolve faz_interface()
+fecha

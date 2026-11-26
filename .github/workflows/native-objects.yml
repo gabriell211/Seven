@@ -164,11 +164,26 @@ jobs:
           test "$(od -An -tx1 -N4 build/native-iterator-proof | tr -d ' \n')" = '7f454c46'
           test "$(od -An -tx1 -N2 build/native-iterator-proof.exe | tr -d ' \n')" = '4d5a'
 
+      - name: Verify Windows PE import ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+          objdump -p build/native-args-proof.exe > build/native-args-imports.txt
+          cat build/native-args-imports.txt
+          awk '
+            /DLL Name:/ { dll = tolower($NF) }
+            /CommandLineToArgvW/ {
+              if (dll != "shell32.dll") exit 1
+              found++
+            }
+            END { if (found != 1) exit 1 }
+          ' build/native-args-imports.txt
+
       - name: Execute Seven-generated object/list/iterator ELF
         shell: bash
         run: |
           set -euo pipefail
-          chmod +x build/native-object-proof build/native-iterator-proof
+          chmod +x build/native-object-proof build/native-iterator-proof build/native-args-proof
           set +e
           ./build/native-object-proof
           object_code=$?
@@ -177,6 +192,18 @@ jobs:
           set -e
           test "$object_code" -eq 42
           test "$iterator_code" -eq 42
+          set -e
+          ./build/native-args-proof
+          set +e
+          ./build/native-args-proof alpha "dois termos" "" "ação"
+          args_code=$?
+          ./build/native-args-proof wrong
+          wrong_code=$?
+          set -e
+          echo "native argument proof: valid=$args_code invalid=$wrong_code"
+          test "$args_code" -eq 42
+          test "$wrong_code" -eq 1
+
 
       - uses: actions/upload-artifact@v4
         with:
@@ -185,6 +212,8 @@ jobs:
             build/native-object-proof.exe
             build/native-object-proof
             build/native-iterator-proof.exe
+            build/native-args-proof.exe
+            build/native-args-proof
             build/native-iterator-proof
             build/native-objects-test.svbc
             build/native-iterator-test.svbc
@@ -212,3 +241,19 @@ jobs:
           set -e
           test "$object_code" -eq 42
           test "$iterator_code" -eq 42
+          set -e
+          set +e
+          ./build/native-args-proof.exe
+          empty_code=$?
+          set -e
+          echo "native-args-proof.exe without arguments: $empty_code"
+          test "$empty_code" -eq 0
+          set +e
+          ./build/native-args-proof.exe alpha "dois termos" "" "ação"
+          args_code=$?
+          ./build/native-args-proof.exe wrong
+          wrong_code=$?
+          set -e
+          test "$args_code" -eq 42
+          test "$wrong_code" -eq 1
+

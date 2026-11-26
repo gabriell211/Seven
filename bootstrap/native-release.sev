@@ -5,7 +5,7 @@ usa seven.compiler.toolchain.installer_builder
 usa seven.compiler.toolchain.native_build
 usa std.io.console
 
-campo inicio() -> Num toca disco, terminal ::
+campo inicio() -> Num toca disco, terminal, ambiente ::
   guarda contexto := contexto_padrao()
   guarda compiladores := gera_compiladores_nativos(contexto)
 

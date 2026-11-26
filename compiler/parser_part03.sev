@@ -23,7 +23,7 @@ fecha
 campo ler_falha(cursor: CursorTokens) -> FalhaCmd ::
   guarda inicio := espera(cursor, "falha", "SV-PARSE-FALHA", "esperado falha").span
   guarda codigo := espera_texto(cursor, "com o codigo da falha").literal
-  guarda mensagem := espera_texto(cursor, "com a mensagem da falha").literal
+  guarda mensagem := ler_expressao(cursor)
 
   devolve FalhaCmd {
     codigo: codigo,

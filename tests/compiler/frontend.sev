@@ -41,6 +41,16 @@ campo suite_frontend() -> Suite ::
     espera(tem_codigo(saida.diagnosticos, "SV-PARSE-FECHA"), "diagnostico SV-PARSE-FECHA ausente")
   fecha)
 
+  testa(s, "falha com mensagem dinamica", campo() -> Nada ::
+    guarda codigo := "campo prova(mensagem: Texto) -> Nada ::\n  falha \"SV-PROVA\" mensagem\nfecha\n"
+    guarda fluxo := varre(fonte_de_texto("falha-dinamica.sev", codigo))
+    solta fluxos := lista<FluxoTokens>()
+    lista_coloca(fluxos, fluxo)
+    guarda saida := monta_unidade(fluxos)
+
+    espera(nao diagnosticos_tem_erros(saida.diagnosticos), "falha com mensagem dinamica nao foi aceita")
+  fecha)
+
   testa(s, "precedencia aritmetica", campo() -> Nada ::
     guarda codigo := "campo inicio() -> Num ::\n  guarda valor: Num := 2 + 3 * 4\n  devolve valor\nfecha\n"
     guarda fluxo := varre(fonte_de_texto("precedencia.sev", codigo))

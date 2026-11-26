@@ -2,6 +2,8 @@ modulo seven.compiler.package_manager
 
 usa seven.compiler.package
 usa seven.compiler.diagnostic
+usa std.base.resultado
+usa std.fs.file
 
 molde RequisicaoPacote ::
   manifesto: Texto
@@ -23,8 +25,12 @@ campo pacote_add(req: RequisicaoPacote) -> ResultadoPacote toca disco ::
   guarda dep := dependencia_pacote(req.nome, req.versao, req.fonte)
   guarda atualizado := pacote_adiciona_dependencia(pacote, dep)
 
-  arquivo_grava(req.manifesto, pacote_manifesto(atualizado))
-  arquivo_grava("seven.lock", pacote_lock(atualizado))
+  veja nao pacote_grava_ok(req.manifesto, pacote_manifesto(atualizado)) ::
+    devolve pacote_erro_gravacao(req.manifesto)
+  fecha
+  veja nao pacote_grava_ok("seven.lock", pacote_lock(atualizado)) ::
+    devolve pacote_erro_gravacao("seven.lock")
+  fecha
 
   devolve PacoteAtualizado(atualizado)
 fecha
@@ -47,8 +53,12 @@ campo pacote_remove(manifesto: Texto, nome: Texto) -> ResultadoPacote toca disco
   fecha
 
   vira pacote.dependencias := deps
-  arquivo_grava(manifesto, pacote_manifesto(pacote))
-  arquivo_grava("seven.lock", pacote_lock(pacote))
+  veja nao pacote_grava_ok(manifesto, pacote_manifesto(pacote)) ::
+    devolve pacote_erro_gravacao(manifesto)
+  fecha
+  veja nao pacote_grava_ok("seven.lock", pacote_lock(pacote)) ::
+    devolve pacote_erro_gravacao("seven.lock")
+  fecha
 
   devolve PacoteRemovido(pacote)
 fecha
@@ -72,7 +82,10 @@ campo pacote_install(manifesto: Texto, cache: Texto) -> ResultadoPacote toca dis
   para cada dep em pacote.dependencias ::
     guarda caminho := cache + "/" + dep.nome + "/" + dep.versao
     diretorio_cria(caminho)
-    arquivo_grava(caminho + "/package.txt", "nome " + dep.nome + "\nversao " + dep.versao + "\nfonte " + dep.fonte + "\n")
+    guarda arquivo := caminho + "/package.txt"
+    veja nao pacote_grava_ok(arquivo, "nome " + dep.nome + "\nversao " + dep.versao + "\nfonte " + dep.fonte + "\n") ::
+      devolve pacote_erro_gravacao(arquivo)
+    fecha
     lista_coloca(instalados, caminho)
   fecha
 
@@ -99,4 +112,16 @@ campo pacote_manifesto(pacote: Pacote) -> Texto ::
   fecha
 
   devolve texto
+fecha
+
+campo pacote_grava_ok(caminho: Texto, conteudo: Texto) -> Bit toca disco ::
+  guarda resultado := arquivo_salva_texto(caminho, conteudo)
+  veja resultado e Falha ::
+    devolve nao
+  fecha
+  devolve sim
+fecha
+
+campo pacote_erro_gravacao(caminho: Texto) -> ResultadoPacote ::
+  devolve PacoteFalhou(lista_de(erro("SV-PKG-GRAVACAO", "falha ao gravar arquivo do pacote", caminho, 1, 1)))
 fecha

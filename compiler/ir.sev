@@ -1,5 +1,7 @@
 modulo seven.compiler.ir
 
+usa std.base.mapa
+
 usa seven.compiler.ast
 usa seven.compiler.types
 usa seven.compiler.effects
@@ -229,7 +231,7 @@ campo baixa_comando(comando: Comando, contexto: ContextoIr) -> Nada ::
 
   veja comando e CmdFalha ::
     guarda codigo := emite_constante(contexto, ValorTexto(comando.valor.codigo))
-    guarda mensagem := emite_constante(contexto, ValorTexto(comando.valor.mensagem))
+    guarda mensagem := baixa_expressao(comando.valor.mensagem, contexto)
     solta argumentos := lista<U32>()
     lista_coloca(argumentos, codigo)
     lista_coloca(argumentos, mensagem)

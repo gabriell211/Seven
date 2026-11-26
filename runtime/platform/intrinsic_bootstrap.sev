@@ -1,5 +1,6 @@
 modulo seven.runtime.platform.intrinsic_bootstrap
 
+usa std.base.texto
 usa seven.runtime.platform.intrinsic
 usa seven.runtime.platform.svbc.sandbox
 usa seven.runtime.svbc.value

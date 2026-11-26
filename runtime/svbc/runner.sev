@@ -1,5 +1,6 @@
 modulo seven.runtime.svbc.runner
 
+usa std.base.texto
 usa std.fs.file
 usa std.mem.bytes
 usa seven.runtime.platform.capability
@@ -36,6 +37,12 @@ campo roda_svbc_com_args(caminho: Texto, argumentos: Lista<Texto>) -> Num toca d
 
   veja verificacao.ok == nao ::
     diga "SVBC invalido"
+    solta indice: U64 := 0
+    gira indice < lista_tamanho(verificacao.erros) ::
+      guarda problema: ErroVerificacao := lista_pega(verificacao.erros, indice)
+      diga problema.codigo + " ip=" + texto_u64(problema.ip) + ": " + problema.mensagem
+      vira indice := indice + 1
+    fecha
     devolve 1
   fecha
 

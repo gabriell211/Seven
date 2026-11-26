@@ -1,5 +1,7 @@
 modulo seven.runtime.platform.svbc.kernel
 
+usa std.base.mapa
+
 usa std.base.talvez
 usa std.mem.bytes
 
