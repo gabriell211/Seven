@@ -30,7 +30,7 @@ fecha
 campo pedido_de_compilacao(argumentos: Lista<Texto>) -> PedidoCompilacao toca ambiente, disco ::
   guarda manifesto := argumento_compilacao(argumentos, 0, "seven.pkg")
   guarda saida := argumento_compilacao(argumentos, 1, "")
-  guarda pacote := pacote_carrega(manifesto)
+  guarda pacote := pacote_entrada_compilacao(manifesto)
 
   devolve PedidoCompilacao {
     pacote: pacote,
@@ -39,6 +39,29 @@ campo pedido_de_compilacao(argumentos: Lista<Texto>) -> PedidoCompilacao toca am
     modo: "seguro",
     saida: saida
   }
+fecha
+
+campo pacote_entrada_compilacao(caminho: Texto) -> Pacote toca disco ::
+  guarda comprimento := sys_texto_tamanho(caminho)
+  veja comprimento >= 4 ::
+    veja sys_texto_fatia(caminho, comprimento - 4, comprimento) == ".sev" ::
+      solta fontes := lista<Texto>()
+      lista_coloca(fontes, caminho)
+      devolve Pacote {
+        nome: "seven-source",
+        versao: "0.0.0",
+        criador: "",
+        entrada: "inicio",
+        alvo: "svbc",
+        indice_fontes: "",
+        fontes: fontes,
+        exemplos: lista<Texto>(),
+        dependencias: lista<DependenciaPacote>()
+      }
+    fecha
+  fecha
+
+  devolve pacote_carrega(caminho)
 fecha
 
 campo argumento_compilacao(argumentos: Lista<Texto>, indice: U64, padrao: Texto) -> Texto ::
@@ -50,7 +73,19 @@ campo argumento_compilacao(argumentos: Lista<Texto>, indice: U64, padrao: Texto)
 fecha
 
 campo compila(pedido: PedidoCompilacao) -> SaidaCompilacao toca disco ::
+  veja pedido.pacote.indice_fontes == "" ::
+    veja lista_tamanho(pedido.pacote.fontes) == 0 ::
+      solta diagnosticos := lista<Diagnostico>()
+      lista_coloca(diagnosticos, erro("SV-FONTE-VAZIA", "nenhum arquivo fonte informado", pedido.entrada, 1, 1))
+      devolve Falhou(diagnosticos)
+    fecha
+  fecha
   guarda fontes := fonte_carrega_pacote(pedido.pacote)
+  veja lista_tamanho(fontes.arquivos) == 0 ::
+    solta diagnosticos := lista<Diagnostico>()
+    lista_coloca(diagnosticos, erro("SV-FONTE-VAZIA", "nenhum arquivo fonte carregado", pedido.entrada, 1, 1))
+    devolve Falhou(diagnosticos)
+  fecha
   guarda tokens := varre_unidade(fontes)
   guarda sintaxe := monta_unidade(tokens)
 

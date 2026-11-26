@@ -292,6 +292,23 @@ jobs:
           build/genesis-host build/seven.svbc doctor
           build/genesis-host build/seven.svbc check examples/hello.sev
 
+          # Check must reject invalid source, not compile an empty manifest.
+          if build/genesis-host build/seven.svbc check conformance/invalid/unknown_name.sev > build/cli-invalid.log 2>&1; then
+            cat build/cli-invalid.log
+            echo 'CLI accepted invalid source' >&2
+            exit 1
+          fi
+          cat build/cli-invalid.log
+          grep -Fq 'SV-NOME-INEXISTENTE' build/cli-invalid.log
+
+          build/genesis-host build/seven.svbc build build/stage1-proof.sev build/cli-proof.svbc
+          test -s build/cli-proof.svbc
+          set +e
+          build/genesis-host build/cli-proof.svbc
+          cli_proof_exit=$?
+          set -e
+          test "$cli_proof_exit" -eq 42
+
           set +e
           build/genesis-host build/seven.svbc run build/stage1-proof.sev
           run_exit=$?
