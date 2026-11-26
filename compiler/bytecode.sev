@@ -152,9 +152,11 @@ campo emite_codigo(bytes: Bytes, unidade: UnidadeIr) -> Nada ::
   solta ip: U64 := 0
 
   para cada campo em unidade.campos ::
+    guarda base: U64 := ip
+    guarda offsets: Lista<U64> := offsets_blocos_svbc(campo, base)
     para cada bloco em campo.blocos ::
       para cada instrucao em bloco.instrucoes ::
-        emite_ir(bytes, unidade, campo, instrucao, ip)
+        emite_ir(bytes, unidade, campo, offsets, base, instrucao, ip)
         vira ip := ip + conta_instrucao_ir(instrucao)
       fecha
     fecha
@@ -217,6 +219,8 @@ campo emite_ir(
   bytes: Bytes,
   unidade: UnidadeIr,
   campo_atual: CampoIr,
+  offsets: Lista<U64>,
+  base: U64,
   instrucao: InstrucaoIr,
   ip: U64
 ) -> Nada ::
@@ -269,13 +273,13 @@ campo emite_ir(
   fecha
 
   veja instrucao e IrSalta ::
-    emite_instrucao_svbc(bytes, BcSalta, ip_do_bloco(unidade, campo_atual.nome, instrucao.bloco), 0, 0, ip)
+    emite_instrucao_svbc(bytes, BcSalta, ip_do_bloco(campo_atual, offsets, base, instrucao.bloco), 0, 0, ip)
     devolve nulo
   fecha
 
   veja instrucao e IrSaltaSeNao ::
     emite_instrucao_svbc(bytes, BcCarrega, instrucao.condicao, 0, 0, ip)
-    emite_instrucao_svbc(bytes, BcSaltaSeNao, ip_do_bloco(unidade, campo_atual.nome, instrucao.bloco), 0, 0, ip + 1)
+    emite_instrucao_svbc(bytes, BcSaltaSeNao, ip_do_bloco(campo_atual, offsets, base, instrucao.bloco), 0, 0, ip + 1)
     devolve nulo
   fecha
 
@@ -320,24 +324,29 @@ campo emite_argumentos(bytes: Bytes, argumentos: Lista<U32>, ip: U64) -> U64 ::
   devolve deslocamento
 fecha
 
-campo ip_do_bloco(unidade: UnidadeIr, campo_nome: Texto, bloco_nome: Texto) -> U32 ::
-  solta base: U64 := 0
-
-  para cada campo em unidade.campos ::
-    veja campo.nome == campo_nome ::
-      solta deslocamento: U64 := 0
-      para cada bloco em campo.blocos ::
-        veja bloco.nome == bloco_nome ::
-          devolve U32(base + deslocamento)
-        fecha
-        vira deslocamento := deslocamento + conta_instrucoes_bloco(bloco)
-      fecha
-      devolve U32(base)
-    fecha
-    vira base := base + conta_instrucoes(campo)
+// Compute absolute block offsets once per field, not once per jump.
+// This preserves the emitted bytecode order and eliminates repeated scans
+// over every preceding field and every preceding instruction.
+campo offsets_blocos_svbc(campo_atual: CampoIr, base: U64) -> Lista<U64> ::
+  solta offsets := lista<U64>()
+  solta posicao: U64 := base
+  para cada bloco em campo_atual.blocos ::
+    lista_coloca(offsets, posicao)
+    vira posicao := posicao + conta_instrucoes_bloco(bloco)
   fecha
+  devolve offsets
+fecha
 
-  devolve 0
+campo ip_do_bloco(campo_atual: CampoIr, offsets: Lista<U64>, base: U64, bloco_nome: Texto) -> U32 ::
+  solta indice: U64 := 0
+  para cada bloco em campo_atual.blocos ::
+    veja bloco.nome == bloco_nome ::
+      guarda posicao: U64 := lista_pega(offsets, indice)
+      devolve U32(posicao)
+    fecha
+    vira indice := indice + 1
+  fecha
+  devolve U32(base)
 fecha
 
 campo indice_nome(nomes: Lista<Texto>, nome: Texto) -> U32 ::
