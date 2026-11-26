@@ -74,12 +74,13 @@ campo token_expiracao(valor: Texto) -> U64 ::
   solta i: U64 := 0
   solta expiracao: U64 := 0
   gira i < sys_texto_tamanho(valor) e i < 16 ::
-    guarda ch := sys_texto_caractere(valor, i)
+    guarda ch: Texto := sys_texto_caractere(valor, i)
     veja ch == "." ::
       veja i == 0 :: devolve 0 fecha
       devolve expiracao
     fecha
-    veja ch < "0" ou ch > "9" :: devolve 0 fecha
+    veja sys_texto_tamanho(ch) != 1 :: devolve 0 fecha
+    veja sys_texto_contem("0123456789", ch) == nao :: devolve 0 fecha
     vira expiracao := expiracao * 10 + U64(numero(ch))
     vira i := i + 1
   fecha

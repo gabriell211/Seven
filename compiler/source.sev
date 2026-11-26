@@ -89,6 +89,17 @@ campo fonte_carrega_recursiva(
   lista_coloca(arquivos, fonte)
 
   para cada linha em linhas(fonte.texto) ::
+    guarda limpa: Texto := texto_apara_manifesto(linha)
+    // A direct check of one physical part must also load its logical module.
+    veja limpa == "modulo seven.compiler.parser" ::
+      fonte_carrega_modulo("seven.compiler.parser", arquivos, visitados)
+    fecha
+    veja limpa == "modulo seven.compiler.types" ::
+      fonte_carrega_modulo("seven.compiler.types", arquivos, visitados)
+    fecha
+    veja limpa == "modulo seven0.emit" ::
+      fonte_carrega_modulo("seven0.emit", arquivos, visitados)
+    fecha
     guarda modulo := fonte_uso_modulo(linha)
     veja modulo != "" ::
       fonte_carrega_modulo(modulo, arquivos, visitados)

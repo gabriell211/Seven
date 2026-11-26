@@ -103,7 +103,7 @@ campo verifica_artefatos_versionados() -> Bit toca disco ::
   devolve arquivo_existe("bin/seven.exe.sha256") e arquivo_existe("brand/seven.ico.sha256")
 fecha
 
-campo verifica_bootstrap_declarado() -> Bit toca disco ::
+campo verifica_bootstrap_declarado() -> Bit toca disco, ambiente ::
   guarda cadeia := verifica_cadeia_bootstrap()
 
   veja cadeia e Falha ::
@@ -113,7 +113,7 @@ campo verifica_bootstrap_declarado() -> Bit toca disco ::
   devolve sim
 fecha
 
-campo verifica_compilador(contexto: ContextoToolchain) -> Bit toca disco ::
+campo verifica_compilador(contexto: ContextoToolchain) -> Bit toca disco, ambiente ::
   guarda pedido := pedido_de_compilacao(lista<Texto>())
   guarda saida := compila(pedido)
 
@@ -163,7 +163,7 @@ campo verifica_test_runner(contexto: ContextoToolchain) -> Bit toca disco ::
   devolve lista_tamanho(r) > 0
 fecha
 
-campo verifica_release(contexto: ContextoToolchain) -> Bit toca disco ::
+campo verifica_release(contexto: ContextoToolchain) -> Bit toca disco, ambiente ::
   guarda r := prepara_release(contexto)
 
   veja r e Falha ::

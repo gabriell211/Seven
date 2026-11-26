@@ -22,7 +22,7 @@ molde CadeiaBootstrap ::
   comando_verificado: Bit
 fecha
 
-campo cadeia_bootstrap_padrao() -> CadeiaBootstrap toca disco ::
+campo cadeia_bootstrap_padrao() -> CadeiaBootstrap toca disco, ambiente ::
   solta etapas := lista<EtapaBootstrap>()
 
   lista_coloca(etapas, EtapaBootstrap {
@@ -61,7 +61,7 @@ campo cadeia_bootstrap_padrao() -> CadeiaBootstrap toca disco ::
   }
 fecha
 
-campo verifica_cadeia_bootstrap() -> Resultado<CadeiaBootstrap, Falha> toca disco ::
+campo verifica_cadeia_bootstrap() -> Resultado<CadeiaBootstrap, Falha> toca disco, ambiente ::
   guarda cadeia := cadeia_bootstrap_padrao()
 
   para cada etapa em cadeia.etapas ::
@@ -77,7 +77,7 @@ campo cadeia_self_hosted(cadeia: CadeiaBootstrap) -> Bit ::
   devolve cadeia.equivalente e cadeia.produtivo e cadeia.comando_verificado
 fecha
 
-campo hash_arquivo_ou_vazio(caminho: Texto) -> Texto toca disco ::
+campo hash_arquivo_ou_vazio(caminho: Texto) -> Texto toca disco, ambiente ::
   veja arquivo_existe(caminho) == nao ::
     devolve ""
   fecha
