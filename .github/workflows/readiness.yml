@@ -16,7 +16,7 @@ jobs:
   readiness:
     name: Compiler, conformance and source contracts
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
 
     steps:
       - uses: actions/checkout@v4
@@ -111,10 +111,19 @@ jobs:
         run: |
           set -euo pipefail
           seven="$PWD/build/current-seven/bin/seven"
+          failures=0
+          checked=0
           while IFS= read -r file; do
             echo "source: $file"
-            "$seven" check "$file"
+            checked=$((checked + 1))
+            if ! "$seven" check "$file"; then
+              echo "::error file=$file::Self-hosted source validation failed"
+              failures=$((failures + 1))
+            fi
           done < seven.sources
+          echo "Indexed sources checked: $checked; failures: $failures"
+          test "$checked" -gt 0
+          test "$failures" -eq 0
 
       - name: Reject production placeholders and transition compiler
         shell: bash

@@ -120,7 +120,7 @@ campo autofix_fim_linha(fonte: Fonte, linha: U32) -> U64 ::
 
   guarda proxima := U64(linha)
   veja proxima < lista_tamanho(fonte.linhas) ::
-    guarda valor := lista_pega(fonte.linhas, proxima)
+    guarda valor: U64 := lista_pega(fonte.linhas, proxima)
     veja valor > 0 ::
       devolve valor - 1
     fecha
